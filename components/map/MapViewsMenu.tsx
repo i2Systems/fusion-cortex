@@ -19,7 +19,8 @@ import {
   Layers, 
   Users, 
   Zap,
-  Check
+  Check,
+  type LucideIcon
 } from 'lucide-react'
 
 export type MapViewType = 
@@ -33,7 +34,7 @@ export type MapViewType =
 interface MapViewOption {
   id: MapViewType
   label: string
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: LucideIcon
   description: string
 }
 
