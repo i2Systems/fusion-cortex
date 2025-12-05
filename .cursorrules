@@ -1,0 +1,46 @@
+# Fusion/Cortex - Cursor AI Rules
+
+## Project Context
+This is a web-based commissioning & configuration UI for large-scale retail lighting deployments. Focus on discovery, mapping, zones, BACnet mapping, rules, overrides, and device lookup.
+
+## Code Style
+- Use TypeScript strict mode
+- Prefer React Server Components, use 'use client' only when needed
+- Always use design tokens from globals.css (var(--color-*), var(--space-*), etc.)
+- Use Tailwind for layout utilities, custom CSS for component styling
+- Follow the existing file structure and naming conventions
+
+## Design System
+- All colors, spacing, typography must use CSS custom properties (design tokens)
+- Never hard-code colors, spacing, or other design values
+- Use the fusion-card, fusion-button utility classes when appropriate
+- Maintain the dark theme aesthetic defined in globals.css
+
+## Architecture
+- tRPC for all API calls (type-safe)
+- Prisma for database access
+- Next.js App Router structure
+- Components in /components, pages in /app
+- tRPC routers organized by feature in /server/trpc/routers
+
+## AI-Friendly Notes
+- Files include JSDoc comments explaining purpose and usage
+- README.md contains comprehensive documentation
+- Design tokens are centralized and well-documented
+- File structure is logical and consistent
+
+## Non-Goals
+Do NOT implement:
+- Energy savings charts
+- Heatmaps / occupancy maps
+- Analytics dashboards
+- Legacy energy/analytics features beyond the spec
+
+## When Adding Features
+1. Create route in app/(main)/[feature]/page.tsx
+2. Add nav item in components/layout/MainNav.tsx
+3. Create tRPC router in server/trpc/routers/[feature].ts
+4. Add router to server/trpc/routers/_app.ts
+5. Update Prisma schema if needed
+6. Use design tokens, not hard-coded values
+

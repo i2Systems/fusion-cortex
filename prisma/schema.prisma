@@ -1,0 +1,185 @@
+// Prisma Schema for Fusion/Cortex
+//
+// AI Note: This schema defines the core data models for:
+// - Devices (fixtures, sensors)
+// - Zones (groupings of devices)
+// - BACnet mappings
+// - Rules & overrides
+// - Discovery sessions
+// - Sites/stores
+//
+// Extend as needed for your specific requirements.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Site {
+  id          String   @id @default(cuid())
+  name        String
+  storeNumber String?
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  devices     Device[]
+  zones       Zone[]
+  discoverySessions DiscoverySession[]
+}
+
+model Device {
+  id            String   @id @default(cuid())
+  serialNumber  String   @unique
+  deviceId      String   // User-facing ID (e.g., "765")
+  type          DeviceType
+  status        DeviceStatus @default(OFFLINE)
+  
+  // Location (for map rendering)
+  x             Float?
+  y             Float?
+  
+  // Device properties
+  signal        Int?     // Signal strength
+  battery       Int?     // Battery level (if applicable)
+  
+  // I2QR data
+  buildDate     DateTime?
+  cct           Int?     // Color temperature
+  warrantyStatus String?
+  partsList     Json?    // Parts list as JSON
+  
+  // Relationships
+  siteId        String
+  site          Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  zoneMemberships ZoneDevice[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([siteId])
+  @@index([serialNumber])
+  @@index([deviceId])
+}
+
+enum DeviceType {
+  FIXTURE
+  MOTION_SENSOR
+  LIGHT_SENSOR
+}
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+  MISSING
+  DUPLICATE
+}
+
+model Zone {
+  id          String   @id @default(cuid())
+  name        String
+  color       String   @default("#4c7dff") // Hex color for visualization
+  description String?
+  
+  // Daylight settings
+  daylightEnabled Boolean @default(false)
+  minDaylight     Int?     // Minimum fc level
+  
+  // Relationships
+  siteId      String
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  devices     ZoneDevice[]
+  bacnetMapping BACnetMapping?
+  rules       Rule[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([siteId])
+}
+
+model ZoneDevice {
+  id       String @id @default(cuid())
+  zoneId   String
+  zone     Zone   @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  deviceId String
+  device   Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@unique([zoneId, deviceId])
+  @@index([zoneId])
+  @@index([deviceId])
+}
+
+model BACnetMapping {
+  id            String   @id @default(cuid())
+  zoneId        String   @unique
+  zone          Zone     @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  bacnetObjectId String?
+  status        BACnetStatus @default(NOT_ASSIGNED)
+  lastConnected DateTime?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+enum BACnetStatus {
+  CONNECTED
+  ERROR
+  NOT_ASSIGNED
+}
+
+model Rule {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  
+  // Rule definition (Alexa-style)
+  trigger     String   // e.g., "motion", "no_motion", "daylight", "bms"
+  condition   Json     // Condition parameters as JSON
+  action      Json     // Action parameters as JSON
+  
+  // Override settings
+  overrideBMS Boolean  @default(false)
+  duration    Int?     // Duration in minutes (if applicable)
+  
+  // Relationships
+  zoneId      String?
+  zone        Zone?    @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  targetZones String[] // Array of zone IDs this rule affects
+  
+  enabled     Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([zoneId])
+}
+
+model DiscoverySession {
+  id          String   @id @default(cuid())
+  siteId      String
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  
+  status      DiscoveryStatus @default(RUNNING)
+  devicesFound Int     @default(0)
+  devicesMissing Int   @default(0)
+  devicesOffline Int   @default(0)
+  
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  
+  @@index([siteId])
+  @@index([status])
+}
+
+enum DiscoveryStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+  STOPPED
+}
+

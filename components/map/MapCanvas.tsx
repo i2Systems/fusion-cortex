@@ -1,0 +1,288 @@
+/**
+ * Map Canvas Component
+ * 
+ * Uses react-konva for canvas-based rendering of:
+ * - Blueprint/floor plan (background layer)
+ * - Device point cloud (overlay)
+ * - Zone boundaries
+ * 
+ * AI Note: This is a placeholder. Full implementation should:
+ * - Load and render blueprint images
+ * - Render device points with color coding by type
+ * - Support zoom, pan, drag-select
+ * - Handle device selection and highlight
+ */
+
+'use client'
+
+import { Stage, Layer, Circle, Image as KonvaImage, Group, Text, Rect } from 'react-konva'
+import { useEffect, useState, useRef } from 'react'
+
+interface DevicePoint {
+  id: string
+  x: number
+  y: number
+  type: 'fixture' | 'motion' | 'light-sensor'
+  deviceId: string
+  status: string
+  signal: number
+  location?: string
+}
+
+interface MapCanvasProps {
+  onDeviceSelect?: (deviceId: string | null) => void
+  selectedDeviceId?: string | null
+  mapImageUrl?: string | null
+  devices?: DevicePoint[]
+  highlightDeviceId?: string | null
+}
+
+function FloorPlanImage({ url, width, height }: { url: string; width: number; height: number }) {
+  const [image, setImage] = useState<HTMLImageElement | null>(null)
+
+  useEffect(() => {
+    const img = new window.Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => setImage(img)
+    img.src = url
+  }, [url])
+
+  return image ? (
+    <KonvaImage
+      image={image}
+      x={0}
+      y={0}
+      width={width}
+      height={height}
+      opacity={0.8}
+    />
+  ) : null
+}
+
+export function MapCanvas({ onDeviceSelect, selectedDeviceId, mapImageUrl, devices = [], highlightDeviceId }: MapCanvasProps) {
+  const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
+  const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 })
+  const [scale, setScale] = useState(1)
+  const [hoveredDevice, setHoveredDevice] = useState<DevicePoint | null>(null)
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 })
+  const animationFrameRef = useRef<number | null>(null)
+  const [colors, setColors] = useState({
+    primary: '#4c7dff',
+    accent: '#f97316',
+    success: '#22c55e',
+    muted: '#9ca3af',
+    text: '#ffffff',
+    tooltipBg: 'rgba(17, 24, 39, 0.95)',
+    tooltipBorder: '#4c7dff',
+    tooltipText: '#ffffff',
+    tooltipShadow: 'rgba(0, 0, 0, 0.5)',
+  })
+
+  useEffect(() => {
+    // Set initial dimensions
+    const updateDimensions = () => {
+      // Account for nav width (80px), right panel (448px = 28rem), padding (32px total)
+      const availableWidth = window.innerWidth - 80 - 448 - 32
+      // Account for bottom drawer, search island, and padding
+      const availableHeight = window.innerHeight - 48 - 80 - 32
+      setDimensions({
+        width: Math.max(availableWidth, 400),
+        height: Math.max(availableHeight, 400),
+      })
+    }
+
+    // Get theme colors from CSS variables
+    const updateColors = () => {
+      const root = document.documentElement
+      const computedStyle = getComputedStyle(root)
+      setColors({
+        primary: computedStyle.getPropertyValue('--color-primary').trim() || '#4c7dff',
+        accent: computedStyle.getPropertyValue('--color-accent').trim() || '#f97316',
+        success: computedStyle.getPropertyValue('--color-success').trim() || '#22c55e',
+        muted: computedStyle.getPropertyValue('--color-text-muted').trim() || '#9ca3af',
+        text: computedStyle.getPropertyValue('--color-text').trim() || '#ffffff',
+        tooltipBg: computedStyle.getPropertyValue('--color-tooltip-bg').trim() || 'rgba(17, 24, 39, 0.95)',
+        tooltipBorder: computedStyle.getPropertyValue('--color-tooltip-border').trim() || computedStyle.getPropertyValue('--color-primary').trim() || '#4c7dff',
+        tooltipText: computedStyle.getPropertyValue('--color-tooltip-text').trim() || computedStyle.getPropertyValue('--color-text').trim() || '#ffffff',
+        tooltipShadow: computedStyle.getPropertyValue('--color-tooltip-shadow').trim() || 'rgba(0, 0, 0, 0.5)',
+      })
+    }
+
+    updateDimensions()
+    updateColors()
+    
+    window.addEventListener('resize', updateDimensions)
+    
+    // Watch for theme changes
+    const observer = new MutationObserver(updateColors)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    })
+    
+    return () => {
+      window.removeEventListener('resize', updateDimensions)
+      observer.disconnect()
+    }
+  }, [])
+
+  // Pan to highlighted device when selected from table - optimized for performance
+  useEffect(() => {
+    if (highlightDeviceId && devices.length > 0) {
+      const device = devices.find(d => d.id === highlightDeviceId)
+      if (device) {
+        // Calculate device position in canvas coordinates
+        const deviceX = device.x * dimensions.width
+        const deviceY = device.y * dimensions.height
+        
+        // Center the device in the viewport
+        const centerX = dimensions.width / 2
+        const centerY = dimensions.height / 2
+        
+        // Calculate target position
+        const targetX = centerX - deviceX
+        const targetY = centerY - deviceY
+        
+        // Direct update for instant response, no animation to avoid stutter
+        setStagePosition({ x: targetX, y: targetY })
+        setScale(1) // Keep scale at 1 for performance
+      }
+    }
+  }, [highlightDeviceId, devices, dimensions])
+
+  // Devices come from props now, no need for local device array
+
+  const getDeviceColor = (type: string) => {
+    switch (type) {
+      case 'fixture':
+        return colors.primary
+      case 'motion':
+        return colors.accent
+      case 'light-sensor':
+        return colors.success
+      default:
+        return colors.muted
+    }
+  }
+
+  return (
+    <div className="w-full h-full overflow-hidden">
+      <Stage 
+        width={dimensions.width} 
+        height={dimensions.height}
+        x={stagePosition.x}
+        y={stagePosition.y}
+        scaleX={scale}
+        scaleY={scale}
+        draggable
+        onDragEnd={(e) => {
+          setStagePosition({ x: e.target.x(), y: e.target.y() })
+        }}
+      >
+        <Layer>
+          {/* Floor Plan Background */}
+          {mapImageUrl && (
+            <FloorPlanImage 
+              url={mapImageUrl} 
+              width={dimensions.width} 
+              height={dimensions.height}
+            />
+          )}
+          
+          {/* Device points */}
+          {devices.map((device) => {
+            // Scale device positions to canvas dimensions
+            const deviceX = device.x * dimensions.width
+            const deviceY = device.y * dimensions.height
+            const isSelected = selectedDeviceId === device.id
+            const isHovered = hoveredDevice?.id === device.id
+            
+            return (
+              <Group key={device.id}>
+                <Circle
+                  x={deviceX}
+                  y={deviceY}
+                  radius={isSelected ? 8 : (isHovered ? 6 : 4)}
+                  fill={getDeviceColor(device.type)}
+                  stroke={isSelected ? colors.text : 'rgba(255,255,255,0.2)'}
+                  strokeWidth={isSelected ? 3 : 1}
+                  shadowBlur={isSelected ? 15 : (isHovered ? 8 : 3)}
+                  shadowColor={isSelected ? colors.primary : 'black'}
+                  opacity={isSelected ? 1 : (isHovered ? 0.8 : 0.6)}
+                  onClick={() => onDeviceSelect?.(device.id)}
+                  onTap={() => onDeviceSelect?.(device.id)}
+                  onMouseEnter={(e) => {
+                    const container = e.target.getStage()?.container()
+                    if (container) container.style.cursor = 'pointer'
+                    setHoveredDevice(device)
+                    // Get mouse position relative to stage
+                    const stage = e.target.getStage()
+                    if (stage) {
+                      const pointerPos = stage.getPointerPosition()
+                      if (pointerPos) {
+                        setTooltipPosition({ x: pointerPos.x, y: pointerPos.y })
+                      }
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    setHoveredDevice(null)
+                  }}
+                  onMouseMove={(e) => {
+                    const stage = e.target.getStage()
+                    if (stage) {
+                      const pointerPos = stage.getPointerPosition()
+                      if (pointerPos) {
+                        setTooltipPosition({ x: pointerPos.x, y: pointerPos.y })
+                      }
+                    }
+                  }}
+                />
+                {/* Tooltip - only render when hovered, positioned near cursor */}
+                {isHovered && (
+                  <Group x={tooltipPosition.x + 15} y={tooltipPosition.y - 15}>
+                    {/* Tooltip background - uses theme tokens */}
+                    <Rect
+                      width={220}
+                      height={device.location ? 110 : 90}
+                      fill={colors.tooltipBg}
+                      cornerRadius={8}
+                      listening={false}
+                      shadowBlur={15}
+                      shadowColor={colors.tooltipShadow}
+                      shadowOffsetX={0}
+                      shadowOffsetY={2}
+                    />
+                    {/* Border for better visibility - uses theme primary color */}
+                    <Rect
+                      width={220}
+                      height={device.location ? 110 : 90}
+                      fill="transparent"
+                      stroke={colors.tooltipBorder}
+                      strokeWidth={2}
+                      cornerRadius={8}
+                      listening={false}
+                    />
+                    {/* Tooltip text - uses theme text color */}
+                    <Text
+                      x={14}
+                      y={14}
+                      text={`${device.deviceId}\nType: ${device.type}\nSignal: ${device.signal}%\nStatus: ${device.status}${device.location ? `\nLocation: ${device.location}` : ''}`}
+                      fontSize={13}
+                      fontFamily="system-ui, -apple-system, sans-serif"
+                      fontStyle="normal"
+                      fill={colors.tooltipText}
+                      align="left"
+                      listening={false}
+                      lineHeight={1.5}
+                    />
+                  </Group>
+                )}
+              </Group>
+            )
+          })}
+        </Layer>
+      </Stage>
+    </div>
+  )
+}
+
