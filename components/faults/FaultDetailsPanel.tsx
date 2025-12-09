@@ -9,12 +9,13 @@
 
 'use client'
 
-import { AlertCircle, WifiOff, Battery, XCircle, MapPin, Radio, Calendar, RefreshCw, CheckCircle2, Clock, TrendingDown } from 'lucide-react'
+import { AlertCircle, Droplets, Zap, Thermometer, Plug, Settings, Package, Wrench, Lightbulb, MapPin, Radio, RefreshCw, CheckCircle2, Clock, TrendingDown, XCircle, Battery } from 'lucide-react'
 import { Device } from '@/lib/mockData'
+import { FaultCategory, faultCategories } from '@/lib/faultDefinitions'
 
 interface Fault {
   device: Device
-  faultType: 'missing' | 'offline' | 'low-battery'
+  faultType: FaultCategory
   detectedAt: Date
   description: string
 }
@@ -42,74 +43,41 @@ export function FaultDetailsPanel({ fault }: FaultDetailsPanelProps) {
     )
   }
 
-  const getFaultIcon = (faultType: string) => {
-    switch (faultType) {
-      case 'missing':
-        return <XCircle size={24} className="text-[var(--color-danger)]" />
-      case 'offline':
-        return <WifiOff size={24} className="text-[var(--color-warning)]" />
-      case 'low-battery':
-        return <Battery size={24} className="text-[var(--color-warning)]" />
-      default:
-        return <AlertCircle size={24} className="text-[var(--color-text-muted)]" />
+  const getFaultIcon = (faultType: FaultCategory) => {
+    const iconMap: Record<FaultCategory, React.ReactNode> = {
+      'environmental-ingress': <Droplets size={24} className="text-[var(--color-danger)]" />,
+      'electrical-driver': <Zap size={24} className="text-[var(--color-danger)]" />,
+      'thermal-overheat': <Thermometer size={24} className="text-[var(--color-warning)]" />,
+      'installation-wiring': <Plug size={24} className="text-[var(--color-warning)]" />,
+      'control-integration': <Settings size={24} className="text-[var(--color-primary)]" />,
+      'manufacturing-defect': <Package size={24} className="text-[var(--color-primary)]" />,
+      'mechanical-structural': <Wrench size={24} className="text-[var(--color-primary)]" />,
+      'optical-output': <Lightbulb size={24} className="text-[var(--color-warning)]" />,
     }
+    return iconMap[faultType] || <AlertCircle size={24} className="text-[var(--color-text-muted)]" />
   }
 
-  const getFaultLabel = (faultType: string) => {
-    switch (faultType) {
-      case 'missing':
-        return 'Missing'
-      case 'offline':
-        return 'Offline'
-      case 'low-battery':
-        return 'Low Battery'
-      default:
-        return faultType
-    }
+  const getFaultLabel = (faultType: FaultCategory) => {
+    return faultCategories[faultType]?.label || faultType
   }
 
-  const getFaultColor = (faultType: string) => {
-    switch (faultType) {
-      case 'missing':
-        return 'bg-[var(--color-danger)]/20 text-[var(--color-danger)] border-[var(--color-danger)]/30'
-      case 'offline':
-        return 'bg-[var(--color-warning)]/20 text-[var(--color-warning)] border-[var(--color-warning)]/30'
-      case 'low-battery':
-        return 'bg-[var(--color-warning)]/20 text-[var(--color-warning)] border-[var(--color-warning)]/30'
-      default:
-        return 'bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)] border-[var(--color-border-subtle)]'
+  const getFaultColor = (faultType: FaultCategory) => {
+    const categoryInfo = faultCategories[faultType]
+    if (!categoryInfo) {
+      return 'bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)] border-[var(--color-border-subtle)]'
     }
+    
+    const colorMap = {
+      danger: 'bg-[var(--color-danger)]/20 text-[var(--color-danger)] border-[var(--color-danger)]/30',
+      warning: 'bg-[var(--color-warning)]/20 text-[var(--color-warning)] border-[var(--color-warning)]/30',
+      info: 'bg-[var(--color-primary)]/20 text-[var(--color-primary)] border-[var(--color-primary)]/30',
+    }
+    
+    return colorMap[categoryInfo.color] || colorMap.info
   }
 
-  const getTroubleshootingSteps = (faultType: string) => {
-    switch (faultType) {
-      case 'missing':
-        return [
-          'Verify device is powered on and connected to network',
-          'Check physical location - device may have been moved or removed',
-          'Attempt to ping device on network',
-          'Review discovery logs for last successful communication',
-          'Check if device serial number matches inventory records',
-        ]
-      case 'offline':
-        return [
-          'Check network connectivity and signal strength',
-          'Verify device power supply is functioning',
-          'Review device logs for error messages',
-          'Check for network outages or interference',
-          'Attempt manual reconnection via device interface',
-        ]
-      case 'low-battery':
-        return [
-          'Schedule battery replacement within 48 hours',
-          'Check battery voltage and charging status',
-          'Review battery age and warranty information',
-          'Verify device is not in high-power mode unnecessarily',
-          'Consider reducing reporting frequency to conserve battery',
-        ]
-      default:
-        return []
-    }
+  const getTroubleshootingSteps = (faultType: FaultCategory) => {
+    return faultCategories[faultType]?.troubleshootingSteps || []
   }
 
   const formatTimeAgo = (date: Date) => {
@@ -155,7 +123,7 @@ export function FaultDetailsPanel({ fault }: FaultDetailsPanelProps) {
                 {fault.device.deviceId}
               </h3>
               <p className="text-xs text-[var(--color-text-muted)]">
-                {getFaultLabel(fault.faultType)} • {getTypeLabel(fault.device.type)}
+                {faultCategories[fault.faultType]?.shortLabel || getFaultLabel(fault.faultType)} • {getTypeLabel(fault.device.type)}
               </p>
             </div>
             {/* Quick Stats */}
@@ -215,9 +183,19 @@ export function FaultDetailsPanel({ fault }: FaultDetailsPanelProps) {
         <div>
           <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">Fault Description</h4>
           <div className="p-3 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)]">
-            <p className="text-sm text-[var(--color-text-muted)]">
+            <p className="text-sm text-[var(--color-text-muted)] mb-2">
               {fault.description}
             </p>
+            {faultCategories[fault.faultType] && (
+              <div className="mt-3 pt-3 border-t border-[var(--color-border-subtle)]">
+                <p className="text-xs text-[var(--color-text-soft)] mb-2">
+                  <strong>Category:</strong> {faultCategories[fault.faultType].label}
+                </p>
+                <p className="text-xs text-[var(--color-text-soft)]">
+                  {faultCategories[fault.faultType].description}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -327,9 +305,9 @@ export function FaultDetailsPanel({ fault }: FaultDetailsPanelProps) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-[var(--color-text)]">Last online</p>
                 <p className="text-xs text-[var(--color-text-muted)]">
-                  {fault.faultType === 'missing' 
+                  {fault.device.status === 'missing' 
                     ? 'Never' 
-                    : fault.faultType === 'offline'
+                    : fault.device.status === 'offline'
                     ? `${Math.floor((Date.now() - fault.detectedAt.getTime()) / (1000 * 60 * 60)) + 1} hours ago`
                     : 'Recently'}
                 </p>

@@ -56,8 +56,26 @@ export default function NotificationsPage() {
         links: ['/discovery', '/map'],
       },
       fault: {
-        titles: ['Device Offline Detected', 'Device Signal Weak', 'Battery Low Warning', 'Connection Issue Detected'],
-        messages: ['Devices are currently offline. Check device health and connectivity.', 'Device has low signal strength. Consider repositioning or checking network.', 'Device battery is below 20%. Schedule replacement soon.', 'Device connection unstable. Review network settings.'],
+        titles: [
+          'Environmental Ingress Detected',
+          'Electrical Driver Failure',
+          'Thermal Overheat Warning',
+          'Installation Wiring Error',
+          'Control System Integration Issue',
+          'Manufacturing Defect Found',
+          'Mechanical Hardware Problem',
+          'Optical Output Abnormality',
+        ],
+        messages: [
+          'Water intrusion detected in fixture housing. Device shows signs of moisture damage. Inspect seals and gaskets.',
+          'Legacy 6043 driver burnout - no power output. Device requires driver replacement. Check warranty status.',
+          'Input cable melting detected due to excessive current. Device shows thermal stress. Review power distribution.',
+          'Power landed on dim line instead of power line. Device miswired during installation. Verify wiring diagram.',
+          'GRX-TVI trim level issues causing incorrect dimming. Device not responding to control signals. Check control module.',
+          'Loose internal parts causing intermittent connection. Device shows manufacturing defect. Document and contact manufacturer.',
+          'Bezel detaching from fixture housing. Device has structural mounting issue. Inspect bracket geometry.',
+          'Single LED out in fixture array. Device shows optical output abnormality. Check LED module connections.',
+        ],
         links: ['/faults', '/lookup'],
       },
       zone: {

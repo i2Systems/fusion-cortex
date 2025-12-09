@@ -46,6 +46,16 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
       if (savedDevices) {
         try {
           const parsed = JSON.parse(savedDevices)
+          // Ensure the fault story device (FLX-3158) is always present
+          const faultDeviceId = 'device-fault-grocery-001'
+          const faultDeviceExists = parsed.some((d: Device) => d.id === faultDeviceId || d.deviceId === 'FLX-3158')
+          if (!faultDeviceExists) {
+            // Add the fault device if it doesn't exist
+            const faultDevice = initialDevices.find(d => d.id === faultDeviceId)
+            if (faultDevice) {
+              parsed.push(faultDevice)
+            }
+          }
           setDevices(parsed)
           setHistory([parsed])
           setHistoryIndex(0)

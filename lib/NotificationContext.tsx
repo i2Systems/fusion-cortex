@@ -12,6 +12,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import { faultCategories, FaultCategory } from '@/lib/faultDefinitions'
 
 export type NotificationType = 'discovery' | 'zone' | 'fault' | 'bacnet' | 'rule' | 'device' | 'system'
 
@@ -38,11 +39,62 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined)
 
+// Generate a fault notification with realistic category examples
+function generateFaultNotification(): Notification {
+  const categories: FaultCategory[] = [
+    'environmental-ingress',
+    'electrical-driver',
+    'thermal-overheat',
+    'installation-wiring',
+    'control-integration',
+    'manufacturing-defect',
+    'mechanical-structural',
+    'optical-output',
+  ]
+  
+  const category = categories[Math.floor(Math.random() * categories.length)]
+  const categoryInfo = faultCategories[category]
+  const example = categoryInfo.examples[Math.floor(Math.random() * categoryInfo.examples.length)]
+  
+  // Generate a device ID for the notification
+  const deviceId = `FLX-${String(Math.floor(Math.random() * 2000) + 2000).padStart(4, '0')}`
+  
+  // Create realistic notification message
+  const messages = [
+    `${example}. Device ${deviceId} requires attention. ${categoryInfo.description.split('.')[0]}.`,
+    `Device ${deviceId} shows ${categoryInfo.shortLabel.toLowerCase()} fault. ${example}.`,
+    `${categoryInfo.label} detected on ${deviceId}. ${example}. Review troubleshooting steps.`,
+    `Multiple devices showing ${categoryInfo.shortLabel.toLowerCase()} issues. ${deviceId} affected. ${example}.`,
+  ]
+  
+  const titles = [
+    `${categoryInfo.label} Detected`,
+    `${categoryInfo.shortLabel} Fault`,
+    `Device ${categoryInfo.shortLabel} Issue`,
+    `${categoryInfo.shortLabel} Warning`,
+  ]
+  
+  return {
+    id: `fault-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    type: 'fault',
+    title: titles[Math.floor(Math.random() * titles.length)],
+    message: messages[Math.floor(Math.random() * messages.length)],
+    timestamp: new Date(),
+    read: false,
+    link: '/faults',
+  }
+}
+
 // Generate a single random notification
 function generateRandomNotification(): Notification {
   const now = new Date()
   const types: NotificationType[] = ['discovery', 'fault', 'zone', 'bacnet', 'rule', 'device', 'system']
   const type = types[Math.floor(Math.random() * types.length)]
+  
+  // Use specialized fault notification generator for fault type
+  if (type === 'fault') {
+    return generateFaultNotification()
+  }
   
   const notifications: Record<NotificationType, { titles: string[], messages: string[], links: string[] }> = {
     discovery: {
@@ -62,16 +114,32 @@ function generateRandomNotification(): Notification {
     },
     fault: {
       titles: [
-        'Device Offline Detected',
-        'Device Signal Weak',
-        'Battery Low Warning',
-        'Connection Issue Detected',
+        'Environmental Ingress Detected',
+        'Electrical Driver Failure',
+        'Thermal Overheat Warning',
+        'Installation Wiring Error',
+        'Control System Integration Issue',
+        'Manufacturing Defect Found',
+        'Mechanical Hardware Problem',
+        'Optical Output Abnormality',
+        'Water Intrusion Detected',
+        'Driver Burnout Failure',
+        'Voltage Drop Issue',
+        'DMX Control Problem',
       ],
       messages: [
-        'Devices are currently offline. Check device health and connectivity.',
-        'Device has low signal strength. Consider repositioning or checking network.',
-        'Device battery is below 20%. Schedule replacement soon.',
-        'Device connection unstable. Review network settings.',
+        'Water intrusion detected in fixture housing. Device FLX-2041 shows signs of moisture damage. Inspect seals and gaskets.',
+        'Legacy 6043 driver burnout - no power output. Device FLX-2085 requires driver replacement. Check warranty status.',
+        'Input cable melting detected due to excessive current. Device FLX-2125 shows thermal stress. Review power distribution.',
+        'Power landed on dim line instead of power line. Device FLX-2063 miswired during installation. Verify wiring diagram.',
+        'GRX-TVI trim level issues causing incorrect dimming. Device FLX-2088 not responding to control signals. Check control module.',
+        'Loose internal parts causing intermittent connection. Device FLX-2078 shows manufacturing defect. Document and contact manufacturer.',
+        'Bezel detaching from fixture housing. Device FLX-2092 has structural mounting issue. Inspect bracket geometry.',
+        'Single LED out in fixture array. Device FLX-2105 shows optical output abnormality. Check LED module connections.',
+        'Condensation buildup causing repeat failures. Multiple devices in Zone 1 showing environmental ingress. Review IP ratings.',
+        'DMX driver failing out-of-box with no response. Device FLX-2118 requires driver replacement. Test with known-good power supply.',
+        'Voltage drop problems causing dimming and flicker. Device FLX-2130 experiencing power supply issues. Measure voltage at fixture.',
+        'Reverse polarity on DMX decoder causing inverted dimming. Device FLX-2142 has control integration issue. Verify signal polarity.',
       ],
       links: ['/faults', '/lookup'],
     },
@@ -174,8 +242,8 @@ function generateFakeNotifications(): Notification[] {
     {
       id: '2',
       type: 'fault',
-      title: 'Device Offline Detected',
-      message: '6 devices are currently offline. Check device health and connectivity.',
+      title: 'Environmental Ingress Detected',
+      message: 'Water intrusion detected in fixture housing. Device FLX-2041 shows signs of moisture damage. Inspect seals and gaskets.',
       timestamp: new Date(now.getTime() - 15 * 60 * 1000), // 15 minutes ago
       read: false,
       link: '/faults',
@@ -233,6 +301,42 @@ function generateFakeNotifications(): Notification[] {
       timestamp: new Date(now.getTime() - 6 * 60 * 60 * 1000), // 6 hours ago
       read: true,
       link: '/map',
+    },
+    {
+      id: '9',
+      type: 'fault',
+      title: 'Electrical Driver Failure',
+      message: 'Legacy 6043 driver burnout - no power output. Device FLX-2085 requires driver replacement. Check warranty status.',
+      timestamp: new Date(now.getTime() - 7 * 60 * 60 * 1000), // 7 hours ago
+      read: true,
+      link: '/faults',
+    },
+    {
+      id: '10',
+      type: 'fault',
+      title: 'Installation Wiring Error',
+      message: 'Power landed on dim line instead of power line. Device FLX-2063 miswired during installation. Verify wiring diagram.',
+      timestamp: new Date(now.getTime() - 8 * 60 * 60 * 1000), // 8 hours ago
+      read: true,
+      link: '/faults',
+    },
+    {
+      id: '11',
+      type: 'fault',
+      title: 'Control System Integration Issue',
+      message: 'GRX-TVI trim level issues causing incorrect dimming. Device FLX-2088 not responding to control signals. Check control module.',
+      timestamp: new Date(now.getTime() - 9 * 60 * 60 * 1000), // 9 hours ago
+      read: true,
+      link: '/faults',
+    },
+    {
+      id: '12',
+      type: 'fault',
+      title: 'Thermal Overheat Warning',
+      message: 'Input cable melting detected due to excessive current. Device FLX-2125 shows thermal stress. Review power distribution.',
+      timestamp: new Date(now.getTime() - 10 * 60 * 60 * 1000), // 10 hours ago
+      read: true,
+      link: '/faults',
     },
   ]
 }

@@ -10,12 +10,13 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertCircle, WifiOff, Battery, XCircle, CheckCircle2 } from 'lucide-react'
+import { AlertCircle, Droplets, Zap, Thermometer, Plug, Settings, Package, Wrench, Lightbulb } from 'lucide-react'
 import { Device } from '@/lib/mockData'
+import { FaultCategory, faultCategories } from '@/lib/faultDefinitions'
 
 interface Fault {
   device: Device
-  faultType: 'missing' | 'offline' | 'low-battery'
+  faultType: FaultCategory
   detectedAt: Date
   description: string
 }
@@ -35,12 +36,19 @@ export function FaultList({ faults, selectedFaultId, onFaultSelect, searchQuery 
   const filteredFaults = faults.filter(fault => {
     if (!searchQuery.trim()) return true
     const query = searchQuery.toLowerCase()
+    const categoryInfo = faultCategories[fault.faultType]
     return (
       fault.device.deviceId.toLowerCase().includes(query) ||
       fault.device.serialNumber.toLowerCase().includes(query) ||
       (fault.device.location && fault.device.location.toLowerCase().includes(query)) ||
       (fault.device.zone && fault.device.zone.toLowerCase().includes(query)) ||
-      fault.faultType.toLowerCase().includes(query)
+      fault.faultType.toLowerCase().includes(query) ||
+      (categoryInfo && (
+        categoryInfo.label.toLowerCase().includes(query) ||
+        categoryInfo.shortLabel.toLowerCase().includes(query) ||
+        categoryInfo.description.toLowerCase().includes(query)
+      )) ||
+      fault.description.toLowerCase().includes(query)
     )
   })
 
@@ -68,43 +76,37 @@ export function FaultList({ faults, selectedFaultId, onFaultSelect, searchQuery 
     return sortOrder === 'asc' ? comparison : -comparison
   })
 
-  const getFaultIcon = (faultType: string) => {
-    switch (faultType) {
-      case 'missing':
-        return <XCircle size={18} className="text-[var(--color-danger)]" />
-      case 'offline':
-        return <WifiOff size={18} className="text-[var(--color-warning)]" />
-      case 'low-battery':
-        return <Battery size={18} className="text-[var(--color-warning)]" />
-      default:
-        return <AlertCircle size={18} className="text-[var(--color-text-muted)]" />
+  const getFaultIcon = (faultType: FaultCategory) => {
+    const iconMap: Record<FaultCategory, React.ReactNode> = {
+      'environmental-ingress': <Droplets size={18} className="text-[var(--color-danger)]" />,
+      'electrical-driver': <Zap size={18} className="text-[var(--color-danger)]" />,
+      'thermal-overheat': <Thermometer size={18} className="text-[var(--color-warning)]" />,
+      'installation-wiring': <Plug size={18} className="text-[var(--color-warning)]" />,
+      'control-integration': <Settings size={18} className="text-[var(--color-info)]" />,
+      'manufacturing-defect': <Package size={18} className="text-[var(--color-info)]" />,
+      'mechanical-structural': <Wrench size={18} className="text-[var(--color-info)]" />,
+      'optical-output': <Lightbulb size={18} className="text-[var(--color-warning)]" />,
     }
+    return iconMap[faultType] || <AlertCircle size={18} className="text-[var(--color-text-muted)]" />
   }
 
-  const getFaultLabel = (faultType: string) => {
-    switch (faultType) {
-      case 'missing':
-        return 'Missing'
-      case 'offline':
-        return 'Offline'
-      case 'low-battery':
-        return 'Low Battery'
-      default:
-        return faultType
-    }
+  const getFaultLabel = (faultType: FaultCategory) => {
+    return faultCategories[faultType]?.shortLabel || faultType
   }
 
-  const getFaultColor = (faultType: string) => {
-    switch (faultType) {
-      case 'missing':
-        return 'bg-[var(--color-danger)]/20 text-[var(--color-danger)] border-[var(--color-danger)]/30'
-      case 'offline':
-        return 'bg-[var(--color-warning)]/20 text-[var(--color-warning)] border-[var(--color-warning)]/30'
-      case 'low-battery':
-        return 'bg-[var(--color-warning)]/20 text-[var(--color-warning)] border-[var(--color-warning)]/30'
-      default:
-        return 'bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)] border-[var(--color-border-subtle)]'
+  const getFaultColor = (faultType: FaultCategory) => {
+    const categoryInfo = faultCategories[faultType]
+    if (!categoryInfo) {
+      return 'bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)] border-[var(--color-border-subtle)]'
     }
+    
+    const colorMap = {
+      danger: 'bg-[var(--color-danger)]/20 text-[var(--color-danger)] border-[var(--color-danger)]/30',
+      warning: 'bg-[var(--color-warning)]/20 text-[var(--color-warning)] border-[var(--color-warning)]/30',
+      info: 'bg-[var(--color-primary)]/20 text-[var(--color-primary)] border-[var(--color-primary)]/30',
+    }
+    
+    return colorMap[categoryInfo.color] || colorMap.info
   }
 
   const formatTimeAgo = (date: Date) => {

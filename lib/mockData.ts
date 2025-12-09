@@ -170,6 +170,22 @@ function generateDevices(): Device[] {
     }
   }
 
+  // Add a specific device with environmental ingress fault for story consistency
+  // This device appears across dashboard, map, zones, and faults pages
+  const faultDevice: Device = {
+    id: 'device-fault-grocery-001',
+    deviceId: 'FLX-3158',
+    serialNumber: 'SN-2024-3158-F3',
+    type: 'fixture',
+    signal: 12, // Low signal due to water damage
+    status: 'missing', // Missing due to environmental ingress failure
+    location: 'Grocery - Aisle 5',
+    zone: 'Zone 7 - Grocery',
+    x: 0.72, // Position in Zone 7 - Grocery area
+    y: 0.35,
+  }
+  devices.push(faultDevice)
+
   return devices
 }
 
