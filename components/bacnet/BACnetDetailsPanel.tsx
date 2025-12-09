@@ -9,7 +9,7 @@
 
 'use client'
 
-import { Power, Sun, Clock, Radio, CheckCircle2, AlertCircle, XCircle, Edit2, Trash2, RefreshCw } from 'lucide-react'
+import { Power, Sun, Clock, Radio, CheckCircle2, AlertCircle, XCircle, Edit2, Trash2, RefreshCw, Plus } from 'lucide-react'
 import type { ControlCapability } from '@/lib/initialBACnetMappings'
 
 interface BACnetMapping {
@@ -30,6 +30,7 @@ interface BACnetDetailsPanelProps {
   onEdit: () => void
   onDelete: () => void
   onTestConnection: () => void
+  onAdd: () => void
 }
 
 const capabilityLabels: Record<ControlCapability, { label: string; icon: any; description: string }> = {
@@ -69,12 +70,30 @@ export function BACnetDetailsPanel({
   mapping, 
   onEdit, 
   onDelete, 
-  onTestConnection 
+  onTestConnection,
+  onAdd
 }: BACnetDetailsPanelProps) {
   if (!mapping) {
     return (
       <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
-        <div className="p-6 flex flex-col items-center justify-center h-full text-center">
+        {/* Header */}
+        <div className="p-4 border-b border-[var(--color-border-subtle)]">
+          <h3 className="text-lg font-semibold text-[var(--color-text)] mb-3">
+            Create New Mapping
+          </h3>
+          <p className="text-sm text-[var(--color-text-muted)] mb-3">
+            Select a zone from the table to view detailed BACnet connection information, or create a new mapping.
+          </p>
+          {/* Add Mapping Button - In header like RulesPanel */}
+          <button
+            onClick={onAdd}
+            className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+          >
+            <Plus size={16} />
+            Add Mapping
+          </button>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
           <div className="w-16 h-16 rounded-full bg-[var(--color-surface-subtle)] flex items-center justify-center mb-4">
             <Radio size={24} className="text-[var(--color-text-muted)]" />
           </div>

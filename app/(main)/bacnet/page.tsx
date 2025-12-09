@@ -344,26 +344,17 @@ export default function BACnetPage() {
   return (
     <div className="h-full flex flex-col min-h-0 pb-2 overflow-visible">
       {/* Main Content: Table + Details Panel */}
-      <div className="flex-1 flex min-h-0 gap-4 px-[20px] pt-4 pb-4 overflow-visible">
+      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pt-4 pb-32 overflow-visible">
         {/* Table - Left Side */}
         <div className="flex-1 min-w-0">
           <div className="fusion-card overflow-hidden h-full flex flex-col">
-            <div className="p-4 border-b border-[var(--color-border-subtle)] flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-[var(--color-text)] mb-1">
-                  Zone to BMS Connections
-                </h2>
-                <p className="text-sm text-[var(--color-text-muted)]">
-                  Configure how lighting zones connect to your Building Management System via BACnet protocol
-                </p>
-              </div>
-              <button
-                onClick={handleAddNew}
-                className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary)]/90 transition-colors text-sm font-medium"
-              >
-                <Plus size={16} />
-                Add Mapping
-              </button>
+            <div className="p-4 border-b border-[var(--color-border-subtle)]">
+              <h2 className="text-lg font-semibold text-[var(--color-text)] mb-1">
+                Zone to BMS Connections
+              </h2>
+              <p className="text-sm text-[var(--color-text-muted)]">
+                Configure how lighting zones connect to your Building Management System via BACnet protocol
+              </p>
             </div>
 
             <div className="flex-1 overflow-auto">
@@ -531,16 +522,19 @@ export default function BACnetPage() {
           onEdit={() => selectedMapping && handleEditStart(selectedMapping)}
           onDelete={handleDelete}
           onTestConnection={handleTestConnection}
+          onAdd={handleAddNew}
         />
       </div>
 
       {/* Bottom Search Island */}
-      <SearchIsland 
-        position="bottom" 
-        fullWidth={true}
-        title="BACnet Mapping"
-        subtitle="Map zones to BACnet objects for BMS integration"
-      />
+      <div className="fixed bottom-6 left-[80px] right-4 z-50">
+        <SearchIsland 
+          position="bottom" 
+          fullWidth={true}
+          title="BACnet Mapping"
+          subtitle="Map zones to BACnet objects for BMS integration"
+        />
+      </div>
     </div>
   )
 }

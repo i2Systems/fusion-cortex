@@ -186,14 +186,40 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
           )}
         </div>
         {selectedRule && !isEditing && (
-          <p className="text-sm text-[var(--color-text-muted)]">
+          <p className="text-sm text-[var(--color-text-muted)] mb-3">
             {selectedRule.enabled ? 'Active' : 'Disabled'} • Last triggered: {formatLastTriggered(selectedRule.lastTriggered)}
           </p>
+        )}
+        {/* Action Buttons - Moved to top */}
+        {isEditing || !selectedRule ? (
+          <div className="space-y-2 mt-3">
+            <button
+              onClick={handleSave}
+              className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+            >
+              <Save size={16} />
+              {selectedRule ? 'Save Changes' : 'Create Rule'}
+            </button>
+            <button
+              onClick={handleCancel}
+              className="w-full px-4 py-2 bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)] rounded-lg hover:bg-[var(--color-surface)] transition-colors text-sm font-medium"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleEdit}
+            className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2 mt-3"
+          >
+            <Edit2 size={16} />
+            Edit Rule
+          </button>
         )}
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-4">
         {isEditing || !selectedRule ? (
           /* Edit/Create Form */
           <div className="space-y-4">
@@ -450,35 +476,6 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
               </div>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="p-4 border-t border-[var(--color-border-subtle)] space-y-2">
-        {isEditing || !selectedRule ? (
-          <>
-            <button
-              onClick={handleSave}
-              className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
-            >
-              <Save size={16} />
-              {selectedRule ? 'Save Changes' : 'Create Rule'}
-            </button>
-            <button
-              onClick={handleCancel}
-              className="w-full px-4 py-2 bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)] rounded-lg hover:bg-[var(--color-surface)] transition-colors text-sm font-medium"
-            >
-              Cancel
-            </button>
-          </>
-        ) : (
-          <button
-            onClick={handleEdit}
-            className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
-          >
-            <Edit2 size={16} />
-            Edit Rule
-          </button>
         )}
       </div>
     </div>

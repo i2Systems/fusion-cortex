@@ -28,7 +28,7 @@ export default function DashboardPage() {
   return (
     <div className="h-full flex flex-col min-h-0 p-8 pb-2">
       {/* Dashboard Content */}
-      <div className="flex-1 min-h-0 overflow-hidden max-w-7xl mx-auto w-full flex flex-col">
+      <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full flex flex-col">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 flex-shrink-0">
           <div className="fusion-card">
@@ -51,7 +51,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
           <div className="fusion-card">
             <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4">Recent Activity</h3>
             <div className="space-y-3">
@@ -99,13 +99,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Bottom Search Island with Title */}
-      <SearchIsland 
-        position="bottom" 
-        fullWidth={true}
-        title="Dashboard"
-        subtitle="Overview of your lighting system"
-        placeholder="Search, input a task, or ask a question..."
-      />
+      <div className="fixed bottom-6 left-[80px] right-4 z-50">
+        <SearchIsland 
+          position="bottom" 
+          fullWidth={true}
+          title="Dashboard"
+          subtitle="Overview of your lighting system"
+          placeholder="Search, input a task, or ask a question..."
+        />
+      </div>
     </div>
   )
 }

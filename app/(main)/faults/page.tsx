@@ -109,7 +109,7 @@ export default function FaultsPage() {
       </div>
 
       {/* Main Content: Fault List + Details Panel */}
-      <div className="flex-1 flex min-h-0 gap-4 px-[20px] pt-2 pb-4 overflow-visible">
+      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pt-2 pb-32 overflow-visible">
         {/* Fault List - Left Side */}
         <div className="flex-1 min-w-0">
           <div className="fusion-card overflow-hidden h-full flex flex-col">
@@ -127,7 +127,7 @@ export default function FaultsPage() {
       </div>
 
       {/* Bottom Search Island */}
-      <div className="fixed bottom-8 left-[80px] right-4 z-50">
+      <div className="fixed bottom-6 left-[80px] right-4 z-50">
         <SearchIsland 
           position="bottom" 
           fullWidth={true}

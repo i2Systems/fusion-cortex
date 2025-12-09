@@ -201,7 +201,7 @@ export default function DiscoveryPage() {
   }
 
   return (
-    <div className="h-full p-8 relative pb-32">
+    <div className="main-content-area h-full p-8 relative pb-32">
       <div className="max-w-6xl mx-auto">
         {/* Discovery Controls */}
         <DiscoveryControls
@@ -308,12 +308,14 @@ export default function DiscoveryPage() {
       />
 
       {/* Bottom Search Island */}
-      <SearchIsland 
-        position="bottom" 
-        fullWidth={true}
-        title="Device Discovery"
-        subtitle="Discover and map all lighting devices in your network"
-      />
+      <div className="fixed bottom-6 left-[80px] right-4 z-50">
+        <SearchIsland 
+          position="bottom" 
+          fullWidth={true}
+          title="Device Discovery"
+          subtitle="Discover and map all lighting devices in your network"
+        />
+      </div>
     </div>
   )
 }

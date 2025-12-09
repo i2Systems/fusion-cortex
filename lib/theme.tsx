@@ -1,7 +1,7 @@
 /**
  * Theme Context
  * 
- * Manages theme state (dark, light, high contrast).
+ * Manages theme state (dark, light, high contrast, warm-night, warm-day, glass-neumorphism, business-fluent).
  * Themes are applied via CSS custom properties.
  * 
  * AI Note: All components should use design tokens, so theme changes
@@ -12,7 +12,10 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
-type Theme = 'dark' | 'light' | 'high-contrast'
+type Theme = 'dark' | 'light' | 'high-contrast' | 'warm-night' | 'warm-day' | 'glass-neumorphism' | 'business-fluent'
+
+// Define valid themes as a constant for type safety and validation
+const VALID_THEMES: Theme[] = ['dark', 'light', 'high-contrast', 'warm-night', 'warm-day', 'glass-neumorphism', 'business-fluent']
 
 interface ThemeContextType {
   theme: Theme
@@ -29,7 +32,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Load theme from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem('fusion_theme') as Theme | null
-    if (stored && ['dark', 'light', 'high-contrast'].includes(stored)) {
+    if (stored && VALID_THEMES.includes(stored)) {
       setThemeState(stored)
       document.documentElement.setAttribute('data-theme', stored)
     } else {

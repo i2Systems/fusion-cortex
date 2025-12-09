@@ -54,16 +54,25 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect }: ZonesPanelPr
     <div className="h-full flex flex-col">
       {/* Panel Header */}
       <div className="p-4 border-b border-[var(--color-border-subtle)]">
-        <h3 className="text-lg font-semibold text-[var(--color-text)] mb-1">
-          Zones
-        </h3>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          {zones.length} zones configured
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-1">
+              Zones
+            </h3>
+            <p className="text-sm text-[var(--color-text-muted)]">
+              {zones.length} zones configured
+            </p>
+          </div>
+        </div>
+        {/* Create Zone Button - Moved to top */}
+        <button className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2 mt-3">
+          <Layers size={16} />
+          Create New Zone
+        </button>
       </div>
 
       {/* Zone List */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto pb-4">
         <div className="space-y-2 p-2">
           {zones.map((zone) => (
             <div
@@ -117,14 +126,6 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect }: ZonesPanelPr
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Create Zone Button */}
-      <div className="p-4 border-t border-[var(--color-border-subtle)]">
-        <button className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2">
-          <Layers size={16} />
-          Create New Zone
-        </button>
       </div>
     </div>
   )

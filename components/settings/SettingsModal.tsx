@@ -253,6 +253,50 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           />
                           <span className="text-sm text-[var(--color-text)] font-semibold">High Contrast</span>
                         </label>
+                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                          <input
+                            type="radio"
+                            name="theme"
+                            value="warm-night"
+                            checked={theme === 'warm-night'}
+                            onChange={() => setTheme('warm-night')}
+                            className="rounded"
+                          />
+                          <span className="text-sm text-[var(--color-text)]">Warm Night</span>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                          <input
+                            type="radio"
+                            name="theme"
+                            value="warm-day"
+                            checked={theme === 'warm-day'}
+                            onChange={() => setTheme('warm-day')}
+                            className="rounded"
+                          />
+                          <span className="text-sm text-[var(--color-text)]">Warm Day</span>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                          <input
+                            type="radio"
+                            name="theme"
+                            value="glass-neumorphism"
+                            checked={theme === 'glass-neumorphism'}
+                            onChange={() => setTheme('glass-neumorphism')}
+                            className="rounded"
+                          />
+                          <span className="text-sm text-[var(--color-text)]">Glass Neumorphism</span>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                          <input
+                            type="radio"
+                            name="theme"
+                            value="business-fluent"
+                            checked={theme === 'business-fluent'}
+                            onChange={() => setTheme('business-fluent')}
+                            className="rounded"
+                          />
+                          <span className="text-sm text-[var(--color-text)]">Business Fluent</span>
+                        </label>
                       </div>
                     </div>
                     <div>

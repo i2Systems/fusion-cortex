@@ -64,7 +64,7 @@ export default function RulesPage() {
   return (
     <div className="h-full flex flex-col min-h-0 pb-2 overflow-visible">
       {/* Main Content: Rules List + Details Panel */}
-      <div className="flex-1 flex min-h-0 gap-4 px-[20px] pt-4 pb-4 overflow-visible">
+      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pt-4 pb-32 overflow-visible">
         {/* Rules List - Left Side */}
         <div className="flex-1 min-w-0">
           <div className="fusion-card overflow-hidden h-full flex flex-col">
@@ -87,7 +87,7 @@ export default function RulesPage() {
       </div>
 
       {/* Bottom Search Island */}
-      <div className="fixed bottom-8 left-[80px] right-4 z-50">
+      <div className="fixed bottom-6 left-[80px] right-4 z-50">
         <SearchIsland 
           position="bottom" 
           fullWidth={true}

@@ -249,7 +249,7 @@ export default function MapPage() {
   return (
     <div className="h-full flex flex-col min-h-0 pb-2 overflow-visible">
       {/* Main Content: Map + Table Panel */}
-      <div className="flex-1 flex min-h-0 gap-4 px-[20px] pt-4 pb-4 overflow-visible">
+      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pt-4 pb-32 overflow-visible">
         {/* Map Canvas - Left Side */}
         <div className="flex-1 relative min-w-0" style={{ overflow: 'visible' }}>
           {/* Map Toolbar - Top center (hidden for Manager and Technician) */}
@@ -353,7 +353,7 @@ export default function MapPage() {
       </div>
 
       {/* Bottom Search Island - Always visible, same position as other pages */}
-      <div className="fixed bottom-8 left-[80px] right-4 z-50">
+      <div className="fixed bottom-6 left-[80px] right-4 z-50">
         <div className="relative">
           <SearchIsland 
             position="bottom" 
