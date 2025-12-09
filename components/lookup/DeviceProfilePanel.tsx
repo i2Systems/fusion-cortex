@@ -84,38 +84,79 @@ export function DeviceProfilePanel({ device }: DeviceProfilePanelProps) {
 
   return (
     <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
-      {/* Image Placeholder */}
-      <div className="w-full h-48 bg-gradient-to-br from-[var(--color-primary-soft)] to-[var(--color-surface-subtle)] flex items-center justify-center border-b border-[var(--color-border-subtle)]">
-        <div className="text-center">
-          <div className="w-32 h-32 mx-auto mb-3 rounded-lg bg-[var(--color-surface)]/50 backdrop-blur-sm border border-[var(--color-border-subtle)] flex items-center justify-center shadow-[var(--shadow-soft)]">
+      {/* Data-Dense Header */}
+      <div className="p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)]">
+        <div className="flex items-start gap-3 mb-3">
+          {/* Device Image/Icon */}
+          <div className="w-16 h-16 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border-subtle)] flex items-center justify-center flex-shrink-0 shadow-[var(--shadow-soft)]">
             {device.type === 'fixture' ? (
-              <Image size={64} className="text-[var(--color-primary)] opacity-60" />
+              <Image size={32} className="text-[var(--color-primary)]" />
             ) : device.type === 'motion' ? (
-              <Radio size={64} className="text-[var(--color-accent)] opacity-60" />
+              <Radio size={32} className="text-[var(--color-accent)]" />
             ) : (
-              <Thermometer size={64} className="text-[var(--color-success)] opacity-60" />
+              <Thermometer size={32} className="text-[var(--color-success)]" />
             )}
           </div>
-          <p className="text-xs text-[var(--color-text-muted)]">Device Image</p>
-        </div>
-      </div>
-
-      {/* Header */}
-      <div className="p-4 border-b border-[var(--color-border-subtle)]">
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-1">
-              {device.deviceId}
-            </h3>
-            <p className="text-sm text-[var(--color-text-muted)]">
-              {getTypeLabel(device.type)}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {getStatusIcon(device.status)}
-            <span className={`text-xs px-2 py-1 rounded capitalize ${getStatusColor(device.status)}`}>
-              {device.status}
-            </span>
+          {/* Meta Information */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-[var(--color-text)] mb-0.5 truncate">
+                  {device.deviceId}
+                </h3>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  {getTypeLabel(device.type)}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {getStatusIcon(device.status)}
+                <span className={`text-xs px-1.5 py-0.5 rounded capitalize ${getStatusColor(device.status)}`}>
+                  {device.status}
+                </span>
+              </div>
+            </div>
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                <div className="text-xs text-[var(--color-text-soft)] mb-0.5">Serial</div>
+                <div className="text-xs font-mono font-semibold text-[var(--color-text)] truncate">{device.serialNumber}</div>
+              </div>
+              {device.location && (
+                <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                  <div className="text-xs text-[var(--color-text-soft)] mb-0.5 flex items-center gap-1">
+                    <MapPin size={10} />
+                    Location
+                  </div>
+                  <div className="text-xs font-semibold text-[var(--color-text)] truncate">{device.location}</div>
+                </div>
+              )}
+              {device.zone && (
+                <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                  <div className="text-xs text-[var(--color-text-soft)] mb-0.5">Zone</div>
+                  <div className="text-xs font-semibold text-[var(--color-text)] truncate">{device.zone}</div>
+                </div>
+              )}
+              <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                <div className="text-xs text-[var(--color-text-soft)] mb-0.5 flex items-center gap-1">
+                  {device.signal > 0 ? (
+                    <Wifi size={10} className={getSignalColor(device.signal)} />
+                  ) : (
+                    <WifiOff size={10} className="text-[var(--color-text-muted)]" />
+                  )}
+                  Signal
+                </div>
+                <div className={`text-xs font-semibold ${getSignalColor(device.signal)}`}>{device.signal}%</div>
+              </div>
+              {device.battery !== undefined && (
+                <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                  <div className="text-xs text-[var(--color-text-soft)] mb-0.5 flex items-center gap-1">
+                    <Battery size={10} className={device.battery > 20 ? 'text-[var(--color-success)]' : 'text-[var(--color-warning)]'} />
+                    Battery
+                  </div>
+                  <div className={`text-xs font-semibold ${device.battery > 20 ? 'text-[var(--color-success)]' : 'text-[var(--color-warning)]'}`}>{device.battery}%</div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -152,43 +152,105 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
     return `${Math.floor(hours / 24)} day${Math.floor(hours / 24) !== 1 ? 's' : ''} ago`
   }
 
+  const getTriggerIcon = (trigger: Rule['trigger']) => {
+    const option = triggerOptions.find(opt => opt.value === trigger)
+    return option ? option.icon : Radio
+  }
+
   return (
     <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
       {/* Header */}
       <div className="p-4 border-b border-[var(--color-border-subtle)]">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold text-[var(--color-text)]">
-            {selectedRule ? (isEditing ? 'Edit Rule' : 'Rule Details') : 'Create New Rule'}
-          </h3>
-          {selectedRule && !isEditing && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleEdit}
-                className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
-                title="Edit rule"
-              >
-                <Edit2 size={16} className="text-[var(--color-text-muted)]" />
-              </button>
-              {onDelete && (
-                <button
-                  onClick={() => {
-                    if (confirm('Are you sure you want to delete this rule?')) {
-                      onDelete(selectedRule.id)
-                    }
-                  }}
-                  className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
-                  title="Delete rule"
-                >
-                  <X size={16} className="text-[var(--color-text-muted)]" />
-                </button>
-              )}
+        {selectedRule && !isEditing ? (
+          /* Data-Dense Header for Selected Rule */
+          <div className="bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)] -m-4 p-4 mb-4 border-b border-[var(--color-border-subtle)]">
+            <div className="flex items-start gap-3 mb-3">
+              {/* Rule Icon */}
+              {(() => {
+                const TriggerIcon = getTriggerIcon(selectedRule.trigger)
+                return (
+                  <div className="w-16 h-16 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border-subtle)] flex items-center justify-center flex-shrink-0 shadow-[var(--shadow-soft)]">
+                    <TriggerIcon size={32} className="text-[var(--color-primary)]" />
+                  </div>
+                )
+              })()}
+              {/* Meta Information */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-bold text-[var(--color-text)] mb-0.5 truncate">
+                      {selectedRule.name}
+                    </h3>
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      {triggerOptions.find(opt => opt.value === selectedRule.trigger)?.label || selectedRule.trigger}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={handleEdit}
+                      className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
+                      title="Edit rule"
+                    >
+                      <Edit2 size={14} className="text-[var(--color-text-muted)]" />
+                    </button>
+                    {onDelete && (
+                      <button
+                        onClick={() => {
+                          if (confirm('Are you sure you want to delete this rule?')) {
+                            onDelete(selectedRule.id)
+                          }
+                        }}
+                        className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
+                        title="Delete rule"
+                      >
+                        <X size={14} className="text-[var(--color-text-muted)]" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {/* Quick Stats */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className={`px-2 py-1 rounded border ${selectedRule.enabled ? 'bg-[var(--color-success)]/20 text-[var(--color-success)] border-[var(--color-success)]/30' : 'bg-[var(--color-surface)]/50 border-[var(--color-border-subtle)]'}`}>
+                    <div className="text-xs opacity-80 mb-0.5">Status</div>
+                    <div className="text-sm font-semibold">{selectedRule.enabled ? 'Active' : 'Disabled'}</div>
+                  </div>
+                  <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                    <div className="text-xs text-[var(--color-text-soft)] mb-0.5 flex items-center gap-1">
+                      <Clock size={10} />
+                      Last Triggered
+                    </div>
+                    <div className="text-xs font-semibold text-[var(--color-text)]">{formatLastTriggered(selectedRule.lastTriggered)}</div>
+                  </div>
+                  {selectedRule.action.zones.length > 0 && (
+                    <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                      <div className="text-xs text-[var(--color-text-soft)] mb-0.5">Zones</div>
+                      <div className="text-xs font-semibold text-[var(--color-text)] truncate">{selectedRule.action.zones.length} zone{selectedRule.action.zones.length !== 1 ? 's' : ''}</div>
+                    </div>
+                  )}
+                  {selectedRule.overrideBMS && (
+                    <div className="px-2 py-1 rounded bg-[var(--color-warning)]/20 text-[var(--color-warning)] border-[var(--color-warning)]/30">
+                      <div className="text-xs opacity-80 mb-0.5">BMS Override</div>
+                      <div className="text-xs font-semibold">Enabled</div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-        {selectedRule && !isEditing && (
-          <p className="text-sm text-[var(--color-text-muted)] mb-3">
-            {selectedRule.enabled ? 'Active' : 'Disabled'} • Last triggered: {formatLastTriggered(selectedRule.lastTriggered)}
-          </p>
+          </div>
+        ) : (
+          /* Standard Header for Create/Edit */
+          <>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-semibold text-[var(--color-text)]">
+                {selectedRule ? (isEditing ? 'Edit Rule' : 'Rule Details') : 'Create New Rule'}
+              </h3>
+            </div>
+            {selectedRule && !isEditing && (
+              <p className="text-sm text-[var(--color-text-muted)] mb-3">
+                {selectedRule.enabled ? 'Active' : 'Disabled'} • Last triggered: {formatLastTriggered(selectedRule.lastTriggered)}
+              </p>
+            )}
+          </>
         )}
         {/* Action Buttons - Moved to top */}
         {isEditing || !selectedRule ? (

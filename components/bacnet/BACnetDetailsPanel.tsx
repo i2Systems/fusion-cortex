@@ -9,7 +9,7 @@
 
 'use client'
 
-import { Power, Sun, Clock, Radio, CheckCircle2, AlertCircle, XCircle, Edit2, Trash2, RefreshCw, Plus } from 'lucide-react'
+import { Power, Sun, Clock, Radio, CheckCircle2, AlertCircle, XCircle, Edit2, Trash2, RefreshCw, Plus, Layers } from 'lucide-react'
 import type { ControlCapability } from '@/lib/initialBACnetMappings'
 
 interface BACnetMapping {
@@ -143,32 +143,71 @@ export function BACnetDetailsPanel({
 
   return (
     <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
-      {/* Header */}
-      <div className="p-4 border-b border-[var(--color-border-subtle)]">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold text-[var(--color-text)]">
-            BACnet Connection
-          </h3>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onEdit}
-              className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
-              title="Edit mapping"
-            >
-              <Edit2 size={16} className="text-[var(--color-text-muted)]" />
-            </button>
-            <button
-              onClick={onDelete}
-              className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
-              title="Delete mapping"
-            >
-              <Trash2 size={16} className="text-[var(--color-text-muted)]" />
-            </button>
+      {/* Data-Dense Header */}
+      <div className="p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)]">
+        <div className="flex items-start gap-3 mb-3">
+          {/* Zone Image/Icon */}
+          <div className="w-16 h-16 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border-subtle)] flex items-center justify-center flex-shrink-0 shadow-[var(--shadow-soft)]">
+            <Layers size={32} className="text-[var(--color-primary)]" />
+          </div>
+          {/* Meta Information */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-[var(--color-text)] mb-0.5 truncate">
+                  {mapping.zoneName}
+                </h3>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  BACnet Mapping
+                </p>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={onEdit}
+                  className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
+                  title="Edit mapping"
+                >
+                  <Edit2 size={14} className="text-[var(--color-text-muted)]" />
+                </button>
+                <button
+                  onClick={onDelete}
+                  className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
+                  title="Delete mapping"
+                >
+                  <Trash2 size={14} className="text-[var(--color-text-muted)]" />
+                </button>
+              </div>
+            </div>
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 gap-2">
+              {mapping.deviceCount !== undefined && (
+                <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                  <div className="text-xs text-[var(--color-text-soft)] mb-0.5">Devices</div>
+                  <div className="text-sm font-semibold text-[var(--color-text)]">{mapping.deviceCount}</div>
+                </div>
+              )}
+              <div className={`px-2 py-1 rounded border ${getStatusColor(mapping.status)}`}>
+                <div className="text-xs opacity-80 mb-0.5">Status</div>
+                <div className="text-sm font-semibold capitalize flex items-center gap-1">
+                  {getStatusIcon(mapping.status)}
+                  <span>{mapping.status === 'not-assigned' ? 'Not Assigned' : mapping.status}</span>
+                </div>
+              </div>
+              {mapping.bacnetObjectId && (
+                <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)] col-span-2">
+                  <div className="text-xs text-[var(--color-text-soft)] mb-0.5">Object ID</div>
+                  <div className="text-sm font-mono font-semibold text-[var(--color-text)] truncate">{mapping.bacnetObjectId}</div>
+                </div>
+              )}
+              {mapping.networkAddress && (
+                <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)] col-span-2">
+                  <div className="text-xs text-[var(--color-text-soft)] mb-0.5">Network</div>
+                  <div className="text-sm font-mono font-semibold text-[var(--color-text)] truncate">{mapping.networkAddress}</div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          {mapping.zoneName}
-        </p>
       </div>
 
       {/* Content */}

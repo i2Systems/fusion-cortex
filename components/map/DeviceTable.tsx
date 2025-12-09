@@ -11,7 +11,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Signal, Battery, Wifi, WifiOff } from 'lucide-react'
+import { Signal, Battery, Wifi, WifiOff, Image, Radio, Thermometer, MapPin } from 'lucide-react'
 
 interface Device {
   id: string
@@ -95,8 +95,102 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect }: Devic
     }
   }, [selectedDeviceId])
 
+  const selectedDevice = devices.find(d => d.id === selectedDeviceId)
+
+  const getDeviceIcon = (type: string) => {
+    switch (type) {
+      case 'fixture': return Image
+      case 'motion': return Radio
+      case 'light-sensor': return Thermometer
+      default: return Image
+    }
+  }
+
+  const getDeviceIconColor = (type: string) => {
+    switch (type) {
+      case 'fixture': return 'text-[var(--color-primary)]'
+      case 'motion': return 'text-[var(--color-accent)]'
+      case 'light-sensor': return 'text-[var(--color-success)]'
+      default: return 'text-[var(--color-text-muted)]'
+    }
+  }
+
   return (
     <div className="h-full flex flex-col">
+      {/* Data-Dense Header for Selected Device */}
+      {selectedDevice && (
+        <div className="p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)]">
+          <div className="flex items-start gap-3 mb-3">
+            {/* Device Image/Icon */}
+            {(() => {
+              const DeviceIcon = getDeviceIcon(selectedDevice.type)
+              return (
+                <div className={`w-16 h-16 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border-subtle)] flex items-center justify-center flex-shrink-0 shadow-[var(--shadow-soft)]`}>
+                  <DeviceIcon size={32} className={getDeviceIconColor(selectedDevice.type)} />
+                </div>
+              )
+            })()}
+            {/* Meta Information */}
+            <div className="flex-1 min-w-0">
+              <div className="mb-2">
+                <h3 className="text-base font-bold text-[var(--color-text)] mb-0.5 truncate">
+                  {selectedDevice.deviceId}
+                </h3>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  {getTypeLabel(selectedDevice.type)}
+                </p>
+              </div>
+              {/* Quick Stats */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                  <div className="text-xs text-[var(--color-text-soft)] mb-0.5">Serial</div>
+                  <div className="text-xs font-mono font-semibold text-[var(--color-text)] truncate">{selectedDevice.serialNumber}</div>
+                </div>
+                {selectedDevice.location && (
+                  <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                    <div className="text-xs text-[var(--color-text-soft)] mb-0.5 flex items-center gap-1">
+                      <MapPin size={10} />
+                      Location
+                    </div>
+                    <div className="text-xs font-semibold text-[var(--color-text)] truncate">{selectedDevice.location}</div>
+                  </div>
+                )}
+                {selectedDevice.zone && (
+                  <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                    <div className="text-xs text-[var(--color-text-soft)] mb-0.5">Zone</div>
+                    <div className="text-xs font-semibold text-[var(--color-text)] truncate">{selectedDevice.zone}</div>
+                  </div>
+                )}
+                <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                  <div className="text-xs text-[var(--color-text-soft)] mb-0.5 flex items-center gap-1">
+                    {selectedDevice.signal > 0 ? (
+                      <Wifi size={10} className={getSignalColor(selectedDevice.signal)} />
+                    ) : (
+                      <WifiOff size={10} className="text-[var(--color-text-muted)]" />
+                    )}
+                    Signal
+                  </div>
+                  <div className={`text-xs font-semibold ${getSignalColor(selectedDevice.signal)}`}>{selectedDevice.signal}%</div>
+                </div>
+                {selectedDevice.battery !== undefined && (
+                  <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                    <div className="text-xs text-[var(--color-text-soft)] mb-0.5 flex items-center gap-1">
+                      <Battery size={10} className={selectedDevice.battery > 20 ? 'text-[var(--color-success)]' : 'text-[var(--color-warning)]'} />
+                      Battery
+                    </div>
+                    <div className={`text-xs font-semibold ${selectedDevice.battery > 20 ? 'text-[var(--color-success)]' : 'text-[var(--color-warning)]'}`}>{selectedDevice.battery}%</div>
+                  </div>
+                )}
+                <div className={`px-2 py-1 rounded border ${getStatusColor(selectedDevice.status)} bg-[var(--color-surface)]/50`}>
+                  <div className="text-xs opacity-80 mb-0.5">Status</div>
+                  <div className="text-xs font-semibold capitalize">{selectedDevice.status}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Table Header */}
       <div className="p-5 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)]/50">
         <h3 className="text-xl font-bold text-[var(--color-text)] mb-1">

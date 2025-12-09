@@ -131,31 +131,81 @@ export function FaultDetailsPanel({ fault }: FaultDetailsPanelProps) {
     }
   }
 
+  const getSignalColor = (signal: number) => {
+    if (signal >= 80) return 'text-[var(--color-success)]'
+    if (signal >= 50) return 'text-[var(--color-warning)]'
+    return 'text-[var(--color-danger)]'
+  }
+
   const troubleshootingSteps = getTroubleshootingSteps(fault.faultType)
 
   return (
     <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
-      {/* Header */}
-      <div className="p-4 border-b border-[var(--color-border-subtle)]">
+      {/* Data-Dense Header */}
+      <div className={`p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br ${getFaultColor(fault.faultType)}/10 to-[var(--color-surface-subtle)]`}>
         <div className="flex items-start gap-3 mb-3">
-          <div className={`
-            p-3 rounded-lg flex-shrink-0
-            ${getFaultColor(fault.faultType)}
-          `}>
+          {/* Device Image/Icon */}
+          <div className={`w-16 h-16 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border-subtle)] flex items-center justify-center flex-shrink-0 shadow-[var(--shadow-soft)] ${getFaultColor(fault.faultType)}`}>
             {getFaultIcon(fault.faultType)}
           </div>
+          {/* Meta Information */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-1">
-              {fault.device.deviceId}
-            </h3>
-            <p className="text-sm text-[var(--color-text-muted)]">
-              {getFaultLabel(fault.faultType)}
-            </p>
+            <div className="mb-2">
+              <h3 className="text-base font-bold text-[var(--color-text)] mb-0.5 truncate">
+                {fault.device.deviceId}
+              </h3>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                {getFaultLabel(fault.faultType)} • {getTypeLabel(fault.device.type)}
+              </p>
+            </div>
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                <div className="text-xs text-[var(--color-text-soft)] mb-0.5">Serial</div>
+                <div className="text-xs font-mono font-semibold text-[var(--color-text)] truncate">{fault.device.serialNumber}</div>
+              </div>
+              {fault.device.location && (
+                <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                  <div className="text-xs text-[var(--color-text-soft)] mb-0.5 flex items-center gap-1">
+                    <MapPin size={10} />
+                    Location
+                  </div>
+                  <div className="text-xs font-semibold text-[var(--color-text)] truncate">{fault.device.location}</div>
+                </div>
+              )}
+              {fault.device.zone && (
+                <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                  <div className="text-xs text-[var(--color-text-soft)] mb-0.5">Zone</div>
+                  <div className="text-xs font-semibold text-[var(--color-text)] truncate">{fault.device.zone}</div>
+                </div>
+              )}
+              <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                <div className="text-xs text-[var(--color-text-soft)] mb-0.5 flex items-center gap-1">
+                  <Clock size={10} />
+                  Detected
+                </div>
+                <div className="text-xs font-semibold text-[var(--color-text)]">{formatTimeAgo(fault.detectedAt)}</div>
+              </div>
+              {fault.device.signal > 0 && (
+                <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                  <div className="text-xs text-[var(--color-text-soft)] mb-0.5 flex items-center gap-1">
+                    <Radio size={10} />
+                    Signal
+                  </div>
+                  <div className={`text-xs font-semibold ${getSignalColor(fault.device.signal)}`}>{fault.device.signal}%</div>
+                </div>
+              )}
+              {fault.device.battery !== undefined && (
+                <div className="px-2 py-1 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)]">
+                  <div className="text-xs text-[var(--color-text-soft)] mb-0.5 flex items-center gap-1">
+                    <Battery size={10} />
+                    Battery
+                  </div>
+                  <div className={`text-xs font-semibold ${fault.device.battery > 20 ? 'text-[var(--color-success)]' : 'text-[var(--color-warning)]'}`}>{fault.device.battery}%</div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-[var(--color-text-soft)]">
-          <Clock size={14} />
-          <span>Detected {formatTimeAgo(fault.detectedAt)}</span>
         </div>
       </div>
 
