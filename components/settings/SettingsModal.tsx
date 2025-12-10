@@ -12,10 +12,11 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, Search, Settings, User, Bell, Shield, Palette, Database, Info } from 'lucide-react'
+import { X, Search, Settings, User, Bell, Shield, Palette, Database, Info, Type } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useTheme } from '@/lib/theme'
 import { useRole } from '@/lib/role'
+import { useFont, FontFamily, FontSize } from '@/lib/FontContext'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -35,6 +36,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { user, logout, isAuthenticated } = useAuth()
   const { theme, setTheme } = useTheme()
   const { role, setRole } = useRole()
+  const { fontFamily, fontSize, setFontFamily, setFontSize } = useFont()
   const [activeSection, setActiveSection] = useState(isAuthenticated ? 'profile' : 'appearance')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -361,6 +363,53 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         </label>
                       </div>
                     </div>
+                    
+                    {/* Font Family */}
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-3 flex items-center gap-2">
+                        <Type size={16} />
+                        Font Family
+                      </label>
+                      <select
+                        value={fontFamily}
+                        onChange={(e) => setFontFamily(e.target.value as FontFamily)}
+                        className="w-full px-4 py-2.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
+                        style={{ fontFamily: 'var(--font-family-primary)' }}
+                      >
+                        <option value="system" style={{ fontFamily: 'system-ui, sans-serif' }}>System (Current)</option>
+                        <option value="syne" style={{ fontFamily: '"Syne", sans-serif' }}>Syne</option>
+                        <option value="ibm-plex" style={{ fontFamily: '"IBM Plex Sans", sans-serif' }}>IBM Plex Sans</option>
+                        <option value="inter" style={{ fontFamily: '"Inter", sans-serif' }}>Inter</option>
+                        <option value="poppins" style={{ fontFamily: '"Poppins", sans-serif' }}>Poppins</option>
+                        <option value="space-grotesk" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>Space Grotesk</option>
+                        <option value="work-sans" style={{ fontFamily: '"Work Sans", sans-serif' }}>Work Sans</option>
+                        <option value="manrope" style={{ fontFamily: '"Manrope", sans-serif' }}>Manrope</option>
+                        <option value="outfit" style={{ fontFamily: '"Outfit", sans-serif' }}>Outfit</option>
+                      </select>
+                      <p className="text-xs text-[var(--color-text-muted)] mt-2" style={{ fontFamily: 'var(--font-family-primary)' }}>
+                        Preview: The quick brown fox jumps over the lazy dog
+                      </p>
+                    </div>
+                    
+                    {/* Font Size */}
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-3">
+                        Font Size
+                      </label>
+                      <select
+                        value={fontSize}
+                        onChange={(e) => setFontSize(e.target.value as FontSize)}
+                        className="w-full px-4 py-2.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
+                      >
+                        <option value="normal">Normal (16px)</option>
+                        <option value="medium">Medium (18px) - Default</option>
+                        <option value="large">Large (20px)</option>
+                      </select>
+                      <p className="text-xs text-[var(--color-text-muted)] mt-2">
+                        Affects text size and spacing throughout the application
+                      </p>
+                    </div>
+                    
                     <div>
                       <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-3">
                         Role

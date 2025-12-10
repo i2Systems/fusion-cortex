@@ -54,20 +54,21 @@
   --color-tooltip-shadow: rgba(0, 0, 0, 0.5);
 
   /* ============================================
-     SPACING SCALE (4px base unit)
+     SPACING SCALE (scales automatically with root font-size)
      ============================================ */
+  --font-size-multiplier: 1.125; /* Default to medium (mildly bigger) - used for reference */
   --space-0: 0;
-  --space-1: 0.25rem;  /* 4px */
-  --space-2: 0.5rem;   /* 8px */
-  --space-3: 0.75rem;  /* 12px */
-  --space-4: 1rem;     /* 16px */
-  --space-5: 1.25rem;  /* 20px */
-  --space-6: 1.5rem;   /* 24px */
-  --space-8: 2rem;     /* 32px */
-  --space-10: 2.5rem;  /* 40px */
-  --space-12: 3rem;    /* 48px */
-  --space-16: 4rem;    /* 64px */
-  --space-20: 5rem;    /* 80px */
+  --space-1: 0.25rem;  /* 4px - scales with root font-size */
+  --space-2: 0.5rem;   /* 8px - scales with root font-size */
+  --space-3: 0.75rem;  /* 12px - scales with root font-size */
+  --space-4: 1rem;     /* 16px - scales with root font-size */
+  --space-5: 1.25rem;  /* 20px - scales with root font-size */
+  --space-6: 1.5rem;   /* 24px - scales with root font-size */
+  --space-8: 2rem;     /* 32px - scales with root font-size */
+  --space-10: 2.5rem;  /* 40px - scales with root font-size */
+  --space-12: 3rem;    /* 48px - scales with root font-size */
+  --space-16: 4rem;    /* 64px - scales with root font-size */
+  --space-20: 5rem;    /* 80px - scales with root font-size */
 
   /* ============================================
      BORDER RADIUS
@@ -105,16 +106,22 @@
   /* ============================================
      TYPOGRAPHY
      ============================================ */
+  --font-family-primary: var(--font-sans, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif);
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   
-  --font-size-xs: 0.75rem;    /* 12px */
-  --font-size-sm: 0.875rem;   /* 14px */
-  --font-size-md: 1rem;       /* 16px */
-  --font-size-lg: 1.125rem;   /* 18px */
-  --font-size-xl: 1.25rem;    /* 20px */
-  --font-size-2xl: 1.5rem;     /* 24px */
-  --font-size-3xl: 1.875rem;  /* 30px */
+  /* Base font size - will be overridden by FontContext (default: 18px for medium) */
+  --font-size-base: 18px;
+  --font-size-multiplier: 1.125;
+  
+  /* Font sizes scale with base size */
+  --font-size-xs: calc(0.75 * var(--font-size-base));
+  --font-size-sm: calc(0.875 * var(--font-size-base));
+  --font-size-md: var(--font-size-base);
+  --font-size-lg: calc(1.125 * var(--font-size-base));
+  --font-size-xl: calc(1.25 * var(--font-size-base));
+  --font-size-2xl: calc(1.5 * var(--font-size-base));
+  --font-size-3xl: calc(1.875 * var(--font-size-base));
   
   --line-height-tight: 1.1;
   --line-height-snug: 1.25;
@@ -179,8 +186,8 @@ body {
   background: linear-gradient(135deg, var(--color-bg) 0%, #0f172a 100%);
   background-attachment: fixed;
   color: var(--color-text);
-  font-family: var(--font-sans);
-  font-size: var(--font-size-md);
+  font-family: var(--font-family-primary, var(--font-sans));
+  font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

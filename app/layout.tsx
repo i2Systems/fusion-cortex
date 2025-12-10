@@ -8,6 +8,7 @@ import { DeviceProvider } from '@/lib/DeviceContext'
 import { ZoneProvider } from '@/lib/ZoneContext'
 import { RuleProvider } from '@/lib/RuleContext'
 import { NotificationProvider } from '@/lib/NotificationContext'
+import { FontProvider } from '@/lib/FontContext'
 
 export const metadata: Metadata = {
   title: 'Fusion / Cortex — Commissioning & Configuration',
@@ -21,22 +22,30 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        {/* Google Fonts */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      </head>
       <body>
                 <TRPCProvider>
                   <ThemeProvider>
-                    <RoleProvider>
-                      <AuthProvider>
-                        <DeviceProvider>
-                          <ZoneProvider>
-                            <RuleProvider>
-                              <NotificationProvider>
-                                {children}
-                              </NotificationProvider>
-                            </RuleProvider>
-                          </ZoneProvider>
-                        </DeviceProvider>
-                      </AuthProvider>
-                    </RoleProvider>
+                    <FontProvider>
+                      <RoleProvider>
+                        <AuthProvider>
+                          <DeviceProvider>
+                            <ZoneProvider>
+                              <RuleProvider>
+                                <NotificationProvider>
+                                  {children}
+                                </NotificationProvider>
+                              </RuleProvider>
+                            </ZoneProvider>
+                          </DeviceProvider>
+                        </AuthProvider>
+                      </RoleProvider>
+                    </FontProvider>
                   </ThemeProvider>
                 </TRPCProvider>
       </body>
