@@ -126,16 +126,13 @@ export function RulesList({ rules, selectedRuleId, onRuleSelect, searchQuery = '
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-[var(--color-border-subtle)]">
-        <h3 className="text-lg font-semibold text-[var(--color-text)] mb-1">
+        <h3 className="text-lg font-semibold text-[var(--color-text)]">
           Rules
         </h3>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          {filteredRules.length} rule{filteredRules.length !== 1 ? 's' : ''}
-        </p>
       </div>
 
       {/* Rules List */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto pb-2">
         {sortedRules.length === 0 ? (
           <div className="p-8 text-center text-sm text-[var(--color-text-muted)]">
             {searchQuery ? 'No rules match your search' : 'No rules configured'}

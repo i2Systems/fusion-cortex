@@ -9,7 +9,8 @@
 
 'use client'
 
-import { Power, Sun, Clock, Radio, CheckCircle2, AlertCircle, XCircle, Edit2, Trash2, RefreshCw, Plus, Layers } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Power, Sun, Clock, Radio, CheckCircle2, AlertCircle, XCircle, Edit2, Trash2, RefreshCw, Plus, Layers, Save } from 'lucide-react'
 import type { ControlCapability } from '@/lib/initialBACnetMappings'
 
 interface BACnetMapping {
@@ -27,7 +28,7 @@ interface BACnetMapping {
 
 interface BACnetDetailsPanelProps {
   mapping: BACnetMapping | null
-  onEdit: () => void
+  onEdit: (mappingData: Partial<BACnetMapping>) => void
   onDelete: () => void
   onTestConnection: () => void
   onAdd: () => void
@@ -73,6 +74,52 @@ export function BACnetDetailsPanel({
   onTestConnection,
   onAdd
 }: BACnetDetailsPanelProps) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [formData, setFormData] = useState<Partial<BACnetMapping>>({
+    bacnetObjectId: null,
+    networkAddress: undefined,
+    priority: undefined,
+  })
+
+  // Update form data when mapping changes
+  useEffect(() => {
+    if (mapping) {
+      setFormData({
+        bacnetObjectId: mapping.bacnetObjectId || null,
+        networkAddress: mapping.networkAddress,
+        priority: mapping.priority,
+      })
+      setIsEditing(false)
+    } else {
+      setFormData({
+        bacnetObjectId: null,
+        networkAddress: undefined,
+        priority: undefined,
+      })
+      setIsEditing(false)
+    }
+  }, [mapping])
+
+  const handleSave = () => {
+    onEdit(formData)
+    setIsEditing(false)
+  }
+
+  const handleCancel = () => {
+    if (mapping) {
+      setFormData({
+        bacnetObjectId: mapping.bacnetObjectId || null,
+        networkAddress: mapping.networkAddress,
+        priority: mapping.priority,
+      })
+    }
+    setIsEditing(false)
+  }
+
+  const handleEditClick = () => {
+    setIsEditing(true)
+  }
+
   if (!mapping) {
     return (
       <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
@@ -162,20 +209,24 @@ export function BACnetDetailsPanel({
                 </p>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                <button
-                  onClick={onEdit}
-                  className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
-                  title="Edit mapping"
-                >
-                  <Edit2 size={14} className="text-[var(--color-text-muted)]" />
-                </button>
-                <button
-                  onClick={onDelete}
-                  className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
-                  title="Delete mapping"
-                >
-                  <Trash2 size={14} className="text-[var(--color-text-muted)]" />
-                </button>
+                {!isEditing && (
+                  <>
+                    <button
+                      onClick={handleEditClick}
+                      className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
+                      title="Edit mapping"
+                    >
+                      <Edit2 size={14} className="text-[var(--color-text-muted)]" />
+                    </button>
+                    <button
+                      onClick={onDelete}
+                      className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
+                      title="Delete mapping"
+                    >
+                      <Trash2 size={14} className="text-[var(--color-text-muted)]" />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
             {/* Quick Stats */}
@@ -211,7 +262,7 @@ export function BACnetDetailsPanel({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-2">
         {/* Status */}
         <div>
           <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">Connection Status</h4>
@@ -231,22 +282,70 @@ export function BACnetDetailsPanel({
         {/* BACnet Object ID */}
         <div>
           <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">BACnet Object ID</h4>
-          <div className="p-3 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)]">
-            {mapping.bacnetObjectId ? (
-              <div className="font-mono text-lg text-[var(--color-text)]">
-                {mapping.bacnetObjectId}
+          {isEditing ? (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-[var(--color-text-muted)] mb-2">
+                  Object ID
+                </label>
+                <input
+                  type="text"
+                  value={formData.bacnetObjectId || ''}
+                  onChange={(e) => setFormData({ ...formData, bacnetObjectId: e.target.value || null })}
+                  placeholder="e.g. 4001"
+                  className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all font-mono"
+                />
               </div>
-            ) : (
-              <div className="text-sm text-[var(--color-text-muted)] italic">
-                Not assigned
+              <div>
+                <label className="block text-xs text-[var(--color-text-muted)] mb-2">
+                  Network Address
+                </label>
+                <input
+                  type="text"
+                  value={formData.networkAddress || ''}
+                  onChange={(e) => setFormData({ ...formData, networkAddress: e.target.value || undefined })}
+                  placeholder="e.g. 192.168.1.101"
+                  className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all font-mono"
+                />
               </div>
-            )}
-            {mapping.networkAddress && (
-              <div className="text-xs text-[var(--color-text-muted)] mt-2">
-                Network: {mapping.networkAddress}
+              <div>
+                <label className="block text-xs text-[var(--color-text-muted)] mb-2">
+                  Priority Level
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="16"
+                  value={formData.priority || ''}
+                  onChange={(e) => setFormData({ ...formData, priority: e.target.value ? parseInt(e.target.value) : undefined })}
+                  placeholder="1-16"
+                  className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
+                />
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="p-3 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)]">
+              {mapping.bacnetObjectId ? (
+                <div className="font-mono text-lg text-[var(--color-text)]">
+                  {mapping.bacnetObjectId}
+                </div>
+              ) : (
+                <div className="text-sm text-[var(--color-text-muted)] italic">
+                  Not assigned
+                </div>
+              )}
+              {mapping.networkAddress && (
+                <div className="text-xs text-[var(--color-text-muted)] mt-2">
+                  Network: {mapping.networkAddress}
+                </div>
+              )}
+              {mapping.priority && (
+                <div className="text-xs text-[var(--color-text-muted)] mt-1">
+                  Priority: {mapping.priority}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Control Capabilities */}
@@ -309,23 +408,43 @@ export function BACnetDetailsPanel({
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="p-4 border-t border-[var(--color-border-subtle)] space-y-2">
-        <button
-          onClick={onTestConnection}
-          disabled={mapping.status === 'not-assigned'}
-          className="w-full fusion-button flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <RefreshCw size={16} />
-          Test Connection
-        </button>
-        {mapping.status === 'error' && (
-          <button
-            onClick={onEdit}
-            className="w-full px-4 py-2 bg-[var(--color-warning)]/20 text-[var(--color-warning)] rounded-lg hover:bg-[var(--color-warning)]/30 transition-colors text-sm font-medium"
-          >
-            Troubleshoot Connection
-          </button>
+      {/* Actions Footer */}
+      <div className="p-4 border-t border-[var(--color-border-subtle)] space-y-2 flex-shrink-0">
+        {isEditing ? (
+          <>
+            <button
+              onClick={handleSave}
+              className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+            >
+              <Save size={16} />
+              Save Changes
+            </button>
+            <button
+              onClick={handleCancel}
+              className="w-full px-4 py-2 bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)] rounded-lg hover:bg-[var(--color-surface)] transition-colors text-sm font-medium"
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={onTestConnection}
+              disabled={mapping.status === 'not-assigned'}
+              className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw size={16} />
+              Test Connection
+            </button>
+            {mapping.status === 'error' && (
+              <button
+                onClick={handleEditClick}
+                className="w-full px-4 py-2 bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)] rounded-lg hover:bg-[var(--color-surface)] transition-colors text-sm font-medium"
+              >
+                Troubleshoot Connection
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>

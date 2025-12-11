@@ -131,16 +131,13 @@ export function FaultList({ faults, selectedFaultId, onFaultSelect, searchQuery 
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-[var(--color-border-subtle)]">
-        <h3 className="text-lg font-semibold text-[var(--color-text)] mb-1">
+        <h3 className="text-lg font-semibold text-[var(--color-text)]">
           Recent Faults
         </h3>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          {filteredFaults.length} fault{filteredFaults.length !== 1 ? 's' : ''} detected
-        </p>
       </div>
 
       {/* Fault List */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto pb-2">
         {sortedFaults.length === 0 ? (
           <div className="p-8 text-center text-sm text-[var(--color-text-muted)]">
             {searchQuery ? 'No faults match your search' : 'No faults detected. All devices are healthy.'}

@@ -10,7 +10,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Edit2, Save, X, Radio, Clock, Sun, Zap, Calendar, Plus } from 'lucide-react'
+import { Edit2, Save, Trash2, Radio, Clock, Sun, Zap, Calendar, Plus } from 'lucide-react'
 import { Rule } from '@/lib/mockRules'
 import { useZones } from '@/lib/ZoneContext'
 
@@ -203,7 +203,7 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
                         className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
                         title="Delete rule"
                       >
-                        <X size={14} className="text-[var(--color-text-muted)]" />
+                        <Trash2 size={14} className="text-[var(--color-text-muted)]" />
                       </button>
                     )}
                   </div>
@@ -252,36 +252,10 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
             )}
           </>
         )}
-        {/* Action Buttons - Moved to top */}
-        {isEditing || !selectedRule ? (
-          <div className="space-y-2 mt-3">
-            <button
-              onClick={handleSave}
-              className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
-            >
-              <Save size={16} />
-              {selectedRule ? 'Save Changes' : 'Create Rule'}
-            </button>
-            <button
-              onClick={handleCancel}
-              className="w-full px-4 py-2 bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)] rounded-lg hover:bg-[var(--color-surface)] transition-colors text-sm font-medium"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={handleEdit}
-            className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2 mt-3"
-          >
-            <Edit2 size={16} />
-            Edit Rule
-          </button>
-        )}
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-2">
         {isEditing || !selectedRule ? (
           /* Edit/Create Form */
           <div className="space-y-4">
@@ -539,6 +513,35 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
             </div>
           </div>
         )}
+      </div>
+
+      {/* Action Buttons Footer */}
+      <div className="p-4 border-t border-[var(--color-border-subtle)] space-y-2 flex-shrink-0">
+        {isEditing || !selectedRule ? (
+          <>
+            <button
+              onClick={handleSave}
+              className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+            >
+              <Save size={16} />
+              {selectedRule ? 'Save Changes' : 'Create Rule'}
+            </button>
+            <button
+              onClick={handleCancel}
+              className="w-full px-4 py-2 bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)] rounded-lg hover:bg-[var(--color-surface)] transition-colors text-sm font-medium"
+            >
+              Cancel
+            </button>
+          </>
+        ) : selectedRule ? (
+          <button
+            onClick={handleEdit}
+            className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+          >
+            <Edit2 size={16} />
+            Edit Rule
+          </button>
+        ) : null}
       </div>
     </div>
   )

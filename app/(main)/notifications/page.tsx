@@ -290,7 +290,7 @@ export default function NotificationsPage() {
                     fusion-card p-5 cursor-pointer transition-all duration-300 group h-full flex flex-col
                     ${notification.read 
                       ? 'opacity-75 hover:opacity-100 border-[var(--color-border-subtle)]' 
-                      : 'border-[var(--color-primary)]/40 shadow-[var(--shadow-glow-primary)]/30'
+                      : 'border-[var(--color-primary)]/40 shadow-[var(--shadow-glow-primary)]'
                     }
                     hover:shadow-[var(--shadow-soft)] hover:scale-[1.02] hover:-translate-y-1
                     ${cardSize} ${cardHeight}

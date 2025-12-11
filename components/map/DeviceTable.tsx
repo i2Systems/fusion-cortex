@@ -11,7 +11,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Signal, Battery, Wifi, WifiOff, Image, Radio, Thermometer, MapPin } from 'lucide-react'
+import { Signal, Battery, Wifi, WifiOff, Image, Radio, Thermometer, MapPin, Edit2, Plus } from 'lucide-react'
 
 interface Device {
   id: string
@@ -117,6 +117,15 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect }: Devic
 
   return (
     <div className="h-full flex flex-col">
+      {/* Panel Header - Always visible */}
+      <div className="p-4 border-b border-[var(--color-border-subtle)]">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-semibold text-[var(--color-text)]">
+            Devices
+          </h3>
+        </div>
+      </div>
+
       {/* Data-Dense Header for Selected Device */}
       {selectedDevice && (
         <div className="p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)]">
@@ -132,13 +141,27 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect }: Devic
             })()}
             {/* Meta Information */}
             <div className="flex-1 min-w-0">
-              <div className="mb-2">
-                <h3 className="text-base font-bold text-[var(--color-text)] mb-0.5 truncate">
-                  {selectedDevice.deviceId}
-                </h3>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  {getTypeLabel(selectedDevice.type)}
-                </p>
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-bold text-[var(--color-text)] mb-0.5 truncate">
+                    {selectedDevice.deviceId}
+                  </h3>
+                  <p className="text-xs text-[var(--color-text-muted)]">
+                    {getTypeLabel(selectedDevice.type)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      // Handle edit - could open device profile or edit modal
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
+                    title="Edit device"
+                  >
+                    <Edit2 size={14} className="text-[var(--color-text-muted)]" />
+                  </button>
+                </div>
               </div>
               {/* Quick Stats */}
               <div className="grid grid-cols-2 gap-2.5">
@@ -191,58 +214,61 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect }: Devic
         </div>
       )}
 
-      {/* Table Header */}
-      <div className="p-5 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)]/50">
-        <h3 className="text-xl font-bold text-[var(--color-text)] mb-1">
-          Devices
-        </h3>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          {devices.length} devices found
-        </p>
-      </div>
-
       {/* Table */}
-      <div ref={tableRef} className="flex-1 overflow-auto">
-        <table className="w-full">
-          <thead className="sticky top-0 bg-[var(--color-surface)] backdrop-blur-sm border-b border-[var(--color-border-subtle)] z-10">
-            <tr>
-              <th 
-                className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
-                onClick={() => handleSort('deviceId')}
-              >
-                Device ID {sortField === 'deviceId' && (sortDirection === 'asc' ? '↑' : '↓')}
-              </th>
-              <th 
-                className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
-                onClick={() => handleSort('serialNumber')}
-              >
-                Serial {sortField === 'serialNumber' && (sortDirection === 'asc' ? '↑' : '↓')}
-              </th>
-              <th 
-                className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
-                onClick={() => handleSort('type')}
-              >
-                Type {sortField === 'type' && (sortDirection === 'asc' ? '↑' : '↓')}
-              </th>
-              <th 
-                className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
-                onClick={() => handleSort('signal')}
-              >
-                Signal {sortField === 'signal' && (sortDirection === 'asc' ? '↑' : '↓')}
-              </th>
-              <th className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
-                Battery
-              </th>
-              <th 
-                className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
-                onClick={() => handleSort('status')}
-              >
-                Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedDevices.map((device) => (
+      <div ref={tableRef} className="flex-1 overflow-auto pb-2">
+        {devices.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-[var(--color-surface-subtle)] flex items-center justify-center mb-4">
+              <Image size={32} className="text-[var(--color-text-muted)]" />
+            </div>
+            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-2">
+              No Devices Found
+            </h3>
+            <p className="text-sm text-[var(--color-text-muted)] mb-4">
+              No devices are currently available. Upload a map and discover devices to get started.
+            </p>
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead className="sticky top-0 bg-[var(--color-surface)] backdrop-blur-sm border-b border-[var(--color-border-subtle)] z-10">
+              <tr>
+                <th 
+                  className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
+                  onClick={() => handleSort('deviceId')}
+                >
+                  Device ID {sortField === 'deviceId' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
+                  onClick={() => handleSort('serialNumber')}
+                >
+                  Serial {sortField === 'serialNumber' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
+                  onClick={() => handleSort('type')}
+                >
+                  Type {sortField === 'type' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
+                  onClick={() => handleSort('signal')}
+                >
+                  Signal {sortField === 'signal' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                  Battery
+                </th>
+                <th 
+                  className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
+                  onClick={() => handleSort('status')}
+                >
+                  Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedDevices.map((device) => (
               <tr
                 key={device.id}
                 ref={selectedDeviceId === device.id ? selectedRowRef : null}
@@ -250,7 +276,7 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect }: Devic
                 className={`
                   border-b border-[var(--color-border-subtle)]/50 cursor-pointer transition-all duration-150
                   ${selectedDeviceId === device.id
-                    ? 'bg-[var(--color-primary-soft)] hover:bg-[var(--color-primary-soft)] shadow-[0_0_20px_rgba(0,217,255,0.2)]'
+                    ? 'bg-[var(--color-primary-soft)] hover:bg-[var(--color-primary-soft)] shadow-[var(--shadow-glow-primary)]'
                     : 'hover:bg-[var(--color-surface-subtle)]/50'
                   }
                 `}
@@ -294,9 +320,10 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect }: Devic
                   </span>
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )

@@ -178,7 +178,7 @@ export function FaultDetailsPanel({ fault }: FaultDetailsPanelProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-2">
         {/* Fault Description */}
         <div>
           <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">Fault Description</h4>
@@ -317,8 +317,8 @@ export function FaultDetailsPanel({ fault }: FaultDetailsPanelProps) {
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="p-4 border-t border-[var(--color-border-subtle)] space-y-2">
+      {/* Actions Footer */}
+      <div className="p-4 border-t border-[var(--color-border-subtle)] space-y-2 flex-shrink-0">
         <button className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2">
           <RefreshCw size={16} />
           Retry Connection

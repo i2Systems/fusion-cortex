@@ -25,9 +25,12 @@ interface ZonesPanelProps {
   zones: Zone[]
   selectedZoneId?: string | null
   onZoneSelect?: (zoneId: string | null) => void
+  onCreateZone?: () => void
+  onDeleteZone?: (zoneId: string) => void
+  onEditZone?: (zoneId: string) => void
 }
 
-export function ZonesPanel({ zones, selectedZoneId, onZoneSelect }: ZonesPanelProps) {
+export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, onDeleteZone, onEditZone }: ZonesPanelProps) {
   const [colors, setColors] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -54,6 +57,15 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect }: ZonesPanelPr
 
   return (
     <div className="h-full flex flex-col">
+      {/* Panel Header - Always visible */}
+      <div className="p-4 border-b border-[var(--color-border-subtle)]">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-semibold text-[var(--color-text)]">
+            Zones
+          </h3>
+        </div>
+      </div>
+
       {/* Data-Dense Header for Selected Zone */}
       {selectedZone && (
         <div className="p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)]">
@@ -80,9 +92,11 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect }: ZonesPanelPr
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      // Handle edit
+                      if (onEditZone) {
+                        onEditZone(selectedZone.id)
+                      }
                     }}
-                    className="p-1.5 rounded-lg hover:bg-[var(--color-surface)] transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
                     title="Edit zone"
                   >
                     <Edit2 size={14} className="text-[var(--color-text-muted)]" />
@@ -90,9 +104,14 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect }: ZonesPanelPr
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      // Handle delete
+                      if (onDeleteZone) {
+                        if (confirm(`Are you sure you want to delete "${selectedZone.name}"?`)) {
+                          onDeleteZone(selectedZone.id)
+                          onZoneSelect?.(null)
+                        }
+                      }
                     }}
-                    className="p-1.5 rounded-lg hover:bg-[var(--color-surface)] transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
                     title="Delete zone"
                   >
                     <Trash2 size={14} className="text-[var(--color-text-muted)]" />
@@ -132,29 +151,23 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect }: ZonesPanelPr
         </div>
       )}
 
-      {/* Panel Header */}
-      <div className="p-4 border-b border-[var(--color-border-subtle)]">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-        <h3 className="text-lg font-semibold text-[var(--color-text)] mb-1">
-          Zones
-        </h3>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          {zones.length} zones configured
-        </p>
-          </div>
-        </div>
-        {/* Create Zone Button - Moved to top */}
-        <button className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2 mt-3">
-          <Layers size={16} />
-          Create New Zone
-        </button>
-      </div>
-
       {/* Zone List */}
-      <div className="flex-1 overflow-auto pb-4">
-        <div className="space-y-2 p-2">
-          {zones.map((zone) => (
+      <div className="flex-1 overflow-auto pb-2">
+        {zones.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-[var(--color-surface-subtle)] flex items-center justify-center mb-4">
+              <Layers size={32} className="text-[var(--color-text-muted)]" />
+            </div>
+            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-2">
+              No Zones Created
+            </h3>
+            <p className="text-sm text-[var(--color-text-muted)] mb-4">
+              Create your first zone by drawing on the map or clicking "Create New Zone" below.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2 p-2">
+            {zones.map((zone) => (
             <div
               key={zone.id}
               onClick={() => onZoneSelect?.(zone.id)}
@@ -180,18 +193,31 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect }: ZonesPanelPr
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      // Handle edit
+                      if (onEditZone) {
+                        onEditZone(zone.id)
+                      } else {
+                        onZoneSelect?.(zone.id)
+                      }
                     }}
-                    className="p-1.5 rounded hover:bg-[var(--color-surface)] transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
+                    title="Edit zone"
                   >
                     <Edit2 size={14} className="text-[var(--color-text-muted)]" />
                   </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      // Handle delete
+                      if (onDeleteZone) {
+                        if (confirm(`Are you sure you want to delete "${zone.name}"?`)) {
+                          onDeleteZone(zone.id)
+                          if (selectedZoneId === zone.id) {
+                            onZoneSelect?.(null)
+                          }
+                        }
+                      }
                     }}
-                    className="p-1.5 rounded hover:bg-[var(--color-surface)] transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
+                    title="Delete zone"
                   >
                     <Trash2 size={14} className="text-[var(--color-text-muted)]" />
                   </button>
@@ -205,7 +231,26 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect }: ZonesPanelPr
               </p>
             </div>
           ))}
-        </div>
+          </div>
+        )}
+      </div>
+
+      {/* Actions Footer */}
+      <div className="p-4 border-t border-[var(--color-border-subtle)] flex-shrink-0">
+        <button 
+          onClick={() => {
+            if (onCreateZone) {
+              onCreateZone()
+            } else {
+              // Fallback: clear selection
+              onZoneSelect?.(null)
+            }
+          }}
+          className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+        >
+          <Layers size={16} />
+          Create New Zone
+        </button>
       </div>
     </div>
   )

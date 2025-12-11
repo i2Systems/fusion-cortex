@@ -67,7 +67,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Dashboard Content */}
-      <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full flex flex-col px-8 pb-6 overflow-auto">
+      <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full flex flex-col px-8 pb-14 overflow-auto">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 flex-shrink-0">
           <div className="fusion-card">

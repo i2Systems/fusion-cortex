@@ -13,10 +13,15 @@
 'use client'
 
 import { ChevronUp, ChevronDown, Radar, AlertTriangle, Layers, Network, Workflow, Search, Home, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { usePathname } from 'next/navigation'
 import { useNotifications } from '@/lib/NotificationContext'
 import { useRouter } from 'next/navigation'
+import { useDevices } from '@/lib/DeviceContext'
+import { useZones } from '@/lib/ZoneContext'
+import { useRules } from '@/lib/RuleContext'
 import Link from 'next/link'
+import { FaultCategory, assignFaultCategory } from '@/lib/faultDefinitions'
 
 interface BottomDrawerProps {
   children?: React.ReactNode
@@ -34,11 +39,67 @@ const typeIcons: Record<string, any> = {
 
 export function BottomDrawer({ children }: BottomDrawerProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const pathname = usePathname()
   const { notifications, unreadCount, markAsRead, dismissNotification } = useNotifications()
+  const { devices } = useDevices()
+  const { zones } = useZones()
+  const { rules } = useRules()
   const router = useRouter()
   
   // Get recent notifications (show more for horizontal scroll)
   const recentNotifications = notifications.slice(0, 10)
+
+  // Calculate page-specific status
+  const pageStatus = useMemo(() => {
+    if (pathname?.startsWith('/lookup')) {
+      return `${devices.length.toLocaleString()} device${devices.length !== 1 ? 's' : ''}`
+    }
+    if (pathname?.startsWith('/map')) {
+      return `${devices.length.toLocaleString()} device${devices.length !== 1 ? 's' : ''} found`
+    }
+    if (pathname?.startsWith('/discovery')) {
+      const missing = devices.filter(d => d.status === 'missing').length
+      return `${devices.length.toLocaleString()} device${devices.length !== 1 ? 's' : ''} found${missing > 0 ? ` — ${missing} missing` : ''}`
+    }
+    if (pathname?.startsWith('/faults')) {
+      const faults = devices.filter(d => 
+        d.status === 'missing' || d.status === 'offline' || (d.battery !== undefined && d.battery < 20)
+      ).length
+      return `${faults} fault${faults !== 1 ? 's' : ''} detected`
+    }
+    if (pathname?.startsWith('/rules')) {
+      return `${rules.length} rule${rules.length !== 1 ? 's' : ''}`
+    }
+    if (pathname?.startsWith('/zones')) {
+      return `${zones.length} zone${zones.length !== 1 ? 's' : ''} configured`
+    }
+    if (pathname?.startsWith('/bacnet')) {
+      // Count zones with BACnet mappings from localStorage
+      if (typeof window !== 'undefined') {
+        try {
+          const saved = localStorage.getItem('fusion_bacnet_mappings')
+          if (saved) {
+            const mappings = JSON.parse(saved)
+            const connected = mappings.filter((m: any) => m.bacnetObjectId && m.status === 'connected').length
+            const total = mappings.length
+            if (total > 0) {
+              return `${connected} of ${total} zone${total !== 1 ? 's' : ''} connected`
+            }
+          }
+        } catch (e) {
+          // Fallback if parsing fails
+        }
+      }
+      // Fallback: show zones count (limited to 12 as per BACnet page logic)
+      const zoneCount = Math.min(zones.length, 12)
+      return `${zoneCount} zone${zoneCount !== 1 ? 's' : ''}`
+    }
+    if (pathname?.startsWith('/dashboard')) {
+      const offline = devices.filter(d => d.status === 'offline' || d.status === 'missing').length
+      return `${devices.length.toLocaleString()} device${devices.length !== 1 ? 's' : ''}${offline > 0 ? ` — ${offline} offline` : ''}`
+    }
+    return null
+  }, [pathname, devices, zones, rules])
 
   return (
     <div
@@ -59,15 +120,17 @@ export function BottomDrawer({ children }: BottomDrawerProps) {
           <span className="text-sm font-medium text-[var(--color-text)]">
             Status
           </span>
-          {/* Summary info */}
-          <span className="text-xs text-[var(--color-text-muted)]">
-            Discovery: 1,998 devices found — 2 missing
-            {unreadCount > 0 && (
-              <span className="ml-2 text-[var(--color-primary)]">
-                • {unreadCount} new notification{unreadCount !== 1 ? 's' : ''}
-              </span>
-            )}
-          </span>
+          {/* Page-specific status */}
+          {pageStatus && (
+            <span className="text-xs text-[var(--color-text-muted)]">
+              {pageStatus}
+            </span>
+          )}
+          {unreadCount > 0 && (
+            <span className="text-xs text-[var(--color-primary)]">
+              • {unreadCount} new notification{unreadCount !== 1 ? 's' : ''}
+            </span>
+          )}
         </div>
         {isExpanded ? (
           <ChevronDown size={18} className="text-[var(--color-text-muted)]" />

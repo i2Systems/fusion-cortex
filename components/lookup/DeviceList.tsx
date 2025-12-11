@@ -101,16 +101,13 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-[var(--color-border-subtle)]">
-        <h3 className="text-lg font-semibold text-[var(--color-text)] mb-1">
+        <h3 className="text-lg font-semibold text-[var(--color-text)]">
           All Devices
         </h3>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          {filteredDevices.length} {searchQuery.trim() ? 'matching' : ''} device{filteredDevices.length !== 1 ? 's' : ''}
-        </p>
       </div>
 
       {/* Table */}
-      <div ref={tableRef} className="flex-1 overflow-auto">
+      <div ref={tableRef} className="flex-1 overflow-auto pb-2">
         {sortedDevices.length === 0 ? (
           <div className="p-8 text-center text-sm text-[var(--color-text-muted)]">
             {searchQuery ? `No devices found matching "${searchQuery}"` : 'No devices found'}

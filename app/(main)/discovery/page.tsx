@@ -224,8 +224,8 @@ export default function DiscoveryPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 min-h-0 px-8 pb-6 overflow-auto">
-        <div className="max-w-6xl mx-auto">
+      <div className="flex-1 min-h-0 px-8 pb-14 overflow-auto">
+        <div className="max-w-6xl mx-auto pb-4">
         {/* Discovery Controls */}
         <DiscoveryControls
           isScanning={isScanning}
@@ -270,7 +270,7 @@ export default function DiscoveryPage() {
         )}
 
         {/* Discovery Status & Results */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-4">
           {/* Status Card */}
           <div className="fusion-card">
             <h3 className="text-md font-semibold text-[var(--color-text)] mb-4">

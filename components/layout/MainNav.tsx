@@ -98,7 +98,7 @@ export function MainNav() {
                       transition-all duration-200
                       ${isActive 
                         ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)] shadow-[var(--shadow-glow-primary)]' 
-                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-primary)] hover:shadow-[0_0_15px_rgba(0,217,255,0.3)]'
+                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)]'
                       }
                     `}
                     title={item.label}

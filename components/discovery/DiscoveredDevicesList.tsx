@@ -147,7 +147,7 @@ export function DiscoveredDevicesList({
       )}
 
       {/* Device List */}
-      <div className="space-y-2 max-h-[50vh] overflow-auto">
+      <div className="space-y-2">
         {filteredDevices.length === 0 ? (
           <div className="text-center py-8 text-sm text-[var(--color-text-muted)]">
             No devices match the current filters

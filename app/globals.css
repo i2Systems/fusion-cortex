@@ -82,20 +82,20 @@
   --radius-pill: 999px;
 
   /* ============================================
-     SHADOWS & GLOWS (80's neon effects)
+     SHADOWS & GLOWS (80's neon effects - refined and subtle)
      ============================================ */
   --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.5);
   --shadow-strong: 0 24px 60px rgba(0, 0, 0, 0.6);
-  --shadow-glow-primary: 0 0 20px rgba(0, 217, 255, 0.5);
-  --shadow-glow-accent: 0 0 15px rgba(255, 0, 255, 0.4);
-  --shadow-glow-hover: 0 0 25px rgba(0, 217, 255, 0.6);
+  --shadow-glow-primary: 0 0 12px rgba(0, 217, 255, 0.25), 0 0 24px rgba(0, 217, 255, 0.1);
+  --shadow-glow-accent: 0 0 10px rgba(255, 0, 255, 0.2), 0 0 20px rgba(255, 0, 255, 0.08);
+  --shadow-glow-hover: 0 0 16px rgba(0, 217, 255, 0.3), 0 0 32px rgba(0, 217, 255, 0.12);
   
-  /* Glow effects - separate from shadows for edge glows (reduced intensity) */
-  --glow-primary: 0 0 20px rgba(0, 217, 255, 0.4), 0 0 40px rgba(0, 217, 255, 0.2);
-  --glow-modal: 0 0 40px rgba(0, 217, 255, 0.5), 0 0 80px rgba(0, 217, 255, 0.3), 0 0 120px rgba(0, 217, 255, 0.2);
-  --glow-accent: 0 0 25px rgba(255, 0, 255, 0.5), 0 0 50px rgba(255, 0, 255, 0.3);
-  --glow-strong: 0 0 50px rgba(0, 217, 255, 0.7), 0 0 100px rgba(0, 217, 255, 0.4), 0 0 150px rgba(0, 217, 255, 0.2);
+  /* Glow effects - separate from shadows for edge glows (refined and subtle) */
+  --glow-primary: 0 0 12px rgba(0, 217, 255, 0.2), 0 0 24px rgba(0, 217, 255, 0.1);
+  --glow-modal: 0 0 24px rgba(0, 217, 255, 0.25), 0 0 48px rgba(0, 217, 255, 0.15), 0 0 72px rgba(0, 217, 255, 0.08);
+  --glow-accent: 0 0 16px rgba(255, 0, 255, 0.25), 0 0 32px rgba(255, 0, 255, 0.12);
+  --glow-strong: 0 0 32px rgba(0, 217, 255, 0.35), 0 0 64px rgba(0, 217, 255, 0.2), 0 0 96px rgba(0, 217, 255, 0.1);
 
   /* ============================================
      BORDERS
@@ -212,7 +212,7 @@ body {
 
 .fusion-card:hover {
   border-color: var(--color-border-strong);
-  box-shadow: var(--shadow-glow-primary);
+  box-shadow: var(--shadow-soft), var(--shadow-glow-primary);
 }
 
 /* Button base styles - Neon glow on hover */
@@ -233,7 +233,7 @@ body {
 .fusion-button-primary {
   background: var(--color-primary);
   color: var(--color-text-on-primary);
-  box-shadow: 0 0 10px rgba(0, 217, 255, 0.3);
+  box-shadow: 0 0 8px rgba(0, 217, 255, 0.2), 0 0 16px rgba(0, 217, 255, 0.08);
 }
 
 .fusion-button-primary:hover {
@@ -259,7 +259,7 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-primary);
-  box-shadow: 0 0 10px var(--color-primary);
+  box-shadow: 0 0 6px rgba(0, 217, 255, 0.3), 0 0 12px rgba(0, 217, 255, 0.15);
 }
 
 /* ============================================
@@ -304,9 +304,9 @@ body {
   --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
   --shadow-strong: 0 8px 32px rgba(0, 0, 0, 0.16);
-  --shadow-glow-primary: 0 0 10px rgba(76, 125, 255, 0.2);
-  --shadow-glow-accent: 0 0 10px rgba(249, 115, 22, 0.2);
-  --shadow-glow-hover: 0 0 15px rgba(76, 125, 255, 0.3);
+  --shadow-glow-primary: 0 0 8px rgba(76, 125, 255, 0.15), 0 0 16px rgba(76, 125, 255, 0.06);
+  --shadow-glow-accent: 0 0 8px rgba(249, 115, 22, 0.15), 0 0 16px rgba(249, 115, 22, 0.06);
+  --shadow-glow-hover: 0 0 12px rgba(76, 125, 255, 0.2), 0 0 24px rgba(76, 125, 255, 0.08);
   
   /* Glow effects - use shadows instead of glows in light mode */
   --glow-primary: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -372,15 +372,15 @@ body {
   --shadow-soft: 0 4px 12px rgba(255, 255, 255, 0.1);
   --shadow-md: 0 8px 24px rgba(255, 255, 255, 0.15);
   --shadow-strong: 0 16px 48px rgba(255, 255, 255, 0.2);
-  --shadow-glow-primary: 0 0 20px rgba(0, 170, 255, 0.5);
-  --shadow-glow-accent: 0 0 20px rgba(255, 102, 0, 0.5);
-  --shadow-glow-hover: 0 0 30px rgba(0, 170, 255, 0.7);
+  --shadow-glow-primary: 0 0 12px rgba(0, 170, 255, 0.3), 0 0 24px rgba(0, 170, 255, 0.12);
+  --shadow-glow-accent: 0 0 12px rgba(255, 102, 0, 0.3), 0 0 24px rgba(255, 102, 0, 0.12);
+  --shadow-glow-hover: 0 0 16px rgba(0, 170, 255, 0.4), 0 0 32px rgba(0, 170, 255, 0.16);
   
-  /* Glow effects - Very strong for high contrast */
-  --glow-primary: 0 0 30px rgba(0, 170, 255, 0.8), 0 0 60px rgba(0, 170, 255, 0.5);
-  --glow-modal: 0 0 50px rgba(0, 170, 255, 0.7), 0 0 100px rgba(0, 170, 255, 0.5), 0 0 150px rgba(0, 170, 255, 0.3);
-  --glow-accent: 0 0 30px rgba(255, 102, 0, 0.7), 0 0 60px rgba(255, 102, 0, 0.4);
-  --glow-strong: 0 0 60px rgba(0, 170, 255, 0.9), 0 0 120px rgba(0, 170, 255, 0.6), 0 0 180px rgba(0, 170, 255, 0.4);
+  /* Glow effects - Refined for high contrast (still visible but subtle) */
+  --glow-primary: 0 0 16px rgba(0, 170, 255, 0.4), 0 0 32px rgba(0, 170, 255, 0.2);
+  --glow-modal: 0 0 24px rgba(0, 170, 255, 0.4), 0 0 48px rgba(0, 170, 255, 0.25), 0 0 72px rgba(0, 170, 255, 0.15);
+  --glow-accent: 0 0 16px rgba(255, 102, 0, 0.4), 0 0 32px rgba(255, 102, 0, 0.2);
+  --glow-strong: 0 0 32px rgba(0, 170, 255, 0.5), 0 0 64px rgba(0, 170, 255, 0.3), 0 0 96px rgba(0, 170, 255, 0.2);
   
   /* Force high contrast on all elements */
   --border-width-thin: 2px;
@@ -451,15 +451,15 @@ body {
   --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.5);
   --shadow-strong: 0 24px 60px rgba(0, 0, 0, 0.6);
-  --shadow-glow-primary: 0 0 20px rgba(255, 140, 66, 0.5);
-  --shadow-glow-accent: 0 0 15px rgba(255, 107, 53, 0.4);
-  --shadow-glow-hover: 0 0 25px rgba(255, 140, 66, 0.6);
+  --shadow-glow-primary: 0 0 12px rgba(255, 140, 66, 0.25), 0 0 24px rgba(255, 140, 66, 0.1);
+  --shadow-glow-accent: 0 0 10px rgba(255, 107, 53, 0.2), 0 0 20px rgba(255, 107, 53, 0.08);
+  --shadow-glow-hover: 0 0 16px rgba(255, 140, 66, 0.3), 0 0 32px rgba(255, 140, 66, 0.12);
   
-  /* Glow effects - Warm amber glows */
-  --glow-primary: 0 0 20px rgba(255, 140, 66, 0.4), 0 0 40px rgba(255, 140, 66, 0.2);
-  --glow-modal: 0 0 40px rgba(255, 140, 66, 0.5), 0 0 80px rgba(255, 140, 66, 0.3), 0 0 120px rgba(255, 140, 66, 0.2);
-  --glow-accent: 0 0 25px rgba(255, 107, 53, 0.5), 0 0 50px rgba(255, 107, 53, 0.3);
-  --glow-strong: 0 0 50px rgba(255, 140, 66, 0.7), 0 0 100px rgba(255, 140, 66, 0.4), 0 0 150px rgba(255, 140, 66, 0.2);
+  /* Glow effects - Warm amber glows (refined and subtle) */
+  --glow-primary: 0 0 12px rgba(255, 140, 66, 0.2), 0 0 24px rgba(255, 140, 66, 0.1);
+  --glow-modal: 0 0 24px rgba(255, 140, 66, 0.25), 0 0 48px rgba(255, 140, 66, 0.15), 0 0 72px rgba(255, 140, 66, 0.08);
+  --glow-accent: 0 0 16px rgba(255, 107, 53, 0.25), 0 0 32px rgba(255, 107, 53, 0.12);
+  --glow-strong: 0 0 32px rgba(255, 140, 66, 0.35), 0 0 64px rgba(255, 140, 66, 0.2), 0 0 96px rgba(255, 140, 66, 0.1);
 }
 
 [data-theme="warm-night"] body {
@@ -513,15 +513,15 @@ body {
   --shadow-soft: 0 2px 8px rgba(255, 140, 66, 0.1);
   --shadow-md: 0 4px 16px rgba(255, 140, 66, 0.15);
   --shadow-strong: 0 8px 32px rgba(255, 140, 66, 0.2);
-  --shadow-glow-primary: 0 0 10px rgba(255, 140, 66, 0.25);
-  --shadow-glow-accent: 0 0 10px rgba(255, 107, 53, 0.25);
-  --shadow-glow-hover: 0 0 15px rgba(255, 140, 66, 0.35);
+  --shadow-glow-primary: 0 0 8px rgba(255, 140, 66, 0.15), 0 0 16px rgba(255, 140, 66, 0.06);
+  --shadow-glow-accent: 0 0 8px rgba(255, 107, 53, 0.15), 0 0 16px rgba(255, 107, 53, 0.06);
+  --shadow-glow-hover: 0 0 12px rgba(255, 140, 66, 0.2), 0 0 24px rgba(255, 140, 66, 0.08);
   
-  /* Glow effects - Subtle warm glows for light mode */
-  --glow-primary: 0 2px 8px rgba(255, 140, 66, 0.15);
-  --glow-modal: 0 4px 16px rgba(255, 140, 66, 0.2);
-  --glow-accent: 0 2px 8px rgba(255, 107, 53, 0.15);
-  --glow-strong: 0 8px 32px rgba(255, 140, 66, 0.25);
+  /* Glow effects - Subtle warm glows for light mode (refined) */
+  --glow-primary: 0 2px 8px rgba(255, 140, 66, 0.12);
+  --glow-modal: 0 4px 16px rgba(255, 140, 66, 0.15);
+  --glow-accent: 0 2px 8px rgba(255, 107, 53, 0.12);
+  --glow-strong: 0 8px 32px rgba(255, 140, 66, 0.2);
 }
 
 [data-theme="warm-day"] body {
@@ -575,14 +575,14 @@ body {
   --shadow-soft: 6px 6px 12px rgba(163, 177, 198, 0.6), -6px -6px 12px rgba(255, 255, 255, 0.7);
   --shadow-md: 8px 8px 16px rgba(163, 177, 198, 0.6), -8px -8px 16px rgba(255, 255, 255, 0.7);
   --shadow-strong: 12px 12px 24px rgba(163, 177, 198, 0.6), -12px -12px 24px rgba(255, 255, 255, 0.7);
-  --shadow-glow-primary: 0 0 20px rgba(0, 122, 255, 0.15);
-  --shadow-glow-accent: 0 0 20px rgba(255, 149, 0, 0.15);
-  --shadow-glow-hover: 0 0 25px rgba(0, 122, 255, 0.2);
+  --shadow-glow-primary: 0 0 8px rgba(0, 122, 255, 0.1), 0 0 16px rgba(0, 122, 255, 0.04);
+  --shadow-glow-accent: 0 0 8px rgba(255, 149, 0, 0.1), 0 0 16px rgba(255, 149, 0, 0.04);
+  --shadow-glow-hover: 0 0 12px rgba(0, 122, 255, 0.12), 0 0 24px rgba(0, 122, 255, 0.06);
   
-  /* Glow effects - Very subtle for neumorphism */
-  --glow-primary: 0 2px 8px rgba(0, 122, 255, 0.1);
+  /* Glow effects - Very subtle for neumorphism (refined) */
+  --glow-primary: 0 2px 6px rgba(0, 122, 255, 0.08);
   --glow-modal: 12px 12px 24px rgba(163, 177, 198, 0.6), -12px -12px 24px rgba(255, 255, 255, 0.7);
-  --glow-accent: 0 2px 8px rgba(255, 149, 0, 0.1);
+  --glow-accent: 0 2px 6px rgba(255, 149, 0, 0.08);
   --glow-strong: 16px 16px 32px rgba(163, 177, 198, 0.6), -16px -16px 32px rgba(255, 255, 255, 0.7);
   
   /* Glass & Materiality - Minimal blur for neumorphism */
@@ -829,14 +829,14 @@ body {
   --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
   --shadow-strong: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-glow-primary: 0 0 16px rgba(0, 120, 212, 0.4);
-  --shadow-glow-accent: 0 0 16px rgba(135, 100, 184, 0.4);
-  --shadow-glow-hover: 0 0 20px rgba(0, 120, 212, 0.5);
+  --shadow-glow-primary: 0 0 10px rgba(0, 120, 212, 0.25), 0 0 20px rgba(0, 120, 212, 0.1);
+  --shadow-glow-accent: 0 0 10px rgba(135, 100, 184, 0.25), 0 0 20px rgba(135, 100, 184, 0.1);
+  --shadow-glow-hover: 0 0 14px rgba(0, 120, 212, 0.3), 0 0 28px rgba(0, 120, 212, 0.12);
   
-  /* Glow effects - Subtle for professional look */
-  --glow-primary: 0 0 16px rgba(0, 120, 212, 0.3);
+  /* Glow effects - Subtle for professional look (refined) */
+  --glow-primary: 0 0 10px rgba(0, 120, 212, 0.2), 0 0 20px rgba(0, 120, 212, 0.08);
   --glow-modal: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
-  --glow-accent: 0 0 16px rgba(135, 100, 184, 0.3);
+  --glow-accent: 0 0 10px rgba(135, 100, 184, 0.2), 0 0 20px rgba(135, 100, 184, 0.08);
   --glow-strong: 0 12px 48px rgba(0, 0, 0, 0.6);
   
   /* Glass & Materiality - Acrylic effects */
@@ -965,15 +965,15 @@ body {
   --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.5);
   --shadow-strong: 0 24px 60px rgba(0, 0, 0, 0.6);
-  --shadow-glow-primary: 0 0 20px rgba(147, 51, 234, 0.6), 0 0 40px rgba(147, 51, 234, 0.3);
-  --shadow-glow-accent: 0 0 15px rgba(192, 132, 252, 0.5);
-  --shadow-glow-hover: 0 0 30px rgba(147, 51, 234, 0.7), 0 0 60px rgba(147, 51, 234, 0.4);
+  --shadow-glow-primary: 0 0 12px rgba(147, 51, 234, 0.3), 0 0 24px rgba(147, 51, 234, 0.15);
+  --shadow-glow-accent: 0 0 10px rgba(192, 132, 252, 0.25), 0 0 20px rgba(192, 132, 252, 0.1);
+  --shadow-glow-hover: 0 0 16px rgba(147, 51, 234, 0.35), 0 0 32px rgba(147, 51, 234, 0.18);
   
-  /* Glow effects - Vibrant purple neon matching main objects */
-  --glow-primary: 0 0 20px rgba(147, 51, 234, 0.5), 0 0 40px rgba(147, 51, 234, 0.3), 0 0 60px rgba(147, 51, 234, 0.15);
-  --glow-modal: 0 0 40px rgba(147, 51, 234, 0.6), 0 0 80px rgba(147, 51, 234, 0.4), 0 0 120px rgba(147, 51, 234, 0.25);
-  --glow-accent: 0 0 25px rgba(192, 132, 252, 0.6), 0 0 50px rgba(192, 132, 252, 0.4);
-  --glow-strong: 0 0 50px rgba(147, 51, 234, 0.8), 0 0 100px rgba(147, 51, 234, 0.5), 0 0 150px rgba(147, 51, 234, 0.3);
+  /* Glow effects - Vibrant purple neon matching main objects (refined and subtle) */
+  --glow-primary: 0 0 12px rgba(147, 51, 234, 0.25), 0 0 24px rgba(147, 51, 234, 0.15), 0 0 36px rgba(147, 51, 234, 0.08);
+  --glow-modal: 0 0 24px rgba(147, 51, 234, 0.3), 0 0 48px rgba(147, 51, 234, 0.2), 0 0 72px rgba(147, 51, 234, 0.12);
+  --glow-accent: 0 0 16px rgba(192, 132, 252, 0.3), 0 0 32px rgba(192, 132, 252, 0.15);
+  --glow-strong: 0 0 32px rgba(147, 51, 234, 0.4), 0 0 64px rgba(147, 51, 234, 0.25), 0 0 96px rgba(147, 51, 234, 0.15);
   
   /* Glass & Materiality - Subtle glass morphism */
   --glass-blur: 20px;
@@ -1085,15 +1085,15 @@ body {
   --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08);
   --shadow-strong: 0 16px 48px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1);
-  --shadow-glow-primary: 0 0 20px rgba(147, 51, 234, 0.4), 0 0 40px rgba(147, 51, 234, 0.2);
-  --shadow-glow-accent: 0 0 15px rgba(192, 132, 252, 0.3);
-  --shadow-glow-hover: 0 0 30px rgba(147, 51, 234, 0.5), 0 0 60px rgba(147, 51, 234, 0.3);
+  --shadow-glow-primary: 0 0 12px rgba(147, 51, 234, 0.25), 0 0 24px rgba(147, 51, 234, 0.12);
+  --shadow-glow-accent: 0 0 10px rgba(192, 132, 252, 0.2), 0 0 20px rgba(192, 132, 252, 0.08);
+  --shadow-glow-hover: 0 0 16px rgba(147, 51, 234, 0.3), 0 0 32px rgba(147, 51, 234, 0.15);
   
-  /* Glow effects - Vibrant purple neon */
-  --glow-primary: 0 0 20px rgba(147, 51, 234, 0.3), 0 0 40px rgba(147, 51, 234, 0.15);
-  --glow-modal: 0 0 40px rgba(147, 51, 234, 0.4), 0 0 80px rgba(147, 51, 234, 0.2), 0 0 120px rgba(147, 51, 234, 0.1);
-  --glow-accent: 0 0 25px rgba(192, 132, 252, 0.4), 0 0 50px rgba(192, 132, 252, 0.2);
-  --glow-strong: 0 0 50px rgba(147, 51, 234, 0.5), 0 0 100px rgba(147, 51, 234, 0.3), 0 0 150px rgba(147, 51, 234, 0.15);
+  /* Glow effects - Vibrant purple neon (refined and subtle) */
+  --glow-primary: 0 0 12px rgba(147, 51, 234, 0.2), 0 0 24px rgba(147, 51, 234, 0.1);
+  --glow-modal: 0 0 24px rgba(147, 51, 234, 0.25), 0 0 48px rgba(147, 51, 234, 0.15), 0 0 72px rgba(147, 51, 234, 0.08);
+  --glow-accent: 0 0 16px rgba(192, 132, 252, 0.25), 0 0 32px rgba(192, 132, 252, 0.12);
+  --glow-strong: 0 0 32px rgba(147, 51, 234, 0.3), 0 0 64px rgba(147, 51, 234, 0.2), 0 0 96px rgba(147, 51, 234, 0.1);
   
   /* Glass & Materiality - Apple-style heavy blur and saturation */
   --glass-blur: 40px;

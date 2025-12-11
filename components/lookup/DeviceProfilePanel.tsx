@@ -162,7 +162,7 @@ export function DeviceProfilePanel({ device }: DeviceProfilePanelProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-2">
         {/* Basic Information */}
         <div>
           <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">Basic Information</h4>

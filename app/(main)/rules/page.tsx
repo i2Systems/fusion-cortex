@@ -82,7 +82,7 @@ export default function RulesPage() {
       </div>
 
       {/* Main Content: Rules List + Details Panel */}
-      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-6" style={{ overflow: 'visible' }}>
+      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" style={{ overflow: 'visible' }}>
         {/* Rules List - Left Side */}
         <div className="flex-1 min-w-0">
           <div className="fusion-card overflow-hidden h-full flex flex-col">

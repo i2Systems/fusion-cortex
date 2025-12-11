@@ -119,8 +119,6 @@ export default function BACnetPage() {
   const { zones } = useZones()
   const { devices } = useDevices()
   const [mappings, setMappings] = useState<BACnetMapping[]>([])
-  const [editingZoneId, setEditingZoneId] = useState<string | null>(null)
-  const [editValue, setEditValue] = useState('')
   const [selectedMappingId, setSelectedMappingId] = useState<string | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
 
@@ -229,21 +227,24 @@ export default function BACnetPage() {
 
   const selectedMapping = zoneMappings.find(m => m.zoneId === selectedMappingId) || null
 
-  const handleEditStart = (mapping: BACnetMapping) => {
-    setEditingZoneId(mapping.zoneId)
-    setEditValue(mapping.bacnetObjectId || '')
-  }
-
-  const handleEditSave = (zoneId: string) => {
+  const handleEditSave = (mappingData: Partial<BACnetMapping>) => {
+    if (!selectedMappingId) return
+    
     const updated: BACnetMapping[] = zoneMappings.map(m => 
-      m.zoneId === zoneId 
+      m.zoneId === selectedMappingId 
         ? { 
             ...m, 
-            bacnetObjectId: editValue || null, 
-            status: (editValue ? 'connected' : 'not-assigned') as 'connected' | 'error' | 'not-assigned',
-            lastConnected: editValue ? new Date() : undefined,
-            networkAddress: editValue ? `192.168.1.${100 + parseInt(zoneId.slice(-1))}` : undefined,
-            priority: editValue ? Math.floor(Math.random() * 5) + 1 : undefined,
+            ...mappingData,
+            status: mappingData.bacnetObjectId 
+              ? (mappingData.status || 'connected') as 'connected' | 'error' | 'not-assigned'
+              : 'not-assigned',
+            lastConnected: mappingData.bacnetObjectId ? new Date() : m.lastConnected,
+            networkAddress: mappingData.bacnetObjectId 
+              ? mappingData.networkAddress || `192.168.1.${100 + parseInt(selectedMappingId.slice(-1))}`
+              : undefined,
+            priority: mappingData.bacnetObjectId 
+              ? (mappingData.priority || Math.floor(Math.random() * 5) + 1)
+              : undefined,
           }
         : m
     )
@@ -251,8 +252,6 @@ export default function BACnetPage() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('fusion_bacnet_mappings', JSON.stringify(updated))
     }
-    setEditingZoneId(null)
-    setEditValue('')
   }
 
   const handleAddNew = () => {
@@ -260,16 +259,6 @@ export default function BACnetPage() {
     const unmappedZone = zones.find(z => !zoneMappings.find(m => m.zoneId === z.id && m.bacnetObjectId))
     if (unmappedZone) {
       setSelectedMappingId(unmappedZone.id)
-      const mapping = zoneMappings.find(m => m.zoneId === unmappedZone.id) || {
-        zoneId: unmappedZone.id,
-        zoneName: unmappedZone.name,
-        bacnetObjectId: null,
-        status: 'not-assigned' as const,
-        controlCapabilities: [] as ControlCapability[],
-        description: '',
-        deviceCount: devices.filter(d => d.zone === unmappedZone.name).length,
-      }
-      handleEditStart(mapping)
     }
     setShowAddDialog(false)
   }
@@ -304,10 +293,6 @@ export default function BACnetPage() {
     }
   }
 
-  const handleEditCancel = () => {
-    setEditingZoneId(null)
-    setEditValue('')
-  }
 
   const getStatusIcon = (status: BACnetMapping['status']) => {
     switch (status) {
@@ -360,7 +345,7 @@ export default function BACnetPage() {
       </div>
 
       {/* Main Content: Table + Details Panel */}
-      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-6" style={{ overflow: 'visible' }}>
+      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" style={{ overflow: 'visible' }}>
         {/* Table - Left Side */}
         <div className="flex-1 min-w-0">
           <div className="fusion-card overflow-hidden h-full flex flex-col">
@@ -403,7 +388,6 @@ export default function BACnetPage() {
                     </tr>
                   ) : (
                     zoneMappings.map((mapping) => {
-                      const isEditing = editingZoneId === mapping.zoneId
                       const isSelected = selectedMappingId === mapping.zoneId
                       
                       return (
@@ -450,54 +434,14 @@ export default function BACnetPage() {
 
                     {/* BACnet Object ID */}
                     <td className="py-4 px-4">
-                      {isEditing ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                handleEditSave(mapping.zoneId)
-                              } else if (e.key === 'Escape') {
-                                handleEditCancel()
-                              }
-                            }}
-                            autoFocus
-                            className="w-24 px-2 py-1 bg-[var(--color-bg-elevated)] border border-[var(--color-primary)] rounded text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                            placeholder="e.g. 4001"
-                          />
-                          <button
-                            onClick={() => handleEditSave(mapping.zoneId)}
-                            className="px-2 py-1 text-xs bg-[var(--color-primary)] text-white rounded hover:bg-[var(--color-primary)]/90 transition-colors"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={handleEditCancel}
-                            className="px-2 py-1 text-xs bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)] rounded hover:bg-[var(--color-surface)] transition-colors"
-                          >
-                            Cancel
-                          </button>
-                        </div>
+                      {mapping.bacnetObjectId ? (
+                        <span className="text-sm font-mono text-[var(--color-text)]">
+                          {mapping.bacnetObjectId}
+                        </span>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          {mapping.bacnetObjectId ? (
-                            <span className="text-sm font-mono text-[var(--color-text)]">
-                              {mapping.bacnetObjectId}
-                            </span>
-                          ) : (
-                            <span className="text-sm text-[var(--color-text-muted)] italic">
-                              Not assigned
-                            </span>
-                          )}
-                          <button
-                            onClick={() => handleEditStart(mapping)}
-                            className="text-xs text-[var(--color-primary)] hover:underline"
-                          >
-                            {mapping.bacnetObjectId ? 'Edit' : 'Assign'}
-                          </button>
-                        </div>
+                        <span className="text-sm text-[var(--color-text-muted)] italic">
+                          Not assigned
+                        </span>
                       )}
                     </td>
 
@@ -535,7 +479,7 @@ export default function BACnetPage() {
         {/* Details Panel - Right Side */}
         <BACnetDetailsPanel
           mapping={selectedMapping}
-          onEdit={() => selectedMapping && handleEditStart(selectedMapping)}
+          onEdit={handleEditSave}
           onDelete={handleDelete}
           onTestConnection={handleTestConnection}
           onAdd={handleAddNew}

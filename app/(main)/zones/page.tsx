@@ -218,7 +218,7 @@ export default function ZonesPage() {
       </div>
 
       {/* Main Content: Map + Zones Panel */}
-      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-6" style={{ overflow: 'visible' }}>
+      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" style={{ overflow: 'visible' }}>
         {/* Map Canvas - Left Side */}
         <div className="flex-1 relative min-w-0 rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)]" style={{ overflow: 'visible', minHeight: 0 }}>
           {/* Zone Toolbar - Top center (hidden for Manager and Technician) */}
@@ -281,6 +281,15 @@ export default function ZonesPage() {
               zones={zonesForPanel}
               selectedZoneId={selectedZone}
               onZoneSelect={setSelectedZone}
+              onCreateZone={() => {
+                setSelectedZone(null)
+                setToolMode('draw-polygon')
+              }}
+              onDeleteZone={handleDeleteZone}
+              onEditZone={(zoneId) => {
+                setSelectedZone(zoneId)
+                // Could open edit modal here
+              }}
             />
           </div>
         )}
