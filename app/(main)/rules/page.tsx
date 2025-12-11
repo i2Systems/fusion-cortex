@@ -62,9 +62,27 @@ export default function RulesPage() {
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0 pb-2 overflow-visible">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden">
+      {/* Top Search Island - In flow */}
+      <div className="flex-shrink-0 px-[20px] pt-4 pb-3">
+        <SearchIsland 
+          position="top" 
+          fullWidth={true}
+          title="Rules & Overrides"
+          subtitle="Create automation rules for lighting control"
+          placeholder="Search rules or type 'create rule'..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          onActionDetected={(action) => {
+            if (action.id === 'create-rule') {
+              setSelectedRuleId(null) // This will show the create form in RulesPanel
+            }
+          }}
+        />
+      </div>
+
       {/* Main Content: Rules List + Details Panel */}
-      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pt-4 pb-48 overflow-visible">
+      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-6" style={{ overflow: 'visible' }}>
         {/* Rules List - Left Side */}
         <div className="flex-1 min-w-0">
           <div className="fusion-card overflow-hidden h-full flex flex-col">
@@ -83,24 +101,6 @@ export default function RulesPage() {
           onSave={handleSave}
           onCancel={handleCancel}
           onDelete={handleDelete}
-        />
-      </div>
-
-      {/* Bottom Search Island */}
-      <div className="fixed bottom-10 left-[80px] right-4 z-50">
-        <SearchIsland 
-          position="bottom" 
-          fullWidth={true}
-          title="Rules & Overrides"
-          subtitle="Create automation rules for lighting control"
-          placeholder="Search rules or type 'create rule'..."
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-          onActionDetected={(action) => {
-            if (action.id === 'create-rule') {
-              setSelectedRuleId(null) // This will show the create form in RulesPanel
-            }
-          }}
         />
       </div>
     </div>

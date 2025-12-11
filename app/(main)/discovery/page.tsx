@@ -202,8 +202,30 @@ export default function DiscoveryPage() {
   }
 
   return (
-    <div className="main-content-area h-full p-8 relative pb-48">
-      <div className="max-w-6xl mx-auto">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden">
+      {/* Top Search Island - In flow */}
+      <div className="flex-shrink-0 px-8 pt-4 pb-3">
+        <SearchIsland 
+          position="top" 
+          fullWidth={true}
+          title="Device Discovery"
+          subtitle="Discover and map all lighting devices in your network"
+          placeholder="Search devices or type 'start scan' or 'add device'..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          onActionDetected={(action) => {
+            if (action.id === 'start-scan' && !isScanning) {
+              handleStartScan()
+            } else if (action.id === 'add-manual') {
+              setShowManualEntry(true)
+            }
+          }}
+        />
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 min-h-0 px-8 pb-6 overflow-auto">
+        <div className="max-w-6xl mx-auto">
         {/* Discovery Controls */}
         <DiscoveryControls
           isScanning={isScanning}
@@ -300,6 +322,7 @@ export default function DiscoveryPage() {
             />
           </div>
         </div>
+        </div>
       </div>
 
       {/* Manual Entry Modal */}
@@ -308,26 +331,6 @@ export default function DiscoveryPage() {
         onClose={() => setShowManualEntry(false)}
         onAdd={handleAddDevice}
       />
-
-      {/* Bottom Search Island */}
-      <div className="fixed bottom-10 left-[80px] right-4 z-50">
-      <SearchIsland 
-        position="bottom" 
-        fullWidth={true}
-        title="Device Discovery"
-        subtitle="Discover and map all lighting devices in your network"
-        placeholder="Search devices or type 'start scan' or 'add device'..."
-        searchValue={searchQuery}
-        onSearchChange={setSearchQuery}
-        onActionDetected={(action) => {
-          if (action.id === 'start-scan' && !isScanning) {
-            handleStartScan()
-          } else if (action.id === 'add-manual') {
-            setShowManualEntry(true)
-          }
-        }}
-      />
-      </div>
     </div>
   )
 }

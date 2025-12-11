@@ -54,9 +54,20 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0 p-8 pb-2">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden">
+      {/* Top Search Island - In flow */}
+      <div className="flex-shrink-0 px-8 pt-4 pb-3">
+        <SearchIsland 
+          position="top" 
+          fullWidth={true}
+          title="Dashboard"
+          subtitle="Overview of your lighting system"
+          placeholder="Search, input a task, or ask a question..."
+        />
+      </div>
+
       {/* Dashboard Content */}
-      <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full flex flex-col">
+      <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full flex flex-col px-8 pb-6 overflow-auto">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 flex-shrink-0">
           <div className="fusion-card">
@@ -157,17 +168,6 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Bottom Search Island with Title */}
-      <div className="fixed bottom-10 left-[80px] right-4 z-50">
-      <SearchIsland 
-        position="bottom" 
-        fullWidth={true}
-        title="Dashboard"
-        subtitle="Overview of your lighting system"
-        placeholder="Search, input a task, or ask a question..."
-      />
       </div>
     </div>
   )

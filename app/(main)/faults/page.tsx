@@ -136,10 +136,23 @@ export default function FaultsPage() {
   }, [faults])
 
   return (
-    <div className="h-full flex flex-col min-h-0 pb-2 overflow-visible">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden">
+      {/* Top Search Island - In flow */}
+      <div className="flex-shrink-0 px-[20px] pt-4 pb-3">
+        <SearchIsland 
+          position="top" 
+          fullWidth={true}
+          title="Faults / Health"
+          subtitle="Monitor device health and system status"
+          placeholder="Search faults or devices..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
+      </div>
+
       {/* Summary Cards */}
-      <div className="px-[20px] pt-4 pb-2">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div className="flex-shrink-0 px-[20px] pb-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {summary.topCategories.map((item, index) => {
             const categoryInfo = faultCategories[item.category]
             const colorClass = index === 0 
@@ -177,7 +190,7 @@ export default function FaultsPage() {
       </div>
 
       {/* Main Content: Fault List + Details Panel */}
-      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pt-2 pb-48 overflow-visible">
+      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pt-2 pb-6 overflow-hidden">
         {/* Fault List - Left Side */}
         <div className="flex-1 min-w-0">
           <div className="fusion-card overflow-hidden h-full flex flex-col">
@@ -192,19 +205,6 @@ export default function FaultsPage() {
 
         {/* Fault Details Panel - Right Side */}
         <FaultDetailsPanel fault={selectedFault} />
-      </div>
-
-      {/* Bottom Search Island */}
-      <div className="fixed bottom-10 left-[80px] right-4 z-50">
-        <SearchIsland 
-          position="bottom" 
-          fullWidth={true}
-          title="Faults / Health"
-          subtitle="Monitor device health and system status"
-          placeholder="Search faults or devices..."
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-        />
       </div>
     </div>
   )

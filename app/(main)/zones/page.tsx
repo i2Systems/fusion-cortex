@@ -183,19 +183,54 @@ export default function ZonesPage() {
   }, [selectedZone, devices, filters])
 
   return (
-    <div className="h-full flex flex-col min-h-0 pb-2 overflow-visible">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden">
+      {/* Top Search Island - In flow */}
+      <div className="flex-shrink-0 px-[20px] pt-4 pb-3 relative">
+        <SearchIsland 
+          position="top" 
+          fullWidth={true}
+          showActions={mapUploaded}
+          title="Zones"
+          subtitle="Create and manage control zones for your lighting system"
+          placeholder={mapUploaded ? "Search zones, devices, or type 'create zone'..." : "Upload a map to manage zones..."}
+          onLayersClick={() => setShowFilters(!showFilters)}
+          filterCount={filters.selectedZones.length > 0 || !filters.showFixtures || !filters.showMotion || !filters.showLightSensors ? 1 : 0}
+          onActionDetected={(action) => {
+            if (action.id === 'create-zone' && mapUploaded) {
+              setToolMode('draw-polygon')
+            } else if (action.id === 'upload-map' && !mapUploaded) {
+              // Focus on map upload area
+              document.querySelector('[data-map-upload]')?.scrollIntoView({ behavior: 'smooth' })
+            }
+          }}
+        />
+        {mapUploaded && showFilters && (
+          <div className="absolute top-full right-[20px] mt-2 z-50">
+            <MapFiltersPanel
+              filters={filters}
+              onFiltersChange={setFilters}
+              availableZones={availableZones}
+              isOpen={showFilters}
+              onClose={() => setShowFilters(false)}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Main Content: Map + Zones Panel */}
-      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pt-4 pb-48 overflow-visible">
+      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-6" style={{ overflow: 'visible' }}>
         {/* Map Canvas - Left Side */}
-        <div className="flex-1 relative min-w-0 rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)]" style={{ overflow: 'visible' }}>
+        <div className="flex-1 relative min-w-0 rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)]" style={{ overflow: 'visible', minHeight: 0 }}>
           {/* Zone Toolbar - Top center (hidden for Manager and Technician) */}
           {mapUploaded && role !== 'Manager' && role !== 'Technician' && (
-            <ZoneToolbar
-              mode={toolMode}
-              onModeChange={setToolMode}
-              onDeleteZone={handleDeleteZone}
-              canDelete={!!selectedZone}
-            />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 pointer-events-none" style={{ transform: 'translateX(-50%) translateY(-50%)' }}>
+              <ZoneToolbar
+                mode={toolMode}
+                onModeChange={setToolMode}
+                onDeleteZone={handleDeleteZone}
+                canDelete={!!selectedZone}
+              />
+            </div>
           )}
           
           {/* Clear button - Top right (hidden for Manager and Technician) */}
@@ -214,9 +249,11 @@ export default function ZonesPage() {
             </div>
           )}
           {!mapUploaded ? (
-            <MapUpload onMapUpload={handleMapUpload} />
+            <div className="w-full h-full">
+              <MapUpload onMapUpload={handleMapUpload} />
+            </div>
           ) : (
-            <div className="w-full h-full rounded-2xl overflow-hidden">
+            <div className="w-full h-full rounded-2xl overflow-hidden" style={{ minHeight: 0 }}>
               <ZoneCanvas 
                 onDeviceSelect={setSelectedZone}
                 selectedDeviceId={selectedZone}
@@ -239,7 +276,7 @@ export default function ZonesPage() {
 
         {/* Zones Panel - Right Side (only show when map is uploaded) */}
         {mapUploaded && (
-          <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0">
+          <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0" style={{ minHeight: 0 }}>
             <ZonesPanel
               zones={zonesForPanel}
               selectedZoneId={selectedZone}
@@ -247,41 +284,6 @@ export default function ZonesPage() {
             />
           </div>
         )}
-      </div>
-
-      {/* Bottom Search Island */}
-      <div className="fixed bottom-10 left-[80px] right-4 z-50">
-        <div className="relative">
-          <SearchIsland 
-            position="bottom" 
-            fullWidth={true}
-            showActions={mapUploaded}
-            title="Zones"
-            subtitle="Create and manage control zones for your lighting system"
-            placeholder={mapUploaded ? "Search zones, devices, or type 'create zone'..." : "Upload a map to manage zones..."}
-            onLayersClick={() => setShowFilters(!showFilters)}
-            filterCount={filters.selectedZones.length > 0 || !filters.showFixtures || !filters.showMotion || !filters.showLightSensors ? 1 : 0}
-            onActionDetected={(action) => {
-              if (action.id === 'create-zone' && mapUploaded) {
-                setToolMode('draw-polygon')
-              } else if (action.id === 'upload-map' && !mapUploaded) {
-                // Focus on map upload area
-                document.querySelector('[data-map-upload]')?.scrollIntoView({ behavior: 'smooth' })
-              }
-            }}
-          />
-          {mapUploaded && showFilters && (
-            <div className="absolute bottom-full right-0 mb-2">
-              <MapFiltersPanel
-                filters={filters}
-                onFiltersChange={setFilters}
-                availableZones={availableZones}
-                isOpen={showFilters}
-                onClose={() => setShowFilters(false)}
-              />
-            </div>
-          )}
-        </div>
       </div>
     </div>
   )

@@ -247,22 +247,51 @@ export default function MapPage() {
   }, [filters])
 
   return (
-    <div className="h-full flex flex-col min-h-0 pb-2 overflow-visible">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden">
+      {/* Top Search Island - In flow */}
+      <div className="flex-shrink-0 px-[20px] pt-4 pb-3 relative">
+        <SearchIsland 
+          position="top" 
+          fullWidth={true}
+          showActions={mapUploaded}
+          title="Map & Devices"
+          subtitle="Visualize and manage device locations"
+          placeholder={mapUploaded ? "Search devices, zones, or locations..." : "Upload a map to search devices..."}
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          onLayersClick={() => setShowFilters(!showFilters)}
+          filterCount={activeFilterCount}
+        />
+        {mapUploaded && showFilters && (
+          <div className="absolute top-full right-[20px] mt-2 z-50">
+            <MapFiltersPanel
+              filters={filters}
+              onFiltersChange={setFilters}
+              availableZones={availableZones}
+              isOpen={showFilters}
+              onClose={() => setShowFilters(false)}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Main Content: Map + Table Panel */}
-      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pt-4 pb-48 overflow-visible">
+      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-6" style={{ overflow: 'visible' }}>
         {/* Map Canvas - Left Side */}
-        <div className="flex-1 relative min-w-0" style={{ overflow: 'visible' }}>
+        <div className="flex-1 relative min-w-0" style={{ overflow: 'visible', minHeight: 0 }}>
           {/* Map Toolbar - Top center (hidden for Manager and Technician) */}
           {mapUploaded && role !== 'Manager' && role !== 'Technician' && (
-            <MapToolbar
-              mode={toolMode}
-              onModeChange={setToolMode}
-              onAction={handleToolAction}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              onUndo={undo}
-              onRedo={redo}
-            />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 pointer-events-none" style={{ transform: 'translateX(-50%) translateY(-50%)' }}>
+              <MapToolbar
+                mode={toolMode}
+                onModeChange={setToolMode}
+                onAction={handleToolAction}
+                canUndo={canUndo}
+                canRedo={canRedo}
+                onUndo={undo}
+                onRedo={redo}
+              />
+            </div>
           )}
           
           {/* Clear button - Top right (hidden for Manager and Technician) */}
@@ -312,9 +341,11 @@ export default function MapPage() {
             />
           )}
           {!mapUploaded ? (
-            <MapUpload onMapUpload={handleMapUpload} />
+            <div className="w-full h-full">
+              <MapUpload onMapUpload={handleMapUpload} />
+            </div>
           ) : (
-            <div className="w-full h-full rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] relative">
+            <div className="w-full h-full rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] relative" style={{ minHeight: 0 }}>
               <div className="w-full h-full rounded-2xl overflow-hidden">
                 <MapCanvas 
                   onDeviceSelect={setSelectedDevice}
@@ -342,7 +373,7 @@ export default function MapPage() {
 
         {/* Device Table Panel - Right Side (only show when map is uploaded) */}
         {mapUploaded && (
-          <div className="w-[28rem] min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0">
+          <div className="w-[28rem] min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0" style={{ minHeight: 0 }}>
             <DeviceTable
               devices={filteredDevices}
               selectedDeviceId={selectedDevice}
@@ -350,35 +381,6 @@ export default function MapPage() {
             />
           </div>
         )}
-      </div>
-
-      {/* Bottom Search Island - Always visible, same position as other pages */}
-      <div className="fixed bottom-10 left-[80px] right-4 z-50">
-        <div className="relative">
-          <SearchIsland 
-            position="bottom" 
-            fullWidth={true}
-            showActions={mapUploaded}
-            title="Map & Devices"
-            subtitle="Visualize and manage device locations"
-            placeholder={mapUploaded ? "Search devices, zones, or locations..." : "Upload a map to search devices..."}
-            searchValue={searchQuery}
-            onSearchChange={setSearchQuery}
-            onLayersClick={() => setShowFilters(!showFilters)}
-            filterCount={activeFilterCount}
-          />
-          {mapUploaded && showFilters && (
-            <div className="absolute bottom-full right-0 mb-2">
-              <MapFiltersPanel
-                filters={filters}
-                onFiltersChange={setFilters}
-                availableZones={availableZones}
-                isOpen={showFilters}
-                onClose={() => setShowFilters(false)}
-              />
-            </div>
-          )}
-        </div>
       </div>
     </div>
   )

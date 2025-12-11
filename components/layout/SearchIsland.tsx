@@ -9,7 +9,7 @@
 
 'use client'
 
-import { Search, ChevronDown, Layers, ChevronUp, Sparkles } from 'lucide-react'
+import { Search, Layers, Sparkles } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 import { useSearch } from '@/lib/SearchContext'
 
@@ -27,15 +27,6 @@ interface SearchIslandProps {
   onActionDetected?: (action: { id: string; label: string }) => void
 }
 
-const STORES = [
-  'Store #1234 - Main St',
-  'Store #2156 - Oak Avenue',
-  'Store #3089 - Commerce Blvd',
-  'Store #4421 - River Road',
-  'Store #5567 - Park Plaza',
-  'Store #6789 - Central Square',
-]
-
 export function SearchIsland({ 
   position = 'bottom',
   fullWidth = true,
@@ -50,37 +41,7 @@ export function SearchIsland({
   onActionDetected
 }: SearchIslandProps) {
   const [internalSearchQuery, setInternalSearchQuery] = useState('')
-  const [currentSite, setCurrentSite] = useState(STORES[0])
-  const [showStoreDropdown, setShowStoreDropdown] = useState(false)
   const { detectAction, getPageActions } = useSearch()
-  
-  // Start with false to match server render, then sync with localStorage after mount
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [isMounted, setIsMounted] = useState(false)
-
-  // Load collapsed state from localStorage after mount to avoid hydration mismatch
-  useEffect(() => {
-    setIsMounted(true)
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('fusion_search_island_collapsed')
-      if (saved === 'true') {
-        setIsCollapsed(true)
-      }
-    }
-  }, [])
-
-  // Save collapsed state to localStorage and set data attribute whenever it changes
-  useEffect(() => {
-    if (typeof window !== 'undefined' && isMounted) {
-      localStorage.setItem('fusion_search_island_collapsed', String(isCollapsed))
-      // Set data attribute on document for CSS targeting
-      if (isCollapsed) {
-        document.documentElement.setAttribute('data-search-collapsed', 'true')
-      } else {
-        document.documentElement.removeAttribute('data-search-collapsed')
-      }
-    }
-  }, [isCollapsed, isMounted])
   
   // Use controlled value if provided, otherwise use internal state
   const searchQuery = searchValue !== undefined ? searchValue : internalSearchQuery
@@ -100,7 +61,9 @@ export function SearchIsland({
   }, [detectedAction, onActionDetected])
 
   const containerClass = position === 'top' 
-    ? 'max-w-3xl mx-auto mb-12'
+    ? fullWidth
+      ? 'w-full px-4'
+      : 'max-w-3xl mx-auto px-4'
     : fullWidth
       ? 'w-full px-4'
       : 'max-w-4xl mx-auto px-4'
@@ -112,147 +75,79 @@ export function SearchIsland({
 
   return (
     <div className={`${containerClass} ${positionClass}`}>
-      <div 
-        className={`fusion-card backdrop-blur-xl border border-[var(--color-primary)]/20 search-island transition-all duration-300 ${
-          isCollapsed ? 'py-2.5' : ''
-        }`}
-      >
-        {/* Top Row: Title + Actions + Collapse Button */}
-        <div className={`flex items-center justify-between gap-4 ${isCollapsed ? 'py-0' : title || showActions ? 'pb-3 border-b border-[var(--color-border-subtle)] mb-3' : ''}`}>
-            {/* Title Section */}
-          {!isCollapsed && title && (
-              <div className="flex-shrink-0">
-                <h1 className="text-2xl font-bold text-[var(--color-text)] leading-tight">
-                  {title}
-                </h1>
-                {subtitle && (
-                  <p className="text-sm text-[var(--color-text-muted)] mt-1">
-                    {subtitle}
-                  </p>
-                )}
-              </div>
-            )}
-
-          {/* Collapsed Title (when collapsed) - More legible, positioned higher */}
-          {isCollapsed && title && (
-            <div className="flex-shrink-0 flex items-center">
-              <h2 className="text-base font-bold text-[var(--color-text)] leading-tight">
+      <div className="fusion-card backdrop-blur-xl border border-[var(--color-primary)]/20 search-island py-3 px-4">
+        {/* Single Row: Title + Search + Actions */}
+        <div className="flex items-center gap-4 flex-wrap md:flex-nowrap">
+          {/* Title Section */}
+          {title && (
+            <div className="flex-shrink-0 pr-2 min-w-0">
+              <h1 className="text-lg font-bold text-[var(--color-text)] leading-tight truncate">
                 {title}
-              </h2>
+              </h1>
+              {subtitle && (
+                <p className="text-xs text-[var(--color-text-muted)] leading-tight mt-0.5 line-clamp-1">
+                  {subtitle}
+                </p>
+              )}
             </div>
           )}
 
-          {/* Right Side: Actions + Collapse Button */}
-          <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-            {/* Quick Actions */}
-            {!isCollapsed && showActions && (
-                <button 
-                  onClick={onLayersClick}
-                  className="px-4 py-2.5 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center gap-2 relative"
-                >
-                  <Layers size={16} />
-                  Layers
-                  {filterCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[var(--color-primary)] text-[var(--color-text)] text-xs flex items-center justify-center font-semibold">
-                      {filterCount}
-                    </span>
-                  )}
-                </button>
-            )}
+          {/* Spacer to push search to the right */}
+          <div className="flex-1 hidden md:block" />
 
-            {/* Collapse/Expand Button */}
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-              aria-label={isCollapsed ? 'Expand search' : 'Collapse search'}
-            >
-              {isCollapsed ? (
-                <ChevronUp size={18} />
-              ) : (
-                <ChevronDown size={18} />
-            )}
-            </button>
-          </div>
-        </div>
-
-        {/* Bottom Row: Store Selector + Search (hidden when collapsed) */}
-        {!isCollapsed && (
-        <div className="flex items-center gap-6">
-          {/* Store Selector */}
-          <div className="relative flex-shrink-0">
-            <button 
-              onClick={() => setShowStoreDropdown(!showStoreDropdown)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors border border-[var(--color-border-subtle)]"
-            >
-              <span className="text-sm font-medium text-[var(--color-text)] whitespace-nowrap">
-                {currentSite}
-              </span>
-              <ChevronDown size={16} className="text-[var(--color-text-muted)]" />
-            </button>
-            
-            {/* Dropdown Menu */}
-            {showStoreDropdown && (
-              <>
-                <div 
-                  className="fixed inset-0 z-0" 
-                  onClick={() => setShowStoreDropdown(false)}
-                />
-                <div className="absolute bottom-full left-0 mb-2 w-64 bg-[var(--color-surface)] backdrop-blur-xl rounded-lg border border-[var(--color-border-subtle)] shadow-[var(--shadow-strong)] overflow-hidden z-10">
-                  {STORES.map((store) => (
-                    <button
-                      key={store}
-                      onClick={() => {
-                        setCurrentSite(store)
-                        setShowStoreDropdown(false)
-                      }}
-                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                        currentSite === store
-                          ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)]'
-                          : 'text-[var(--color-text)] hover:bg-[var(--color-surface-subtle)]'
-                      }`}
-                    >
-                      {store}
-                    </button>
-                  ))}
+          {/* Search - Pushed to the right, responsive width */}
+          <div className="relative min-w-0 ml-auto md:ml-0" style={{ width: '100%', maxWidth: '500px' }}>
+            <div className="w-full md:w-[400px] lg:w-[500px]">
+              <Search 
+                size={16} 
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" 
+              />
+              {detectedAction && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <Sparkles size={12} className="text-[var(--color-primary)] animate-pulse" />
+                  <span className="text-xs text-[var(--color-primary)] font-medium bg-[var(--color-primary-soft)] px-2 py-0.5 rounded">
+                    {detectedAction.label}
+                  </span>
                 </div>
-              </>
-            )}
+              )}
+              <input
+                type="text"
+                placeholder={placeholder}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && detectedAction) {
+                    detectedAction.action()
+                    setSearchQuery('')
+                  }
+                }}
+                className={`w-full pl-10 pr-3 py-2 h-[38px] bg-[var(--color-bg-elevated)] border rounded-lg text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-soft)] focus:outline-none focus:shadow-[var(--shadow-glow-primary)] transition-all ${
+                  detectedAction 
+                    ? 'border-[var(--color-primary)] pr-28' 
+                    : 'border-[var(--color-border-subtle)] focus:border-[var(--color-primary)]'
+                }`}
+              />
+            </div>
           </div>
 
-          {/* Search */}
-          <div className="flex-1 relative">
-            <Search 
-              size={18} 
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" 
-            />
-            {detectedAction && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                <Sparkles size={14} className="text-[var(--color-primary)] animate-pulse" />
-                <span className="text-xs text-[var(--color-primary)] font-medium bg-[var(--color-primary-soft)] px-2 py-0.5 rounded">
-                  {detectedAction.label}
-                </span>
-              </div>
-            )}
-            <input
-              type="text"
-              placeholder={placeholder}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && detectedAction) {
-                  detectedAction.action()
-                  setSearchQuery('')
-                }
-              }}
-              className={`w-full pl-10 pr-4 py-2.5 bg-[var(--color-bg-elevated)] border rounded-lg text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-soft)] focus:outline-none focus:shadow-[var(--shadow-glow-primary)] transition-all ${
-                detectedAction 
-                  ? 'border-[var(--color-primary)] pr-32' 
-                  : 'border-[var(--color-border-subtle)] focus:border-[var(--color-primary)]'
-              }`}
-            />
-          </div>
+          {/* Actions */}
+          {showActions && (
+            <div className="flex-shrink-0">
+              <button 
+                onClick={onLayersClick}
+                className="px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center gap-2 relative h-[38px]"
+              >
+                <Layers size={14} />
+                <span className="text-sm hidden sm:inline">Layers</span>
+                {filterCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[var(--color-primary)] text-[var(--color-text)] text-xs flex items-center justify-center font-semibold">
+                    {filterCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
         </div>
-        )}
       </div>
     </div>
   )

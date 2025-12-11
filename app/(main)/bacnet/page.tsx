@@ -342,9 +342,25 @@ export default function BACnetPage() {
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0 pb-2 overflow-visible">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden">
+      {/* Top Search Island - In flow */}
+      <div className="flex-shrink-0 px-[20px] pt-4 pb-3">
+        <SearchIsland 
+          position="top" 
+          fullWidth={true}
+          title="BACnet Mapping"
+          subtitle="Map zones to BACnet objects for BMS integration"
+          placeholder="Search mappings or type 'add mapping'..."
+          onActionDetected={(action) => {
+            if (action.id === 'add-mapping') {
+              handleAddNew()
+            }
+          }}
+        />
+      </div>
+
       {/* Main Content: Table + Details Panel */}
-      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pt-4 pb-48 overflow-visible">
+      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-6" style={{ overflow: 'visible' }}>
         {/* Table - Left Side */}
         <div className="flex-1 min-w-0">
           <div className="fusion-card overflow-hidden h-full flex flex-col">
@@ -524,22 +540,6 @@ export default function BACnetPage() {
           onTestConnection={handleTestConnection}
           onAdd={handleAddNew}
         />
-      </div>
-
-      {/* Bottom Search Island */}
-      <div className="fixed bottom-10 left-[80px] right-4 z-50">
-      <SearchIsland 
-        position="bottom" 
-        fullWidth={true}
-        title="BACnet Mapping"
-        subtitle="Map zones to BACnet objects for BMS integration"
-        placeholder="Search mappings or type 'add mapping'..."
-        onActionDetected={(action) => {
-          if (action.id === 'add-mapping') {
-            handleAddNew()
-          }
-        }}
-      />
       </div>
     </div>
   )
