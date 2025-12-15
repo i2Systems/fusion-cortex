@@ -10,6 +10,8 @@ import { RuleProvider } from '@/lib/RuleContext'
 import { NotificationProvider } from '@/lib/NotificationContext'
 import { FontProvider } from '@/lib/FontContext'
 import { I18nProvider } from '@/lib/i18n'
+// Import exportData to make exportFusionData() available in browser console
+import '@/lib/exportData'
 
 export const metadata: Metadata = {
   title: 'Fusion / Cortex — Commissioning & Configuration',

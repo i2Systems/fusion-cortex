@@ -12,6 +12,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { Device } from './mockData'
 import { initialZones } from './initialZones'
+import { seedZones } from './seedZones'
 
 export interface Zone {
   id: string
@@ -85,6 +86,22 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
       const zonesVersion = localStorage.getItem('fusion_zones_version')
       const zonesSaved = localStorage.getItem('fusion_zones_saved') === 'true'
       const CURRENT_VERSION = 'v3-fitted-zones'
+      
+      // PRIORITY 0: Check for seed data (committed to repo) - use this for fresh deployments
+      if (seedZones && seedZones.length > 0) {
+        const zonesWithDates = seedZones.map((z: any) => ({
+          ...z,
+          createdAt: z.createdAt ? new Date(z.createdAt) : new Date(),
+          updatedAt: z.updatedAt ? new Date(z.updatedAt) : new Date(),
+        }))
+        setZones(zonesWithDates)
+        setIsInitialized(true)
+        // Also save to localStorage so it persists in this session
+        localStorage.setItem('fusion_zones', JSON.stringify(zonesWithDates))
+        localStorage.setItem('fusion_zones_version', CURRENT_VERSION)
+        console.log(`✅ Loaded ${zonesWithDates.length} zones from seed data (committed to repo)`)
+        return
+      }
       
       // PRIORITY 1: If zones are marked as saved, ALWAYS use them and never reset
       if (zonesSaved && savedZones) {

@@ -11,6 +11,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { Device, mockDevices as initialMockDevices } from './mockData'
+import { seedDevices } from './seedDevices'
 
 interface DeviceContextType {
   devices: Device[]
@@ -46,7 +47,35 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
     const savedVersion = typeof window !== 'undefined' ? localStorage.getItem('fusion_devices_version') : null
     const devicesSaved = typeof window !== 'undefined' ? localStorage.getItem('fusion_devices_saved') === 'true' : false
     
-    // PRIORITY: If devices are marked as saved, always load them (regardless of version)
+    // PRIORITY 0: Check for seed data (committed to repo) - use this for fresh deployments
+    if (seedDevices && seedDevices.length > 0) {
+      const restored = seedDevices.map((device: Device) => {
+        if (device.components) {
+          return {
+            ...device,
+            components: device.components.map((comp: any) => ({
+              ...comp,
+              warrantyExpiry: comp.warrantyExpiry ? new Date(comp.warrantyExpiry) : undefined,
+              buildDate: comp.buildDate ? new Date(comp.buildDate) : undefined,
+            })),
+            warrantyExpiry: device.warrantyExpiry ? new Date(device.warrantyExpiry as any) : undefined,
+          }
+        }
+        return device
+      })
+      setDevices(restored)
+      setHistory([restored])
+      setHistoryIndex(0)
+      // Also save to localStorage so it persists in this session
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('fusion_devices', JSON.stringify(restored))
+        localStorage.setItem('fusion_devices_version', DATA_VERSION)
+      }
+      console.log(`✅ Loaded ${restored.length} devices from seed data (committed to repo)`)
+      return
+    }
+    
+    // PRIORITY 1: If devices are marked as saved, always load them (regardless of version)
     if (devicesSaved && typeof window !== 'undefined') {
       const savedDevices = localStorage.getItem('fusion_devices')
       if (savedDevices) {
