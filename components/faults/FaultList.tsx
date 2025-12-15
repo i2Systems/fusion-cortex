@@ -9,7 +9,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AlertCircle, Droplets, Zap, Thermometer, Plug, Settings, Package, Wrench, Lightbulb } from 'lucide-react'
 import { Device } from '@/lib/mockData'
 import { FaultCategory, faultCategories } from '@/lib/faultDefinitions'
@@ -127,6 +127,35 @@ export function FaultList({ faults, selectedFaultId, onFaultSelect, searchQuery 
     }
   }
 
+  // Keyboard navigation: up/down arrows
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if an item is selected and we're not typing in an input
+      if (!selectedFaultId || sortedFaults.length === 0) return
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const currentIndex = sortedFaults.findIndex(f => f.device.id === selectedFaultId)
+        if (currentIndex === -1) return
+
+        let newIndex: number
+        if (e.key === 'ArrowDown') {
+          newIndex = currentIndex < sortedFaults.length - 1 ? currentIndex + 1 : currentIndex
+        } else {
+          newIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex
+        }
+
+        if (newIndex !== currentIndex) {
+          onFaultSelect?.(sortedFaults[newIndex].device.id)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedFaultId, sortedFaults, onFaultSelect])
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -137,20 +166,40 @@ export function FaultList({ faults, selectedFaultId, onFaultSelect, searchQuery 
       </div>
 
       {/* Fault List */}
-      <div className="flex-1 overflow-auto pb-2">
+      <div 
+        className="flex-1 overflow-auto pb-2"
+        onClick={(e) => {
+          // If clicking on the container itself (not a fault item), deselect
+          if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('fault-list-container')) {
+            onFaultSelect?.(null)
+          }
+        }}
+      >
         {sortedFaults.length === 0 ? (
           <div className="p-8 text-center text-sm text-[var(--color-text-muted)]">
             {searchQuery ? 'No faults match your search' : 'No faults detected. All devices are healthy.'}
           </div>
         ) : (
-          <div className="space-y-2 p-2">
+          <div 
+            className="space-y-2 p-2 fault-list-container"
+            onClick={(e) => {
+              // If clicking on empty space in the list container, deselect
+              if (e.target === e.currentTarget) {
+                onFaultSelect?.(null)
+              }
+            }}
+          >
             {sortedFaults.map((fault) => {
               const isSelected = selectedFaultId === fault.device.id
 
               return (
                 <div
                   key={fault.device.id}
-                  onClick={() => onFaultSelect?.(fault.device.id)}
+                  onClick={(e) => {
+                    e.stopPropagation() // Prevent container click handler
+                    // Toggle: if already selected, deselect; otherwise select
+                    onFaultSelect?.(isSelected ? null : fault.device.id)
+                  }}
                   className={`
                     p-4 rounded-lg border cursor-pointer transition-all
                     ${isSelected

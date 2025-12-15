@@ -61,8 +61,9 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[var(--z-modal)]"
+      className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-[var(--z-modal)]"
       onClick={onClose}
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
     >
       <div
         className="bg-[var(--color-surface)] backdrop-blur-xl rounded-[var(--radius-2xl)] shadow-[var(--shadow-strong)] w-full max-w-md p-8 border border-[var(--color-primary)]/30"

@@ -10,7 +10,7 @@
 
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { MapViewToggle, type MapViewMode } from '@/components/shared/MapViewToggle'
@@ -138,6 +138,8 @@ export default function BACnetPage() {
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(null)
   const [mapUploaded, setMapUploaded] = useState(false)
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
+  const listContainerRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   // Generate mappings for all zones (limit to 12)
   const zoneMappings = useMemo(() => {
@@ -385,6 +387,21 @@ export default function BACnetPage() {
     }
   }
 
+  // Handle clicking outside the list and panel to deselect
+  const handleMainContentClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    // Deselect if clicking outside both the list container and panel
+    if (
+      listContainerRef.current &&
+      panelRef.current &&
+      !listContainerRef.current.contains(target) &&
+      !panelRef.current.contains(target)
+    ) {
+      setSelectedMappingId(null)
+      setSelectedZoneId(null)
+    }
+  }
+
   // Filter mappings based on selected zone
   const filteredMappings = useMemo(() => {
     // If zones are still initializing, return empty array
@@ -392,6 +409,35 @@ export default function BACnetPage() {
     if (!selectedZoneId) return zoneMappings
     return zoneMappings.filter(m => m.zoneId === selectedZoneId)
   }, [zoneMappings, selectedZoneId, zones.length])
+
+  // Keyboard navigation: up/down arrows
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if an item is selected and we're not typing in an input
+      if (!selectedMappingId || filteredMappings.length === 0) return
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const currentIndex = filteredMappings.findIndex(m => m.zoneId === selectedMappingId)
+        if (currentIndex === -1) return
+
+        let newIndex: number
+        if (e.key === 'ArrowDown') {
+          newIndex = currentIndex < filteredMappings.length - 1 ? currentIndex + 1 : currentIndex
+        } else {
+          newIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex
+        }
+
+        if (newIndex !== currentIndex) {
+          setSelectedMappingId(filteredMappings[newIndex].zoneId)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedMappingId, filteredMappings])
 
   // Prepare zones for map with BACnet status
   const mapZones = useMemo(() => {
@@ -436,9 +482,16 @@ export default function BACnetPage() {
       </div>
 
       {/* Main Content: Table/Map + Details Panel */}
-      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" style={{ overflow: 'visible' }}>
+      <div 
+        className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" 
+        style={{ overflow: 'visible' }}
+        onClick={handleMainContentClick}
+      >
         {/* Table/Map - Left Side */}
-        <div className="flex-1 min-w-0 flex flex-col">
+        <div 
+          ref={listContainerRef}
+          className="flex-1 min-w-0 flex flex-col"
+        >
           {/* View Toggle */}
           <div className="mb-3 flex items-center justify-between">
             <MapViewToggle currentView={viewMode} onViewChange={setViewMode} />
@@ -468,7 +521,15 @@ export default function BACnetPage() {
                   </p>
                 </div>
 
-                <div className="flex-1 overflow-auto">
+                <div 
+                  className="flex-1 overflow-auto"
+                  onClick={(e) => {
+                    // If clicking on the container itself (not a table row), deselect
+                    if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TABLE') {
+                      setSelectedMappingId(null)
+                    }
+                  }}
+                >
                   <table className="w-full">
                     <thead className="sticky top-0 bg-[var(--color-surface)] z-10">
                       <tr className="border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)]">
@@ -509,7 +570,11 @@ export default function BACnetPage() {
                           return (
                             <tr 
                               key={mapping.zoneId}
-                              onClick={() => setSelectedMappingId(mapping.zoneId)}
+                              onClick={(e) => {
+                                e.stopPropagation() // Prevent container click handler
+                                // Toggle: if already selected, deselect; otherwise select
+                                setSelectedMappingId(isSelected ? null : mapping.zoneId)
+                              }}
                               className={`
                                 border-b border-[var(--color-border-subtle)] 
                                 transition-colors cursor-pointer
@@ -615,13 +680,15 @@ export default function BACnetPage() {
         </div>
 
         {/* Details Panel - Right Side */}
-        <BACnetDetailsPanel
-          mapping={selectedMapping}
-          onEdit={handleEditSave}
-          onDelete={handleDelete}
-          onTestConnection={handleTestConnection}
-          onAdd={handleAddNew}
-        />
+        <div ref={panelRef}>
+          <BACnetDetailsPanel
+            mapping={selectedMapping}
+            onEdit={handleEditSave}
+            onDelete={handleDelete}
+            onTestConnection={handleTestConnection}
+            onAdd={handleAddNew}
+          />
+        </div>
       </div>
     </div>
   )

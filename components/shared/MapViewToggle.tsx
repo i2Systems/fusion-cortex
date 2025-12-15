@@ -24,7 +24,7 @@ export function MapViewToggle({ currentView, onViewChange }: MapViewToggleProps)
           flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200
           ${
             currentView === 'list'
-              ? 'bg-[var(--color-primary)] text-white shadow-[var(--shadow-soft)]'
+              ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-soft)]'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
           }
         `}
@@ -38,7 +38,7 @@ export function MapViewToggle({ currentView, onViewChange }: MapViewToggleProps)
           flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200
           ${
             currentView === 'map'
-              ? 'bg-[var(--color-primary)] text-white shadow-[var(--shadow-soft)]'
+              ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-soft)]'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
           }
         `}

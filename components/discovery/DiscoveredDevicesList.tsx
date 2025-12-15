@@ -8,13 +8,13 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Filter, CheckCircle2, XCircle, AlertCircle, Wifi, Battery } from 'lucide-react'
 import { Device } from '@/lib/mockData'
 
 interface DiscoveredDevicesListProps {
   devices: Device[]
-  onDeviceSelect?: (device: Device) => void
+  onDeviceSelect?: (device: Device | null) => void
   selectedDeviceId?: string | null
   searchQuery?: string
 }
@@ -87,6 +87,35 @@ export function DiscoveredDevicesList({
     return 'text-[var(--color-danger)]'
   }
 
+  // Keyboard navigation: up/down arrows
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if an item is selected and we're not typing in an input
+      if (!selectedDeviceId || filteredDevices.length === 0) return
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const currentIndex = filteredDevices.findIndex(d => d.id === selectedDeviceId)
+        if (currentIndex === -1) return
+
+        let newIndex: number
+        if (e.key === 'ArrowDown') {
+          newIndex = currentIndex < filteredDevices.length - 1 ? currentIndex + 1 : currentIndex
+        } else {
+          newIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex
+        }
+
+        if (newIndex !== currentIndex) {
+          onDeviceSelect?.(filteredDevices[newIndex])
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedDeviceId, filteredDevices, onDeviceSelect])
+
   return (
     <div className="fusion-card h-full flex flex-col min-h-0">
       {/* Header - Fixed */}
@@ -147,17 +176,39 @@ export function DiscoveredDevicesList({
       )}
 
       {/* Device List - Scrollable */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="space-y-2">
+      <div 
+        className="flex-1 min-h-0 overflow-y-auto"
+        onClick={(e) => {
+          // If clicking on the container itself (not a device item), deselect
+          if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('discovered-devices-list-container')) {
+            onDeviceSelect?.(null)
+          }
+        }}
+      >
+        <div 
+          className="space-y-2 discovered-devices-list-container"
+          onClick={(e) => {
+            // If clicking on empty space in the list container, deselect
+            if (e.target === e.currentTarget) {
+              onDeviceSelect?.(null)
+            }
+          }}
+        >
           {filteredDevices.length === 0 ? (
             <div className="text-center py-8 text-sm text-[var(--color-text-muted)]">
               No devices match the current filters
             </div>
           ) : (
-            filteredDevices.map((device) => (
+            filteredDevices.map((device) => {
+              const isSelected = selectedDeviceId === device.id
+              return (
               <div
                 key={device.id}
-                onClick={() => onDeviceSelect?.(device)}
+                onClick={(e) => {
+                  e.stopPropagation() // Prevent container click handler
+                  // Toggle: if already selected, deselect; otherwise select
+                  onDeviceSelect?.(isSelected ? null : device)
+                }}
                 className={`
                   p-3 rounded-lg border cursor-pointer transition-all
                   ${selectedDeviceId === device.id
@@ -202,7 +253,8 @@ export function DiscoveredDevicesList({
                   )}
                 </div>
               </div>
-            ))
+              )
+            })
           )}
         </div>
       </div>

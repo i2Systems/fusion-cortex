@@ -138,7 +138,7 @@ export function ZoneToolbar({
         {/* Save Button */}
         <button
           onClick={() => onSave?.()}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] transition-all duration-200 shadow-[var(--shadow-soft)]"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-text-on-primary)] hover:bg-[var(--color-primary-hover)] transition-all duration-200 shadow-[var(--shadow-soft)]"
           title="Save zone layout to system (prevents automatic resets)"
         >
           <Save size={16} />

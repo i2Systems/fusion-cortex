@@ -77,7 +77,7 @@ export default function MapPage() {
     canRedo
   } = useDevices()
   const { role } = useRole()
-  const { zones } = useZones()
+  const { zones, syncZoneDeviceIds, getDevicesInZone } = useZones()
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([])
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null) // Zone to arrange devices into
@@ -108,61 +108,70 @@ export default function MapPage() {
     // Set the selected zone
     setSelectedZoneId(zoneId)
     
-    // If devices are selected, auto-arrange them into this zone
-    if (selectedDeviceIds.length > 0) {
-      const zone = zones.find(z => z.id === zoneId)
-      if (!zone) return
-      
-      // Get zone bounds from polygon (polygon is in normalized 0-1 coordinates)
-      const zonePoints = zone.polygon
-      const minX = Math.min(...zonePoints.map(p => p.x))
-      const maxX = Math.max(...zonePoints.map(p => p.x))
-      const minY = Math.min(...zonePoints.map(p => p.y))
-      const maxY = Math.max(...zonePoints.map(p => p.y))
-      
-      // Calculate zone dimensions with padding to keep devices inside
-      const padding = 0.02 // 2% padding from zone edges
-      const zoneMinX = minX + padding
-      const zoneMaxX = maxX - padding
-      const zoneMinY = minY + padding
-      const zoneMaxY = maxY - padding
-      
-      const zoneWidth = zoneMaxX - zoneMinX
-      const zoneHeight = zoneMaxY - zoneMinY
-      
-      // Only proceed if zone has valid dimensions
-      if (zoneWidth <= 0 || zoneHeight <= 0) {
-        console.warn('Zone has invalid dimensions for auto-arrange')
-        return
-      }
-      
-      // Calculate grid layout for selected devices within zone bounds
-      const selectedDevices = devices.filter(d => selectedDeviceIds.includes(d.id))
-      const cols = Math.ceil(Math.sqrt(selectedDevices.length))
-      const rows = Math.ceil(selectedDevices.length / cols)
-      
-      // Calculate spacing to fit devices within zone with margins
-      const spacingX = zoneWidth / (cols + 1)
-      const spacingY = zoneHeight / (rows + 1)
-      
-      const updates = selectedDevices.map((device, idx) => {
-        const col = idx % cols
-        const row = Math.floor(idx / cols)
-        // Position devices within zone bounds, starting from zoneMinX/zoneMinY
-        const x = Math.max(zoneMinX, Math.min(zoneMaxX, zoneMinX + spacingX * (col + 1)))
-        const y = Math.max(zoneMinY, Math.min(zoneMaxY, zoneMinY + spacingY * (row + 1)))
+      // If devices are selected, auto-arrange them into this zone
+      if (selectedDeviceIds.length > 0) {
+        const zone = zones.find(z => z.id === zoneId)
+        if (!zone) return
         
-        return {
-          deviceId: device.id,
-          updates: {
-            x: x,
-            y: y
-          }
+        // Get zone bounds from polygon (polygon is in normalized 0-1 coordinates)
+        const zonePoints = zone.polygon
+        const minX = Math.min(...zonePoints.map(p => p.x))
+        const maxX = Math.max(...zonePoints.map(p => p.x))
+        const minY = Math.min(...zonePoints.map(p => p.y))
+        const maxY = Math.max(...zonePoints.map(p => p.y))
+        
+        // Calculate zone dimensions with padding to keep devices inside
+        const padding = 0.02 // 2% padding from zone edges
+        const zoneMinX = minX + padding
+        const zoneMaxX = maxX - padding
+        const zoneMinY = minY + padding
+        const zoneMaxY = maxY - padding
+        
+        const zoneWidth = zoneMaxX - zoneMinX
+        const zoneHeight = zoneMaxY - zoneMinY
+        
+        // Only proceed if zone has valid dimensions
+        if (zoneWidth <= 0 || zoneHeight <= 0) {
+          console.warn('Zone has invalid dimensions for auto-arrange')
+          return
         }
-      })
-      
-      updateMultipleDevices(updates)
-    }
+        
+        // Calculate grid layout for selected devices within zone bounds
+        const selectedDevices = devices.filter(d => selectedDeviceIds.includes(d.id))
+        const cols = Math.ceil(Math.sqrt(selectedDevices.length))
+        const rows = Math.ceil(selectedDevices.length / cols)
+        
+        // Calculate spacing to fit devices within zone with margins
+        const spacingX = zoneWidth / (cols + 1)
+        const spacingY = zoneHeight / (rows + 1)
+        
+        const updates = selectedDevices.map((device, idx) => {
+          const col = idx % cols
+          const row = Math.floor(idx / cols)
+          // Position devices within zone bounds, starting from zoneMinX/zoneMinY
+          const x = Math.max(zoneMinX, Math.min(zoneMaxX, zoneMinX + spacingX * (col + 1)))
+          const y = Math.max(zoneMinY, Math.min(zoneMaxY, zoneMinY + spacingY * (row + 1)))
+          
+          return {
+            deviceId: device.id,
+            updates: {
+              x: x,
+              y: y,
+              zone: zone.name // Update device zone property
+            }
+          }
+        })
+        
+        updateMultipleDevices(updates)
+        
+        // Sync zones after arranging
+        setTimeout(() => {
+          syncZoneDeviceIds(devices.map(d => {
+            const update = updates.find(u => u.deviceId === d.id)
+            return update ? { ...d, ...update.updates } : d
+          }))
+        }, 0)
+      }
   }
   const [mapUploaded, setMapUploaded] = useState(false)
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(null)
@@ -220,6 +229,34 @@ export default function MapPage() {
       deviceId,
       updates: { x, y }
     }])
+    
+    // Sync device zone assignment after move
+    // Use setTimeout to ensure device state is updated first
+    setTimeout(() => {
+      const movedDevice = devices.find(d => d.id === deviceId)
+      if (movedDevice) {
+        // Find which zone contains this device now
+        let newZoneName: string | undefined = undefined
+        for (const zone of zones) {
+          const devicesInZone = getDevicesInZone(zone.id, [{ ...movedDevice, x, y }])
+          if (devicesInZone.length > 0) {
+            newZoneName = zone.name
+            break
+          }
+        }
+        
+        // Update device zone property if it changed
+        if (movedDevice.zone !== newZoneName) {
+          updateMultipleDevices([{
+            deviceId,
+            updates: { zone: newZoneName }
+          }])
+        }
+        
+        // Sync all zone deviceIds arrays
+        syncZoneDeviceIds(devices.map(d => d.id === deviceId ? { ...d, x, y } : d))
+      }
+    }, 0)
   }
 
   const handleToolAction = (action: MapToolMode) => {
@@ -280,6 +317,13 @@ export default function MapPage() {
           }
         })
         updateMultipleDevices(updates)
+        // Sync zones after arranging
+        setTimeout(() => {
+          syncZoneDeviceIds(devices.map(d => {
+            const update = updates.find(u => u.deviceId === d.id)
+            return update ? { ...d, ...update.updates } : d
+          }))
+        }, 0)
         break
       }
       case 'align-aisle': {
@@ -296,6 +340,13 @@ export default function MapPage() {
           }
         })
         updateMultipleDevices(updates)
+        // Sync zones after arranging
+        setTimeout(() => {
+          syncZoneDeviceIds(devices.map(d => {
+            const update = updates.find(u => u.deviceId === d.id)
+            return update ? { ...d, ...update.updates } : d
+          }))
+        }, 0)
         break
       }
       case 'auto-arrange': {
@@ -323,6 +374,13 @@ export default function MapPage() {
           }
         })
         updateMultipleDevices(updates)
+        // Sync zones after arranging
+        setTimeout(() => {
+          syncZoneDeviceIds(devices.map(d => {
+            const update = updates.find(u => u.deviceId === d.id)
+            return update ? { ...d, ...update.updates } : d
+          }))
+        }, 0)
         break
       }
     }

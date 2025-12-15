@@ -32,6 +32,7 @@ interface ZoneContextType {
   deleteZone: (zoneId: string) => void
   getDevicesInZone: (zoneId: string, allDevices: Device[]) => Device[]
   getZoneForDevice: (deviceId: string) => Zone | null
+  syncZoneDeviceIds: (allDevices: Device[]) => void
   saveZones: () => void
   isZonesSaved: () => boolean
 }
@@ -256,7 +257,19 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
   }
 
   const deleteZone = (zoneId: string) => {
-    setZones(prev => prev.filter(zone => zone.id !== zoneId))
+    setZones(prev => {
+      const zoneToDelete = prev.find(z => z.id === zoneId)
+      const updated = prev.filter(zone => zone.id !== zoneId)
+      // Save to localStorage immediately
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('fusion_zones', JSON.stringify(updated))
+        const zonesSaved = localStorage.getItem('fusion_zones_saved') === 'true'
+        if (zonesSaved) {
+          localStorage.setItem('fusion_zones_saved', 'true')
+        }
+      }
+      return updated
+    })
   }
 
   const getDevicesInZone = (zoneId: string, allDevices: Device[]): Device[] => {
@@ -266,6 +279,33 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
     return allDevices.filter(device => {
       if (device.x === undefined || device.y === undefined) return false
       return pointInPolygon({ x: device.x, y: device.y }, zone.polygon)
+    })
+  }
+
+  // Sync zone deviceIds with actual device positions
+  // This should be called after devices are moved or updated
+  const syncZoneDeviceIds = (allDevices: Device[]) => {
+    setZones(prev => {
+      const updated = prev.map(zone => {
+        const devicesInZone = allDevices.filter(device => {
+          if (device.x === undefined || device.y === undefined) return false
+          return pointInPolygon({ x: device.x, y: device.y }, zone.polygon)
+        })
+        return {
+          ...zone,
+          deviceIds: devicesInZone.map(d => d.id),
+          updatedAt: new Date()
+        }
+      })
+      // Save to localStorage immediately
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('fusion_zones', JSON.stringify(updated))
+        const zonesSaved = localStorage.getItem('fusion_zones_saved') === 'true'
+        if (zonesSaved) {
+          localStorage.setItem('fusion_zones_saved', 'true')
+        }
+      }
+      return updated
     })
   }
 
@@ -311,6 +351,7 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
         deleteZone,
         getDevicesInZone,
         getZoneForDevice,
+        syncZoneDeviceIds,
         saveZones,
         isZonesSaved,
       }}

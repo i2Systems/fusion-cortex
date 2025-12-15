@@ -93,6 +93,14 @@ export function FaultsMapCanvas({
     text: '#ffffff',
   })
 
+  // Sort devices in logical order (by deviceId) for keyboard navigation
+  const sortedDevices = useMemo(() => {
+    return [...devices].sort((a, b) => {
+      // Sort by deviceId for consistent logical order
+      return a.deviceId.localeCompare(b.deviceId)
+    })
+  }, [devices])
+
   useEffect(() => {
     const updateDimensions = () => {
       const availableWidth = window.innerWidth - 80 - 384 - 32
@@ -133,6 +141,35 @@ export function FaultsMapCanvas({
       observer.disconnect()
     }
   }, [])
+
+  // Keyboard navigation: up/down arrows for device selection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if a device is selected and we're not typing in an input
+      if (!selectedDeviceId || sortedDevices.length === 0) return
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const currentIndex = sortedDevices.findIndex(d => d.id === selectedDeviceId)
+        if (currentIndex === -1) return
+
+        let newIndex: number
+        if (e.key === 'ArrowDown') {
+          newIndex = currentIndex < sortedDevices.length - 1 ? currentIndex + 1 : currentIndex
+        } else {
+          newIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex
+        }
+
+        if (newIndex !== currentIndex) {
+          onDeviceSelect?.(sortedDevices[newIndex].id)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedDeviceId, sortedDevices, onDeviceSelect])
 
   const getDeviceColor = (type: string) => {
     switch (type) {

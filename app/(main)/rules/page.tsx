@@ -14,7 +14,7 @@
 
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { MapViewToggle, type MapViewMode } from '@/components/shared/MapViewToggle'
@@ -46,6 +46,8 @@ export default function RulesPage() {
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(null)
   const [mapUploaded, setMapUploaded] = useState(false)
   const [selectedZoneName, setSelectedZoneName] = useState<string | null>(null)
+  const listContainerRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   // Load saved map image on mount
   useEffect(() => {
@@ -83,7 +85,11 @@ export default function RulesPage() {
         rule.name.toLowerCase().includes(query) ||
         rule.description?.toLowerCase().includes(query) ||
         rule.condition.zone?.toLowerCase().includes(query) ||
-        rule.action.zones.some(z => z.toLowerCase().includes(query))
+        rule.condition.deviceId?.toLowerCase().includes(query) ||
+        rule.targetName?.toLowerCase().includes(query) ||
+        rule.action.zones?.some(z => z.toLowerCase().includes(query)) ||
+        rule.action.devices?.some(d => d.toLowerCase().includes(query)) ||
+        false
       )
     }
     
@@ -91,7 +97,9 @@ export default function RulesPage() {
     if (selectedZoneName && zones.length > 0) {
       filtered = filtered.filter(rule => 
         rule.condition.zone === selectedZoneName ||
-        rule.action.zones.includes(selectedZoneName)
+        rule.targetName === selectedZoneName ||
+        rule.action.zones?.includes(selectedZoneName) ||
+        false
       )
     }
     
@@ -127,7 +135,8 @@ export default function RulesPage() {
     const zoneSet = new Set<string>()
     rules.forEach(rule => {
       if (rule.condition.zone) zoneSet.add(rule.condition.zone)
-      rule.action.zones.forEach(z => zoneSet.add(z))
+      if (rule.targetName) zoneSet.add(rule.targetName)
+      rule.action.zones?.forEach(z => zoneSet.add(z))
     })
     return Array.from(zoneSet)
   }, [rules])
@@ -141,13 +150,17 @@ export default function RulesPage() {
       addRule({
         name: ruleData.name || 'New Rule',
         description: ruleData.description,
+        ruleType: ruleData.ruleType || 'rule',
+        targetType: ruleData.targetType || 'zone',
+        targetId: ruleData.targetId,
+        targetName: ruleData.targetName,
         trigger: ruleData.trigger || 'motion',
         condition: ruleData.condition || {},
         action: ruleData.action || { zones: [] },
         overrideBMS: ruleData.overrideBMS || false,
         enabled: ruleData.enabled !== undefined ? ruleData.enabled : true,
       })
-      // Clear selection after creating
+      // Clear selection after creating - panel will reset to create new state
       setSelectedRuleId(null)
     }
   }
@@ -163,6 +176,20 @@ export default function RulesPage() {
     }
   }
 
+  // Handle clicking outside the list and panel to deselect
+  const handleMainContentClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    // Deselect if clicking outside both the list container and panel
+    if (
+      listContainerRef.current &&
+      panelRef.current &&
+      !listContainerRef.current.contains(target) &&
+      !panelRef.current.contains(target)
+    ) {
+      setSelectedRuleId(null)
+    }
+  }
+
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island - In flow */}
@@ -170,13 +197,13 @@ export default function RulesPage() {
         <SearchIsland 
           position="top" 
           fullWidth={true}
-          title="Rules & Overrides"
-          subtitle="Create automation rules for lighting control"
-          placeholder="Search rules or type 'create rule'..."
+          title="Rules, Overrides & Scheduling"
+          subtitle="Create automation rules, overrides, and schedules for lighting control"
+          placeholder="Search rules or type 'create rule' or 'create schedule'..."
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           onActionDetected={(action) => {
-            if (action.id === 'create-rule') {
+            if (action.id === 'create-rule' || action.id === 'create-schedule') {
               setSelectedRuleId(null) // This will show the create form in RulesPanel
             }
           }}
@@ -184,9 +211,16 @@ export default function RulesPage() {
       </div>
 
       {/* Main Content: Rules List/Map + Details Panel */}
-      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" style={{ overflow: 'visible' }}>
+      <div 
+        className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" 
+        style={{ overflow: 'visible' }}
+        onClick={handleMainContentClick}
+      >
         {/* Rules List/Map - Left Side */}
-        <div className="flex-1 min-w-0 flex flex-col">
+        <div 
+          ref={listContainerRef}
+          className="flex-1 min-w-0 flex flex-col"
+        >
           {/* View Toggle */}
           <div className="mb-3 flex items-center justify-between">
             <MapViewToggle currentView={viewMode} onViewChange={setViewMode} />
@@ -236,12 +270,14 @@ export default function RulesPage() {
         </div>
 
         {/* Rules Panel - Right Side */}
-        <RulesPanel
-          selectedRule={selectedRule}
-          onSave={handleSave}
-          onCancel={handleCancel}
-          onDelete={handleDelete}
-        />
+        <div ref={panelRef}>
+          <RulesPanel
+            selectedRule={selectedRule}
+            onSave={handleSave}
+            onCancel={handleCancel}
+            onDelete={handleDelete}
+          />
+        </div>
       </div>
     </div>
   )

@@ -144,7 +144,7 @@ export function MainNav() {
           >
             {isAuthenticated && user ? (
               <div className="w-10 h-10 rounded-full bg-[var(--color-primary)] flex items-center justify-center">
-                <span className="text-white text-sm font-medium">
+                <span className="text-[var(--color-text-on-primary)] text-sm font-medium">
                   {user.name.charAt(0).toUpperCase()}
                 </span>
               </div>

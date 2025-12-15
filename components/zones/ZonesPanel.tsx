@@ -92,6 +92,35 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
     }
   }, [isEditing, selectedZone, colors])
 
+  // Keyboard navigation: up/down arrows
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if an item is selected and we're not typing in an input
+      if (!selectedZoneId || zones.length === 0) return
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const currentIndex = zones.findIndex(z => z.id === selectedZoneId)
+        if (currentIndex === -1) return
+
+        let newIndex: number
+        if (e.key === 'ArrowDown') {
+          newIndex = currentIndex < zones.length - 1 ? currentIndex + 1 : currentIndex
+        } else {
+          newIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex
+        }
+
+        if (newIndex !== currentIndex) {
+          onZoneSelect?.(zones[newIndex].id)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedZoneId, zones, onZoneSelect])
+
   const handleStartEdit = () => {
     if (selectedZone) {
       setIsEditing(true)
@@ -314,7 +343,15 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
       )}
 
       {/* Zone List */}
-      <div className="flex-1 overflow-auto pb-2">
+      <div 
+        className="flex-1 overflow-auto pb-2"
+        onClick={(e) => {
+          // If clicking on the container itself (not a zone item), deselect
+          if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('zones-list-container')) {
+            onZoneSelect?.(null)
+          }
+        }}
+      >
         {zones.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-8 text-center">
             <div className="w-16 h-16 rounded-full bg-[var(--color-surface-subtle)] flex items-center justify-center mb-4">
@@ -328,11 +365,25 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
             </p>
           </div>
         ) : (
-          <div className="space-y-2 p-2">
-            {zones.map((zone) => (
+          <div 
+            className="space-y-2 p-2 zones-list-container"
+            onClick={(e) => {
+              // If clicking on empty space in the list container, deselect
+              if (e.target === e.currentTarget) {
+                onZoneSelect?.(null)
+              }
+            }}
+          >
+            {zones.map((zone) => {
+              const isSelected = selectedZoneId === zone.id
+              return (
             <div
               key={zone.id}
-              onClick={() => onZoneSelect?.(zone.id)}
+              onClick={(e) => {
+                e.stopPropagation() // Prevent container click handler
+                // Toggle: if already selected, deselect; otherwise select
+                onZoneSelect?.(isSelected ? null : zone.id)
+              }}
               className={`
                 p-3 rounded-lg border cursor-pointer transition-all
                 ${selectedZoneId === zone.id
@@ -388,7 +439,8 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
                 {zone.description}
               </p>
             </div>
-          ))}
+            )
+          })}
           </div>
         )}
       </div>

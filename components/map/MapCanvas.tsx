@@ -179,6 +179,7 @@ export function MapCanvas({
     primary: '#4c7dff',
     accent: '#f97316',
     success: '#22c55e',
+    warning: '#ffcc00',
     muted: '#9ca3af',
     text: '#ffffff',
     tooltipBg: 'rgba(17, 24, 39, 0.95)',
@@ -186,6 +187,47 @@ export function MapCanvas({
     tooltipText: '#ffffff',
     tooltipShadow: 'rgba(0, 0, 0, 0.5)',
   })
+
+  // Sort devices in logical order (by deviceId) for keyboard navigation
+  const sortedDevices = useMemo(() => {
+    return [...devices].sort((a, b) => {
+      // Sort by deviceId for consistent logical order
+      return a.deviceId.localeCompare(b.deviceId)
+    })
+  }, [devices])
+
+  // Keyboard navigation: up/down arrows for device selection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if a device is selected and we're not typing in an input
+      if (!selectedDeviceId || sortedDevices.length === 0) return
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const currentIndex = sortedDevices.findIndex(d => d.id === selectedDeviceId)
+        if (currentIndex === -1) return
+
+        let newIndex: number
+        if (e.key === 'ArrowDown') {
+          newIndex = currentIndex < sortedDevices.length - 1 ? currentIndex + 1 : currentIndex
+        } else {
+          newIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex
+        }
+
+        if (newIndex !== currentIndex) {
+          onDeviceSelect?.(sortedDevices[newIndex].id)
+          // Also update multi-select if needed
+          if (onDevicesSelect) {
+            onDevicesSelect([sortedDevices[newIndex].id])
+          }
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedDeviceId, sortedDevices, onDeviceSelect, onDevicesSelect])
 
   useEffect(() => {
     // Set initial dimensions
@@ -208,6 +250,7 @@ export function MapCanvas({
         primary: computedStyle.getPropertyValue('--color-primary').trim() || '#4c7dff',
         accent: computedStyle.getPropertyValue('--color-accent').trim() || '#f97316',
         success: computedStyle.getPropertyValue('--color-success').trim() || '#22c55e',
+        warning: computedStyle.getPropertyValue('--color-warning').trim() || '#ffcc00',
         muted: computedStyle.getPropertyValue('--color-text-muted').trim() || '#9ca3af',
         text: computedStyle.getPropertyValue('--color-text').trim() || '#ffffff',
         tooltipBg: computedStyle.getPropertyValue('--color-tooltip-bg').trim() || 'rgba(17, 24, 39, 0.95)',
@@ -603,36 +646,18 @@ export function MapCanvas({
                   // Use a reasonable size that scales with canvas
                   const barLength = Math.max(30, dimensions.width * 0.035) // ~3.5% of width, min 30px
                   const barWidth = Math.max(3, barLength / 12) // Maintain 12:1 ratio
+                  // Larger invisible hit area for easier clicking
+                  const hitAreaRadius = Math.max(20, barLength / 2 + 10) // At least 20px, or bar length/2 + 10px
                   
                   return (
                     <Group rotation={device.orientation || 0}>
-                      {/* Light bar rectangle - 6ft x 6inch (12:1 ratio) */}
-                      <Rect
-                        x={-barLength / 2} // Center the bar
-                        y={-barWidth / 2} // Center the bar
-                        width={barLength}
-                        height={barWidth}
-                        fill={getDeviceColor(device.type)}
-                        opacity={device.locked ? 0.5 : (isSelected ? 0.9 : (isHovered ? 0.8 : 0.7))}
-                        stroke={device.locked ? '#fbbf24' : (isSelected ? colors.text : 'rgba(255,255,255,0.3)')}
-                        strokeWidth={device.locked ? 2 : (isSelected ? 2 : 1)}
-                        shadowBlur={isSelected ? 10 : (isHovered ? 6 : 2)}
-                        shadowColor={isSelected ? colors.primary : 'black'}
-                        cornerRadius={1}
-                        dash={device.locked ? [4, 4] : undefined}
-                        listening={false}
-                      />
-                      {/* Center dot for interaction */}
+                      {/* Large invisible hit area for easier clicking */}
                       <Circle
                         x={0}
                         y={0}
-                        radius={isSelected ? 6 : (isHovered ? 5 : 4)}
-                        fill={getDeviceColor(device.type)}
-                        stroke={device.locked ? '#fbbf24' : (isSelected ? colors.text : 'rgba(255,255,255,0.4)')}
-                        strokeWidth={device.locked ? 2 : (isSelected ? 2.5 : 1.5)}
-                        shadowBlur={isSelected ? 12 : (isHovered ? 8 : 4)}
-                        shadowColor={isSelected ? colors.primary : 'black'}
-                        opacity={device.locked ? 0.8 : (isSelected ? 1 : (isHovered ? 0.9 : 0.8))}
+                        radius={hitAreaRadius}
+                        fill="transparent"
+                        opacity={0}
                         onClick={(e) => {
                           e.cancelBubble = true
                           if (mode === 'select') {
@@ -650,13 +675,13 @@ export function MapCanvas({
                                 const newSelection = [...selectedDeviceIds, device.id]
                                 onDevicesSelect?.(newSelection)
                                 if (newSelection.length === 1) {
-                            onDeviceSelect?.(device.id)
+                                  onDeviceSelect?.(device.id)
                                 }
                               }
                             } else {
                               // Single select
                               onDevicesSelect?.([device.id])
-                            onDeviceSelect?.(device.id)
+                              onDeviceSelect?.(device.id)
                             }
                           }
                         }}
@@ -700,65 +725,131 @@ export function MapCanvas({
                           }
                         }}
                       />
+                      {/* Light bar rectangle - 6ft x 6inch (12:1 ratio) */}
+                      <Rect
+                        x={-barLength / 2} // Center the bar
+                        y={-barWidth / 2} // Center the bar
+                        width={barLength}
+                        height={barWidth}
+                        fill={getDeviceColor(device.type)}
+                        opacity={device.locked ? 0.5 : (isSelected ? 0.9 : (isHovered ? 0.8 : 0.7))}
+                        stroke={device.locked ? colors.warning : (isSelected ? colors.text : 'rgba(255,255,255,0.3)')}
+                        strokeWidth={device.locked ? 2 : (isSelected ? 2 : 1)}
+                        shadowBlur={isSelected ? 10 : (isHovered ? 6 : 2)}
+                        shadowColor={isSelected ? colors.primary : 'black'}
+                        cornerRadius={1}
+                        dash={device.locked ? [4, 4] : undefined}
+                        listening={false}
+                      />
+                      {/* Center dot - visual only */}
+                      <Circle
+                        x={0}
+                        y={0}
+                        radius={isSelected ? 6 : (isHovered ? 5 : 4)}
+                        fill={getDeviceColor(device.type)}
+                        stroke={device.locked ? colors.warning : (isSelected ? colors.text : 'rgba(255,255,255,0.4)')}
+                        strokeWidth={device.locked ? 2 : (isSelected ? 2.5 : 1.5)}
+                        shadowBlur={isSelected ? 12 : (isHovered ? 8 : 4)}
+                        shadowColor={isSelected ? colors.primary : 'black'}
+                        opacity={device.locked ? 0.8 : (isSelected ? 1 : (isHovered ? 0.9 : 0.8))}
+                        listening={false}
+                      />
                     </Group>
                   )
                 })()}
                 
                 {/* Regular dot for non-fixture devices */}
                 {device.type !== 'fixture' && (
-                  <Circle
-                    x={0}
-                    y={0}
-                    radius={isSelected ? 8 : (isHovered ? 6 : 4)}
-                    fill={getDeviceColor(device.type)}
-                    stroke={device.locked ? '#fbbf24' : (isSelected ? colors.text : 'rgba(255,255,255,0.2)')}
-                    strokeWidth={device.locked ? 2 : (isSelected ? 3 : 1)}
-                    shadowBlur={isSelected ? 15 : (isHovered ? 8 : 3)}
-                    shadowColor={isSelected ? colors.primary : 'black'}
-                    opacity={device.locked ? 0.7 : (isSelected ? 1 : (isHovered ? 0.8 : 0.6))}
-                    dash={device.locked ? [4, 4] : undefined}
-                    onClick={() => {
-                      if (mode === 'select') {
-                        onDeviceSelect?.(device.id)
-                      }
-                    }}
-                    onTap={() => {
-                      if (mode === 'select') {
-                        onDeviceSelect?.(device.id)
-                      }
-                    }}
-                    onMouseEnter={(e) => {
-                      const container = e.target.getStage()?.container()
-                      if (container) {
-                        if (device.locked) {
-                          container.style.cursor = 'not-allowed'
-                        } else {
-                          container.style.cursor = mode === 'move' ? 'grab' : 'pointer'
+                  <>
+                    {/* Large invisible hit area for easier clicking */}
+                    <Circle
+                      x={0}
+                      y={0}
+                      radius={isSelected ? 20 : (isHovered ? 18 : 16)} // Much larger than visual circle
+                      fill="transparent"
+                      opacity={0}
+                      onClick={(e) => {
+                        e.cancelBubble = true
+                        if (mode === 'select') {
+                          if (e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey) {
+                            // Toggle selection
+                            if (selectedDeviceIds.includes(device.id)) {
+                              const newSelection = selectedDeviceIds.filter(id => id !== device.id)
+                              onDevicesSelect?.(newSelection)
+                              if (newSelection.length === 1) {
+                                onDeviceSelect?.(newSelection[0])
+                              } else if (newSelection.length === 0) {
+                                onDeviceSelect?.(null)
+                              }
+                            } else {
+                              const newSelection = [...selectedDeviceIds, device.id]
+                              onDevicesSelect?.(newSelection)
+                              if (newSelection.length === 1) {
+                                onDeviceSelect?.(device.id)
+                              }
+                            }
+                          } else {
+                            // Single select
+                            onDevicesSelect?.([device.id])
+                            onDeviceSelect?.(device.id)
+                          }
                         }
-                      }
-                      setHoveredDevice(device)
-                      // Get mouse position relative to stage
-                      const stage = e.target.getStage()
-                      if (stage) {
-                        const pointerPos = stage.getPointerPosition()
-                        if (pointerPos) {
-                          setTooltipPosition({ x: pointerPos.x, y: pointerPos.y })
+                      }}
+                      onTap={(e) => {
+                        e.cancelBubble = true
+                        if (mode === 'select') {
+                          // For tap events, we don't have modifier keys, so just single select
+                          onDevicesSelect?.([device.id])
+                          onDeviceSelect?.(device.id)
                         }
-                      }
-                    }}
-                    onMouseLeave={() => {
-                      setHoveredDevice(null)
-                    }}
-                    onMouseMove={(e) => {
-                      const stage = e.target.getStage()
-                      if (stage) {
-                        const pointerPos = stage.getPointerPosition()
-                        if (pointerPos) {
-                          setTooltipPosition({ x: pointerPos.x, y: pointerPos.y })
+                      }}
+                      onMouseEnter={(e) => {
+                        const container = e.target.getStage()?.container()
+                        if (container) {
+                          if (device.locked) {
+                            container.style.cursor = 'not-allowed'
+                          } else {
+                            container.style.cursor = mode === 'move' ? 'grab' : 'pointer'
+                          }
                         }
-                      }
-                    }}
-                  />
+                        setHoveredDevice(device)
+                        // Get mouse position relative to stage
+                        const stage = e.target.getStage()
+                        if (stage) {
+                          const pointerPos = stage.getPointerPosition()
+                          if (pointerPos) {
+                            setTooltipPosition({ x: pointerPos.x, y: pointerPos.y })
+                          }
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredDevice(null)
+                      }}
+                      onMouseMove={(e) => {
+                        const stage = e.target.getStage()
+                        if (stage) {
+                          const pointerPos = stage.getPointerPosition()
+                          if (pointerPos) {
+                            setTooltipPosition({ x: pointerPos.x, y: pointerPos.y })
+                          }
+                        }
+                      }}
+                    />
+                    {/* Visual circle - no interaction */}
+                    <Circle
+                      x={0}
+                      y={0}
+                      radius={isSelected ? 8 : (isHovered ? 6 : 4)}
+                      fill={getDeviceColor(device.type)}
+                      stroke={device.locked ? colors.warning : (isSelected ? colors.text : 'rgba(255,255,255,0.2)')}
+                      strokeWidth={device.locked ? 2 : (isSelected ? 3 : 1)}
+                      shadowBlur={isSelected ? 15 : (isHovered ? 8 : 3)}
+                      shadowColor={isSelected ? colors.primary : 'black'}
+                      opacity={device.locked ? 0.7 : (isSelected ? 1 : (isHovered ? 0.8 : 0.6))}
+                      dash={device.locked ? [4, 4] : undefined}
+                      listening={false}
+                    />
+                  </>
                 )}
                 {/* Lock indicator */}
                 {device.locked && (
@@ -766,8 +857,8 @@ export function MapCanvas({
                     x={6}
                     y={-6}
                     radius={3}
-                    fill="#fbbf24"
-                    stroke="white"
+                    fill={colors.warning}
+                    stroke={colors.text}
                     strokeWidth={1}
                     listening={false}
                   />

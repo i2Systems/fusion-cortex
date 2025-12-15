@@ -9,7 +9,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Clock, Zap, Sun, Radio, Calendar, CheckCircle2, XCircle } from 'lucide-react'
 import { Rule } from '@/lib/mockRules'
 
@@ -40,7 +40,11 @@ export function RulesList({ rules, selectedRuleId, onRuleSelect, searchQuery = '
       rule.name.toLowerCase().includes(query) ||
       rule.description?.toLowerCase().includes(query) ||
       rule.condition.zone?.toLowerCase().includes(query) ||
-      rule.action.zones.some(z => z.toLowerCase().includes(query))
+      rule.condition.deviceId?.toLowerCase().includes(query) ||
+      rule.targetName?.toLowerCase().includes(query) ||
+      rule.action.zones?.some(z => z.toLowerCase().includes(query)) ||
+      rule.action.devices?.some(d => d.toLowerCase().includes(query)) ||
+      false
     )
   })
 
@@ -82,16 +86,20 @@ export function RulesList({ rules, selectedRuleId, onRuleSelect, searchQuery = '
   }
 
   const formatRuleCondition = (rule: Rule) => {
+    const target = rule.targetName || rule.condition.zone || rule.condition.deviceId || 'target'
     switch (rule.trigger) {
       case 'motion':
-        return `motion detected in ${rule.condition.zone || 'zone'}`
+        return `motion detected in ${target}`
       case 'no_motion':
-        return `no motion for ${rule.condition.duration || 0} minutes in ${rule.condition.zone || 'zone'}`
+        return `no motion for ${rule.condition.duration || 0} minutes in ${target}`
       case 'daylight':
-        return `daylight level ${rule.condition.operator || '>'} ${rule.condition.level || 0}fc in ${rule.condition.zone || 'zone'}`
+        return `daylight level ${rule.condition.operator || '>'} ${rule.condition.level || 0}fc in ${target}`
       case 'bms':
         return `BMS command received`
       case 'schedule':
+        if (rule.condition.scheduleTime) {
+          return `scheduled at ${rule.condition.scheduleTime}${rule.condition.scheduleDays ? ` on ${rule.condition.scheduleDays.length} day(s)` : ''}`
+        }
         return `scheduled time reached`
       default:
         return 'condition met'
@@ -109,8 +117,12 @@ export function RulesList({ rules, selectedRuleId, onRuleSelect, searchQuery = '
     if (rule.action.returnToBMS) {
       parts.push('then return to BMS')
     }
-    const zones = rule.action.zones.length > 0 ? rule.action.zones.join(', ') : 'zones'
-    return `set ${zones} ${parts.join(', ')}`
+    const targets = (rule.action.zones && rule.action.zones.length > 0)
+      ? rule.action.zones.join(', ')
+      : (rule.action.devices && rule.action.devices.length > 0)
+      ? `${rule.action.devices.length} device(s)`
+      : 'targets'
+    return `set ${targets} ${parts.join(', ')}`
   }
 
   const handleSort = (field: 'name' | 'lastTriggered' | 'createdAt') => {
@@ -122,6 +134,35 @@ export function RulesList({ rules, selectedRuleId, onRuleSelect, searchQuery = '
     }
   }
 
+  // Keyboard navigation: up/down arrows
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if an item is selected and we're not typing in an input
+      if (!selectedRuleId || sortedRules.length === 0) return
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const currentIndex = sortedRules.findIndex(r => r.id === selectedRuleId)
+        if (currentIndex === -1) return
+
+        let newIndex: number
+        if (e.key === 'ArrowDown') {
+          newIndex = currentIndex < sortedRules.length - 1 ? currentIndex + 1 : currentIndex
+        } else {
+          newIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex
+        }
+
+        if (newIndex !== currentIndex) {
+          onRuleSelect?.(sortedRules[newIndex].id)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedRuleId, sortedRules, onRuleSelect])
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -132,13 +173,29 @@ export function RulesList({ rules, selectedRuleId, onRuleSelect, searchQuery = '
       </div>
 
       {/* Rules List */}
-      <div className="flex-1 overflow-auto pb-2">
+      <div 
+        className="flex-1 overflow-auto pb-2"
+        onClick={(e) => {
+          // If clicking on the container itself (not a rule item), deselect
+          if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('rules-list-container')) {
+            onRuleSelect?.(null)
+          }
+        }}
+      >
         {sortedRules.length === 0 ? (
           <div className="p-8 text-center text-sm text-[var(--color-text-muted)]">
             {searchQuery ? 'No rules match your search' : 'No rules configured'}
           </div>
         ) : (
-          <div className="space-y-2 p-2">
+          <div 
+            className="space-y-2 p-2 rules-list-container"
+            onClick={(e) => {
+              // If clicking on empty space in the list container, deselect
+              if (e.target === e.currentTarget) {
+                onRuleSelect?.(null)
+              }
+            }}
+          >
             {sortedRules.map((rule) => {
               const TriggerIcon = triggerIcons[rule.trigger]
               const isSelected = selectedRuleId === rule.id
@@ -146,7 +203,11 @@ export function RulesList({ rules, selectedRuleId, onRuleSelect, searchQuery = '
               return (
                 <div
                   key={rule.id}
-                  onClick={() => onRuleSelect?.(rule.id)}
+                  onClick={(e) => {
+                    e.stopPropagation() // Prevent container click handler
+                    // Toggle: if already selected, deselect; otherwise select
+                    onRuleSelect?.(isSelected ? null : rule.id)
+                  }}
                   className={`
                     p-4 rounded-lg border cursor-pointer transition-all
                     ${isSelected
@@ -170,9 +231,14 @@ export function RulesList({ rules, selectedRuleId, onRuleSelect, searchQuery = '
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-sm text-[var(--color-text)] mb-1">
-                          {rule.name}
-                        </h4>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-sm text-[var(--color-text)]">
+                            {rule.name}
+                          </h4>
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-[var(--color-surface)] text-[var(--color-text-muted)]">
+                            {rule.ruleType === 'schedule' ? 'Schedule' : rule.ruleType === 'override' ? 'Override' : 'Rule'}
+                          </span>
+                        </div>
                         <div className="text-xs text-[var(--color-text-muted)] mb-1">
                           <span className="font-medium">IF</span> {formatRuleCondition(rule)}
                         </div>

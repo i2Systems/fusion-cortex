@@ -10,7 +10,7 @@
 
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { X } from 'lucide-react'
 import { SearchIsland } from '@/components/layout/SearchIsland'
@@ -43,7 +43,7 @@ const ZONE_COLORS = [
 
 export default function ZonesPage() {
   const { devices, updateMultipleDevices, saveDevices } = useDevices()
-  const { zones, addZone, updateZone, deleteZone, getDevicesInZone, saveZones, isZonesSaved } = useZones()
+  const { zones, addZone, updateZone, deleteZone, getDevicesInZone, syncZoneDeviceIds, saveZones, isZonesSaved } = useZones()
   const { role } = useRole()
   const [selectedZone, setSelectedZone] = useState<string | null>(null)
   const [mapUploaded, setMapUploaded] = useState(false)
@@ -57,6 +57,8 @@ export default function ZonesPage() {
     showLightSensors: true,
     selectedZones: [],
   })
+  const mapContainerRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   // Load saved map image on mount
   useEffect(() => {
@@ -118,6 +120,11 @@ export default function ZonesPage() {
           updates: { zone: newZone.name }
         }))
       )
+      
+      // Sync zone deviceIds after updating devices
+      setTimeout(() => {
+        syncZoneDeviceIds(devices)
+      }, 0)
     }
 
     setSelectedZone(newZone.id)
@@ -134,6 +141,19 @@ export default function ZonesPage() {
 
   const handleDeleteZone = () => {
     if (selectedZone) {
+      const zoneToDelete = zones.find(z => z.id === selectedZone)
+      if (zoneToDelete) {
+        // Clear zone property from devices in this zone
+        const devicesInZone = getDevicesInZone(selectedZone, devices)
+        if (devicesInZone.length > 0) {
+          updateMultipleDevices(
+            devicesInZone.map(device => ({
+              deviceId: device.id,
+              updates: { zone: undefined }
+            }))
+          )
+        }
+      }
       deleteZone(selectedZone)
       setSelectedZone(null)
     }
@@ -202,6 +222,20 @@ export default function ZonesPage() {
     }))
   }, [selectedZone, devices, filters])
 
+  // Handle clicking outside the map and panel to deselect
+  const handleMainContentClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    // Deselect if clicking outside both the map container and panel
+    if (
+      mapContainerRef.current &&
+      panelRef.current &&
+      !mapContainerRef.current.contains(target) &&
+      !panelRef.current.contains(target)
+    ) {
+      setSelectedZone(null)
+    }
+  }
+
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island - In flow */}
@@ -238,9 +272,17 @@ export default function ZonesPage() {
       </div>
 
       {/* Main Content: Map + Zones Panel */}
-      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" style={{ overflow: 'visible' }}>
+      <div 
+        className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" 
+        style={{ overflow: 'visible' }}
+        onClick={handleMainContentClick}
+      >
         {/* Map Canvas - Left Side */}
-        <div className="flex-1 relative min-w-0 rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)]" style={{ overflow: 'visible', minHeight: 0 }}>
+        <div 
+          ref={mapContainerRef}
+          className="flex-1 relative min-w-0 rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)]" 
+          style={{ overflow: 'visible', minHeight: 0 }}
+        >
           {/* Zone Toolbar - Top center (hidden for Manager and Technician) */}
           {mapUploaded && role !== 'Manager' && role !== 'Technician' && (
             <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 pointer-events-none" style={{ transform: 'translateX(-50%) translateY(-50%)' }}>
@@ -335,7 +377,11 @@ export default function ZonesPage() {
         </div>
 
         {/* Zones Panel - Right Side (always show, even without map) */}
-        <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0" style={{ minHeight: 0 }}>
+        <div 
+          ref={panelRef}
+          className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0" 
+          style={{ minHeight: 0 }}
+        >
           <ZonesPanel
             zones={zonesForPanel}
             selectedZoneId={selectedZone}

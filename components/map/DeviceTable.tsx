@@ -89,6 +89,35 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
     }
   }, [selectedDeviceId])
 
+  // Keyboard navigation: up/down arrows
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if an item is selected and we're not typing in an input
+      if (!selectedDeviceId || sortedDevices.length === 0) return
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const currentIndex = sortedDevices.findIndex(d => d.id === selectedDeviceId)
+        if (currentIndex === -1) return
+
+        let newIndex: number
+        if (e.key === 'ArrowDown') {
+          newIndex = currentIndex < sortedDevices.length - 1 ? currentIndex + 1 : currentIndex
+        } else {
+          newIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex
+        }
+
+        if (newIndex !== currentIndex) {
+          onDeviceSelect?.(sortedDevices[newIndex].id)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedDeviceId, sortedDevices, onDeviceSelect])
+
   const selectedDevice = devices.find(d => d.id === selectedDeviceId)
 
   const getDeviceIcon = (type: string) => {

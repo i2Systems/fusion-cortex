@@ -72,8 +72,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[var(--z-modal)]"
+      className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-[var(--z-modal)]"
       onClick={onClose}
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
     >
       <div
         className="bg-[var(--color-surface)] backdrop-blur-xl rounded-[var(--radius-2xl)] shadow-[var(--shadow-strong)] w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden border border-[var(--color-primary)]/30"
@@ -84,7 +85,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         <div className="flex items-center justify-between p-6 border-b border-[var(--color-border-subtle)]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[var(--color-primary)] flex items-center justify-center shadow-[var(--shadow-glow-primary)]">
-              <span className="text-white font-bold text-xl">F</span>
+              <span className="text-[var(--color-text-on-primary)] font-bold text-xl">F</span>
             </div>
             <div>
             <h2 className="text-2xl font-bold text-[var(--color-text)]">{t('settings')}</h2>

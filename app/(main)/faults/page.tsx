@@ -9,7 +9,7 @@
 
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { MapViewToggle, type MapViewMode } from '@/components/shared/MapViewToggle'
@@ -47,6 +47,8 @@ export default function FaultsPage() {
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(null)
   const [mapUploaded, setMapUploaded] = useState(false)
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
+  const listContainerRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   // Load saved map image on mount
   useEffect(() => {
@@ -242,6 +244,21 @@ export default function FaultsPage() {
     }
   }, [faults])
 
+  // Handle clicking outside the list and panel to deselect
+  const handleMainContentClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    // Deselect if clicking outside both the list container and panel
+    if (
+      listContainerRef.current &&
+      panelRef.current &&
+      !listContainerRef.current.contains(target) &&
+      !panelRef.current.contains(target)
+    ) {
+      setSelectedFaultId(null)
+      setSelectedDeviceId(null)
+    }
+  }
+
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island - In flow */}
@@ -297,9 +314,15 @@ export default function FaultsPage() {
       </div>
 
       {/* Main Content: Fault List/Map + Details Panel */}
-      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pt-2 pb-14 overflow-hidden">
+      <div 
+        className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pt-2 pb-14 overflow-hidden"
+        onClick={handleMainContentClick}
+      >
         {/* Fault List/Map - Left Side */}
-        <div className="flex-1 min-w-0 flex flex-col">
+        <div 
+          ref={listContainerRef}
+          className="flex-1 min-w-0 flex flex-col"
+        >
           {/* View Toggle */}
           <div className="mb-3 flex items-center justify-between">
             <MapViewToggle currentView={viewMode} onViewChange={setViewMode} />
@@ -352,7 +375,9 @@ export default function FaultsPage() {
         </div>
 
         {/* Fault Details Panel - Right Side */}
-        <FaultDetailsPanel fault={selectedFault} />
+        <div ref={panelRef}>
+          <FaultDetailsPanel fault={selectedFault} />
+        </div>
       </div>
     </div>
   )

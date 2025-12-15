@@ -6,19 +6,35 @@
  * AI Note: Rules follow Alexa-style plain language format.
  */
 
+export type RuleType = 'rule' | 'override' | 'schedule'
+export type TargetType = 'zone' | 'device'
+export type TriggerType = 'motion' | 'no_motion' | 'daylight' | 'bms' | 'schedule'
+export type ScheduleFrequency = 'daily' | 'weekly' | 'custom'
+
 export interface Rule {
   id: string
   name: string
   description?: string
-  trigger: 'motion' | 'no_motion' | 'daylight' | 'bms' | 'schedule'
+  ruleType: RuleType // 'rule', 'override', or 'schedule'
+  targetType: TargetType // 'zone' or 'device'
+  targetId?: string // Zone ID or Device ID
+  targetName?: string // Zone name or Device ID for display
+  trigger: TriggerType
   condition: {
     zone?: string
+    deviceId?: string
     duration?: number // minutes
     level?: number // fc for daylight
     operator?: '>' | '<' | '=' | '>='
+    // Scheduling fields
+    scheduleTime?: string // HH:mm format
+    scheduleDays?: number[] // 0-6 (Sunday-Saturday) for weekly
+    scheduleFrequency?: ScheduleFrequency
+    scheduleDate?: string // YYYY-MM-DD for one-time schedules
   }
   action: {
-    zones: string[]
+    zones?: string[]
+    devices?: string[] // Device IDs
     brightness?: number // percentage
     duration?: number // minutes
     returnToBMS?: boolean
@@ -35,6 +51,10 @@ export const mockRules: Rule[] = [
     id: 'rule-1',
     name: 'Motion Activation - Clothing',
     description: 'Automatically turn on lights when motion is detected',
+    ruleType: 'rule',
+    targetType: 'zone',
+    targetId: 'zone-2',
+    targetName: 'Zone 2 - Clothing',
     trigger: 'motion',
     condition: {
       zone: 'Zone 2 - Clothing',
@@ -55,6 +75,10 @@ export const mockRules: Rule[] = [
     id: 'rule-2',
     name: 'Daylight Harvesting - Grocery',
     description: 'Dim lights when natural light is sufficient',
+    ruleType: 'rule',
+    targetType: 'zone',
+    targetId: 'zone-7',
+    targetName: 'Zone 7 - Grocery',
     trigger: 'daylight',
     condition: {
       zone: 'Zone 7 - Grocery',
@@ -75,6 +99,10 @@ export const mockRules: Rule[] = [
     id: 'rule-3',
     name: 'Auto-Off After Inactivity',
     description: 'Return to BMS control after no motion detected',
+    ruleType: 'rule',
+    targetType: 'zone',
+    targetId: 'zone-1',
+    targetName: 'Zone 1 - Electronics',
     trigger: 'no_motion',
     condition: {
       zone: 'Zone 1 - Electronics',
@@ -94,10 +122,15 @@ export const mockRules: Rule[] = [
     id: 'rule-4',
     name: 'Evening Dimming - Retail',
     description: 'Reduce brightness during evening hours for energy savings',
+    ruleType: 'schedule',
+    targetType: 'zone',
+    targetId: 'zone-3',
+    targetName: 'Zone 3 - Retail',
     trigger: 'schedule',
     condition: {
       zone: 'Zone 3 - Retail',
-      duration: 60,
+      scheduleTime: '18:00',
+      scheduleFrequency: 'daily',
     },
     action: {
       zones: ['Zone 3 - Retail'],
@@ -115,6 +148,10 @@ export const mockRules: Rule[] = [
     id: 'rule-5',
     name: 'BMS Override - Electronics',
     description: 'Allow BMS to take control when maintenance mode is activated',
+    ruleType: 'override',
+    targetType: 'zone',
+    targetId: 'zone-1',
+    targetName: 'Zone 1 - Electronics',
     trigger: 'bms',
     condition: {
       zone: 'Zone 1 - Electronics',
@@ -133,6 +170,10 @@ export const mockRules: Rule[] = [
     id: 'rule-6',
     name: 'Low Light Boost - Grocery',
     description: 'Increase brightness when daylight levels drop below threshold',
+    ruleType: 'rule',
+    targetType: 'zone',
+    targetId: 'zone-7',
+    targetName: 'Zone 7 - Grocery',
     trigger: 'daylight',
     condition: {
       zone: 'Zone 7 - Grocery',
@@ -153,6 +194,10 @@ export const mockRules: Rule[] = [
     id: 'rule-7',
     name: 'Multi-Zone Motion Response',
     description: 'Activate adjacent zones when motion is detected in primary zone',
+    ruleType: 'rule',
+    targetType: 'zone',
+    targetId: 'zone-2',
+    targetName: 'Zone 2 - Clothing',
     trigger: 'motion',
     condition: {
       zone: 'Zone 2 - Clothing',
@@ -173,6 +218,10 @@ export const mockRules: Rule[] = [
     id: 'rule-8',
     name: 'Extended Inactivity - All Zones',
     description: 'Return all zones to BMS after extended period of no activity',
+    ruleType: 'rule',
+    targetType: 'zone',
+    targetId: 'zone-1',
+    targetName: 'Zone 1 - Electronics',
     trigger: 'no_motion',
     condition: {
       zone: 'Zone 1 - Electronics',

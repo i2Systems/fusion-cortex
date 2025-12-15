@@ -97,6 +97,35 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
     }
   }, [selectedDeviceId])
 
+  // Keyboard navigation: up/down arrows
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if an item is selected and we're not typing in an input
+      if (!selectedDeviceId || sortedDevices.length === 0) return
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const currentIndex = sortedDevices.findIndex(d => d.id === selectedDeviceId)
+        if (currentIndex === -1) return
+
+        let newIndex: number
+        if (e.key === 'ArrowDown') {
+          newIndex = currentIndex < sortedDevices.length - 1 ? currentIndex + 1 : currentIndex
+        } else {
+          newIndex = currentIndex > 0 ? currentIndex - 1 : currentIndex
+        }
+
+        if (newIndex !== currentIndex) {
+          onDeviceSelect?.(sortedDevices[newIndex].id)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedDeviceId, sortedDevices, onDeviceSelect])
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -107,7 +136,16 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
       </div>
 
       {/* Table */}
-      <div ref={tableRef} className="flex-1 overflow-auto pb-2">
+      <div 
+        ref={tableRef} 
+        className="flex-1 overflow-auto pb-2"
+        onClick={(e) => {
+          // If clicking on the container itself (not a table row), deselect
+          if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TABLE') {
+            onDeviceSelect?.(null)
+          }
+        }}
+      >
         {sortedDevices.length === 0 ? (
           <div className="p-8 text-center text-sm text-[var(--color-text-muted)]">
             {searchQuery ? `No devices found matching "${searchQuery}"` : 'No devices found'}
@@ -155,11 +193,17 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
               </tr>
             </thead>
             <tbody>
-              {sortedDevices.map((device) => (
+              {sortedDevices.map((device) => {
+                const isSelected = selectedDeviceId === device.id
+                return (
                 <tr
                   key={device.id}
-                  ref={selectedDeviceId === device.id ? selectedRowRef : null}
-                  onClick={() => onDeviceSelect?.(device.id)}
+                  ref={isSelected ? selectedRowRef : null}
+                  onClick={(e) => {
+                    e.stopPropagation() // Prevent container click handler
+                    // Toggle: if already selected, deselect; otherwise select
+                    onDeviceSelect?.(isSelected ? null : device.id)
+                  }}
                   className={`
                     border-b border-[var(--color-border-subtle)] cursor-pointer transition-colors
                     ${selectedDeviceId === device.id
@@ -210,7 +254,8 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
                     {device.location}
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         )}

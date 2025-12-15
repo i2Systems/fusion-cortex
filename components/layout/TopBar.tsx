@@ -70,7 +70,7 @@ export function TopBar() {
               {/* Dot indicator */}
               <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[var(--color-primary)] animate-pulse" />
               {/* Counter badge */}
-              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[var(--color-primary)] text-white text-xs flex items-center justify-center font-semibold shadow-[var(--shadow-glow-primary)]">
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[var(--color-primary)] text-[var(--color-text-on-primary)] text-xs flex items-center justify-center font-semibold shadow-[var(--shadow-glow-primary)]">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             </>

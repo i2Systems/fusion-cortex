@@ -10,7 +10,7 @@
 
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { DeviceList } from '@/components/lookup/DeviceList'
@@ -51,6 +51,8 @@ export default function LookupPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(null)
   const [mapUploaded, setMapUploaded] = useState(false)
+  const listContainerRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   // Load saved map image on mount
   useEffect(() => {
@@ -193,6 +195,20 @@ export default function LookupPage() {
     return null
   }
 
+  // Handle clicking outside the list and panel to deselect
+  const handleMainContentClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    // Deselect if clicking outside both the list container and panel
+    if (
+      listContainerRef.current &&
+      panelRef.current &&
+      !listContainerRef.current.contains(target) &&
+      !panelRef.current.contains(target)
+    ) {
+      setSelectedDeviceId(null)
+    }
+  }
+
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island - In flow */}
@@ -209,9 +225,16 @@ export default function LookupPage() {
       </div>
 
       {/* Main Content: Device List/Map + Profile Panel */}
-      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" style={{ overflow: 'visible' }}>
+      <div 
+        className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" 
+        style={{ overflow: 'visible' }}
+        onClick={handleMainContentClick}
+      >
         {/* Main View - Left Side */}
-        <div className="flex-1 min-w-0 flex flex-col">
+        <div 
+          ref={listContainerRef}
+          className="flex-1 min-w-0 flex flex-col"
+        >
           {/* View Toggle - Top of main content */}
           <div className="mb-3 flex items-center justify-between">
             <ViewToggle currentView={viewMode} onViewChange={setViewMode} />
@@ -224,10 +247,12 @@ export default function LookupPage() {
         </div>
 
         {/* Device Profile Panel - Right Side */}
-        <DeviceProfilePanel 
-          device={selectedDevice} 
-          onComponentClick={handleComponentClick}
-        />
+        <div ref={panelRef}>
+          <DeviceProfilePanel 
+            device={selectedDevice} 
+            onComponentClick={handleComponentClick}
+          />
+        </div>
       </div>
 
       {/* Component Modal */}

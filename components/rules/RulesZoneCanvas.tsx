@@ -136,7 +136,10 @@ export function RulesZoneCanvas({
   // Get rules for a zone
   const getZoneRules = (zoneName: string) => {
     return rules.filter(rule => 
-      rule.condition.zone === zoneName || rule.action.zones.includes(zoneName)
+      rule.condition.zone === zoneName || 
+      rule.targetName === zoneName ||
+      rule.action.zones?.includes(zoneName) ||
+      false
     )
   }
 

@@ -43,8 +43,9 @@ export function ManualDeviceEntry({ isOpen, onClose, onAdd }: ManualDeviceEntryP
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 backdrop-blur-sm"
         onClick={onClose}
+        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
       />
       
       {/* Modal */}

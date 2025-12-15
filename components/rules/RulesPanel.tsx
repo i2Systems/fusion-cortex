@@ -1,18 +1,20 @@
 /**
  * Rules Panel Component
  * 
- * Right-side panel for viewing rule details or creating a new rule.
- * Shows rule details when a rule is selected, or new rule form when nothing is selected.
+ * Enhanced right-side panel for viewing rule details or creating new rules/overrides/schedules.
+ * Supports both zone and device-level rules, with scheduling capabilities.
  * 
  * AI Note: This panel appears on the right side, similar to DeviceTable or ZonesPanel.
+ * Now supports a multi-step creation flow: Target Selection → Type Selection → Configuration
  */
 
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Edit2, Save, Trash2, Radio, Clock, Sun, Zap, Calendar, Plus } from 'lucide-react'
-import { Rule } from '@/lib/mockRules'
+import { useState, useEffect, useMemo } from 'react'
+import { Edit2, Save, Trash2, Radio, Clock, Sun, Zap, Calendar, Plus, X, Layers, Lightbulb, Workflow, CalendarClock, ArrowLeft } from 'lucide-react'
+import { Rule, RuleType, TargetType, TriggerType, ScheduleFrequency } from '@/lib/mockRules'
 import { useZones } from '@/lib/ZoneContext'
+import { useDevices } from '@/lib/DeviceContext'
 
 interface RulesPanelProps {
   selectedRule: Rule | null
@@ -21,20 +23,36 @@ interface RulesPanelProps {
   onDelete?: (ruleId: string) => void
 }
 
-const triggerOptions: Array<{ value: Rule['trigger']; label: string; icon: any }> = [
-  { value: 'motion', label: 'Motion detected', icon: Radio },
-  { value: 'no_motion', label: 'No motion for duration', icon: Clock },
-  { value: 'daylight', label: 'Daylight level', icon: Sun },
-  { value: 'bms', label: 'BMS command', icon: Zap },
-  { value: 'schedule', label: 'Time schedule', icon: Calendar },
+const triggerOptions: Array<{ value: TriggerType; label: string; icon: any; description: string }> = [
+  { value: 'motion', label: 'Motion detected', icon: Radio, description: 'Trigger when motion is detected' },
+  { value: 'no_motion', label: 'No motion for duration', icon: Clock, description: 'Trigger after period of inactivity' },
+  { value: 'daylight', label: 'Daylight level', icon: Sun, description: 'Trigger based on natural light levels' },
+  { value: 'bms', label: 'BMS command', icon: Zap, description: 'Trigger on building management system command' },
+  { value: 'schedule', label: 'Time schedule', icon: Calendar, description: 'Trigger at specific times' },
 ]
+
+const ruleTypeOptions: Array<{ value: RuleType; label: string; icon: any; description: string }> = [
+  { value: 'rule', label: 'Rule', icon: Workflow, description: 'Automated logic-based control' },
+  { value: 'override', label: 'Override', icon: Zap, description: 'Manual override of normal operation' },
+  { value: 'schedule', label: 'Schedule', icon: CalendarClock, description: 'Time-based automation' },
+]
+
+type PanelMode = 'create' | 'edit' | 'view'
+type CreationStep = 'target' | 'type' | 'configure'
 
 export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPanelProps) {
   const { zones } = useZones()
-  const [isEditing, setIsEditing] = useState(false)
+  const { devices } = useDevices()
+  const [mode, setMode] = useState<PanelMode>('view')
+  const [creationStep, setCreationStep] = useState<CreationStep>('target')
+  const [selectedTargetType, setSelectedTargetType] = useState<TargetType | null>(null)
+  const [selectedRuleType, setSelectedRuleType] = useState<RuleType | null>(null)
+  const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null)
   const [formData, setFormData] = useState<Partial<Rule>>({
     name: '',
     description: '',
+    ruleType: 'rule',
+    targetType: 'zone',
     trigger: 'motion',
     condition: {},
     action: { zones: [] },
@@ -42,45 +60,116 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
     enabled: true,
   })
 
-  // Update form data when selected rule changes
+  // Determine panel mode based on selectedRule
   useEffect(() => {
     if (selectedRule) {
+      setMode('view')
+      setCreationStep('configure')
       setFormData({
         name: selectedRule.name,
         description: selectedRule.description,
+        ruleType: selectedRule.ruleType || 'rule',
+        targetType: selectedRule.targetType || 'zone',
+        targetId: selectedRule.targetId,
+        targetName: selectedRule.targetName,
         trigger: selectedRule.trigger,
         condition: { ...selectedRule.condition },
         action: { ...selectedRule.action },
         overrideBMS: selectedRule.overrideBMS,
         enabled: selectedRule.enabled,
       })
-      setIsEditing(false)
+      setSelectedTargetType(selectedRule.targetType || 'zone')
+      setSelectedRuleType(selectedRule.ruleType || 'rule')
     } else {
-      // Reset to new rule form
+      // Reset to create mode
+      setMode('create')
+      setCreationStep('target')
       setFormData({
         name: '',
         description: '',
+        ruleType: 'rule',
+        targetType: 'zone',
         trigger: 'motion',
         condition: {},
         action: { zones: [] },
         overrideBMS: false,
         enabled: true,
       })
-      setIsEditing(false)
+      setSelectedTargetType(null)
+      setSelectedRuleType(null)
+      setSelectedTargetId(null)
     }
   }, [selectedRule])
 
+  const handleCreateNew = () => {
+    setMode('create')
+    setCreationStep('target')
+    setSelectedTargetType(null)
+    setSelectedRuleType(null)
+    setSelectedTargetId(null)
+    setFormData({
+      name: '',
+      description: '',
+      ruleType: 'rule',
+      targetType: 'zone',
+      trigger: 'motion',
+      condition: {},
+      action: { zones: [] },
+      overrideBMS: false,
+      enabled: true,
+    })
+    onCancel() // Clear selection in parent
+  }
+
+  const handleTargetTypeSelect = (targetType: TargetType) => {
+    setSelectedTargetType(targetType)
+    setFormData({ ...formData, targetType })
+    setCreationStep('type')
+  }
+
+  const handleRuleTypeSelect = (ruleType: RuleType) => {
+    setSelectedRuleType(ruleType)
+    setFormData({ 
+      ...formData, 
+      ruleType,
+      trigger: ruleType === 'schedule' ? 'schedule' : formData.trigger || 'motion'
+    })
+    setCreationStep('configure')
+  }
+
+  const handleTargetSelect = (targetId: string, targetName: string) => {
+    setSelectedTargetId(targetId)
+    setFormData({ 
+      ...formData, 
+      targetId,
+      targetName,
+      condition: {
+        ...formData.condition,
+        [selectedTargetType === 'device' ? 'deviceId' : 'zone']: targetName
+      }
+    })
+  }
+
   const handleSave = () => {
     if (!formData.name?.trim()) {
-      alert('Please enter a rule name')
+      alert('Please enter a name')
+      return
+    }
+    if (!selectedTargetType || !selectedRuleType) {
+      alert('Please complete the setup steps')
+      return
+    }
+    if (!selectedTargetId && creationStep === 'configure') {
+      alert('Please select a target')
       return
     }
     onSave(formData)
-    setIsEditing(false)
+    handleCreateNew() // Reset to create new state
   }
 
   const handleEdit = () => {
-    setIsEditing(true)
+    setMode('edit')
+    setCreationStep('configure')
   }
 
   const handleCancel = () => {
@@ -89,38 +178,37 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
       setFormData({
         name: selectedRule.name,
         description: selectedRule.description,
+        ruleType: selectedRule.ruleType || 'rule',
+        targetType: selectedRule.targetType || 'zone',
+        targetId: selectedRule.targetId,
+        targetName: selectedRule.targetName,
         trigger: selectedRule.trigger,
         condition: { ...selectedRule.condition },
         action: { ...selectedRule.action },
         overrideBMS: selectedRule.overrideBMS,
         enabled: selectedRule.enabled,
       })
+      setMode('view')
     } else {
-      // Reset to empty form
-      setFormData({
-        name: '',
-        description: '',
-        trigger: 'motion',
-        condition: {},
-        action: { zones: [] },
-        overrideBMS: false,
-        enabled: true,
-      })
+      // Reset to create mode
+      handleCreateNew()
     }
-    setIsEditing(false)
   }
 
   const formatRuleCondition = (rule: Rule) => {
     switch (rule.trigger) {
       case 'motion':
-        return `motion detected in ${rule.condition.zone || 'zone'}`
+        return `motion detected in ${rule.targetName || rule.condition.zone || 'target'}`
       case 'no_motion':
-        return `no motion for ${rule.condition.duration || 0} minutes in ${rule.condition.zone || 'zone'}`
+        return `no motion for ${rule.condition.duration || 0} minutes in ${rule.targetName || rule.condition.zone || 'target'}`
       case 'daylight':
-        return `daylight level ${rule.condition.operator || '>'} ${rule.condition.level || 0}fc in ${rule.condition.zone || 'zone'}`
+        return `daylight level ${rule.condition.operator || '>'} ${rule.condition.level || 0}fc in ${rule.targetName || rule.condition.zone || 'target'}`
       case 'bms':
         return `BMS command received`
       case 'schedule':
+        if (rule.condition.scheduleTime) {
+          return `scheduled at ${rule.condition.scheduleTime}${rule.condition.scheduleDays ? ` on ${rule.condition.scheduleDays.length} day(s)` : ''}`
+        }
         return `scheduled time reached`
       default:
         return 'condition met'
@@ -138,8 +226,12 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
     if (rule.action.returnToBMS) {
       parts.push('then return to BMS')
     }
-    const zones = rule.action.zones.length > 0 ? rule.action.zones.join(', ') : 'zones'
-    return `set ${zones} ${parts.join(', ')}`
+    const targets = (rule.action.zones && rule.action.zones.length > 0)
+      ? rule.action.zones.join(', ')
+      : (rule.action.devices && rule.action.devices.length > 0)
+      ? `${rule.action.devices.length} device(s)`
+      : 'targets'
+    return `set ${targets} ${parts.join(', ')}`
   }
 
   const formatLastTriggered = (date?: Date) => {
@@ -152,22 +244,42 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
     return `${Math.floor(hours / 24)} day${Math.floor(hours / 24) !== 1 ? 's' : ''} ago`
   }
 
-  const getTriggerIcon = (trigger: Rule['trigger']) => {
+  const getTriggerIcon = (trigger?: TriggerType) => {
+    if (!trigger) return Radio
     const option = triggerOptions.find(opt => opt.value === trigger)
     return option ? option.icon : Radio
   }
+
+  // Available targets based on selected type
+  const availableTargets = useMemo(() => {
+    if (selectedTargetType === 'device') {
+      return devices.map(d => ({
+        id: d.id,
+        name: d.deviceId,
+        label: `${d.deviceId}${d.location ? ` - ${d.location}` : ''}`,
+        zone: d.zone
+      }))
+    } else {
+      return zones.map(z => ({
+        id: z.id,
+        name: z.name,
+        label: z.name,
+        deviceCount: z.deviceIds?.length || 0
+      }))
+    }
+  }, [selectedTargetType, devices, zones])
 
   return (
     <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
       {/* Header */}
       <div className="p-4 border-b border-[var(--color-border-subtle)]">
-        {selectedRule && !isEditing ? (
+        {selectedRule && mode === 'view' ? (
           /* Data-Dense Header for Selected Rule */
           <div className="bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)] -m-4 p-4 mb-4 border-b border-[var(--color-border-subtle)]">
             <div className="flex items-start gap-3 mb-3">
               {/* Rule Icon */}
               {(() => {
-                const TriggerIcon = getTriggerIcon(selectedRule.trigger)
+                const TriggerIcon = getTriggerIcon(selectedRule?.trigger)
                 return (
                   <div className="w-16 h-16 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border-subtle)] flex items-center justify-center flex-shrink-0 shadow-[var(--shadow-soft)]">
                     <TriggerIcon size={32} className="text-[var(--color-primary)]" />
@@ -182,7 +294,7 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
                       {selectedRule.name}
                     </h3>
                     <p className="text-xs text-[var(--color-text-muted)]">
-                      {triggerOptions.find(opt => opt.value === selectedRule.trigger)?.label || selectedRule.trigger}
+                      {ruleTypeOptions.find(opt => opt.value === selectedRule?.ruleType)?.label || selectedRule?.ruleType || 'Rule'} • {selectedRule?.targetType === 'device' ? 'Device' : 'Zone'}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
@@ -221,10 +333,10 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
                     </div>
                     <div className="text-xs font-semibold text-[var(--color-text)] truncate">{formatLastTriggered(selectedRule.lastTriggered)}</div>
                   </div>
-                  {selectedRule.action.zones.length > 0 && (
+                  {selectedRule.targetName && (
                     <div className="px-2.5 py-1.5 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)] min-w-0">
-                      <div className="text-xs text-[var(--color-text-soft)] mb-0.5 whitespace-nowrap">Zones</div>
-                      <div className="text-xs font-semibold text-[var(--color-text)] truncate">{selectedRule.action.zones.length} zone{selectedRule.action.zones.length !== 1 ? 's' : ''}</div>
+                      <div className="text-xs text-[var(--color-text-soft)] mb-0.5 whitespace-nowrap">Target</div>
+                      <div className="text-xs font-semibold text-[var(--color-text)] truncate">{selectedRule.targetName}</div>
                     </div>
                   )}
                   {selectedRule.overrideBMS && (
@@ -242,10 +354,36 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
           <>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-lg font-semibold text-[var(--color-text)]">
-                {selectedRule ? (isEditing ? 'Edit Rule' : 'Rule Details') : 'Create New Rule'}
+                {mode === 'create' 
+                  ? creationStep === 'target' 
+                    ? 'Create New'
+                    : creationStep === 'type'
+                    ? 'Select Type'
+                    : 'Configure'
+                  : selectedRule 
+                  ? 'Edit Rule' 
+                  : 'Create New Rule'}
               </h3>
+              {mode === 'create' && creationStep !== 'target' && (
+                <button
+                  onClick={() => {
+                    if (creationStep === 'type') {
+                      setCreationStep('target')
+                      setSelectedTargetType(null)
+                    } else if (creationStep === 'configure') {
+                      setCreationStep('type')
+                      setSelectedRuleType(null)
+                      setSelectedTargetId(null)
+                    }
+                  }}
+                  className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
+                  title="Go back"
+                >
+                  <ArrowLeft size={16} className="text-[var(--color-text-muted)]" />
+                </button>
+              )}
             </div>
-            {selectedRule && !isEditing && (
+            {selectedRule && mode === 'view' && (
               <p className="text-sm text-[var(--color-text-muted)] mb-3">
                 {selectedRule.enabled ? 'Active' : 'Disabled'} • Last triggered: {formatLastTriggered(selectedRule.lastTriggered)}
               </p>
@@ -256,18 +394,129 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-2">
-        {isEditing || !selectedRule ? (
-          /* Edit/Create Form */
+        {mode === 'create' && creationStep === 'target' ? (
+          /* Step 1: Target Selection */
           <div className="space-y-4">
             <div>
+              <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">Select Target</h4>
+              <p className="text-xs text-[var(--color-text-muted)] mb-4">
+                Choose whether this rule applies to a zone or a specific device
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => handleTargetTypeSelect('zone')}
+                  className="p-4 rounded-lg border-2 border-[var(--color-border-subtle)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-all text-left group"
+                >
+                  <Layers size={24} className="text-[var(--color-primary)] mb-2 group-hover:scale-110 transition-transform" />
+                  <div className="font-semibold text-sm text-[var(--color-text)] mb-1">Zone</div>
+                  <div className="text-xs text-[var(--color-text-muted)]">Apply to all devices in a zone</div>
+                </button>
+                <button
+                  onClick={() => handleTargetTypeSelect('device')}
+                  className="p-4 rounded-lg border-2 border-[var(--color-border-subtle)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-all text-left group"
+                >
+                  <Lightbulb size={24} className="text-[var(--color-primary)] mb-2 group-hover:scale-110 transition-transform" />
+                  <div className="font-semibold text-sm text-[var(--color-text)] mb-1">Device</div>
+                  <div className="text-xs text-[var(--color-text-muted)]">Apply to a specific device</div>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : mode === 'create' && creationStep === 'type' ? (
+          /* Step 2: Rule Type Selection */
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">Select Type</h4>
+              <p className="text-xs text-[var(--color-text-muted)] mb-4">
+                Choose the type of automation you want to create
+              </p>
+              <div className="space-y-2">
+                {ruleTypeOptions.map(option => {
+                  const Icon = option.icon
+                  return (
+                    <button
+                      key={option.value}
+                      onClick={() => handleRuleTypeSelect(option.value)}
+                      className="w-full p-4 rounded-lg border-2 border-[var(--color-border-subtle)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] transition-all text-left group"
+                    >
+                      <div className="flex items-start gap-3">
+                        <Icon size={20} className="text-[var(--color-primary)] mt-0.5 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-sm text-[var(--color-text)] mb-1">{option.label}</div>
+                          <div className="text-xs text-[var(--color-text-muted)]">{option.description}</div>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        ) : (mode === 'create' && creationStep === 'configure') || mode === 'edit' ? (
+          /* Step 3: Configuration Form */
+          <div className="space-y-4">
+            {/* Target Selection (if not already selected) */}
+            {!selectedTargetId && (
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+                  Select {selectedTargetType === 'device' ? 'Device' : 'Zone'}
+                </label>
+                <div className="max-h-48 overflow-y-auto border border-[var(--color-border-subtle)] rounded-lg">
+                  {availableTargets.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-[var(--color-text-muted)]">
+                      No {selectedTargetType === 'device' ? 'devices' : 'zones'} available
+                    </div>
+                  ) : (
+                    availableTargets.map(target => (
+                      <button
+                        key={target.id}
+                        onClick={() => handleTargetSelect(target.id, target.name)}
+                        className={`w-full px-3 py-2 text-left hover:bg-[var(--color-surface-subtle)] transition-colors border-b border-[var(--color-border-subtle)] last:border-b-0 ${
+                          selectedTargetId === target.id ? 'bg-[var(--color-primary-soft)]' : ''
+                        }`}
+                      >
+                        <div className="text-sm font-medium text-[var(--color-text)]">{target.label}</div>
+                        {selectedTargetType === 'device' && 'zone' in target && (
+                          <div className="text-xs text-[var(--color-text-muted)]">{target.zone || 'No zone'}</div>
+                        )}
+                        {selectedTargetType === 'zone' && 'deviceCount' in target && (
+                          <div className="text-xs text-[var(--color-text-muted)]">{target.deviceCount} device(s)</div>
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Show selected target */}
+            {selectedTargetId && (
+              <div className="p-3 rounded-lg bg-[var(--color-primary-soft)] border border-[var(--color-primary)]/30 flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-[var(--color-text-muted)] mb-1">Selected {selectedTargetType}</div>
+                  <div className="text-sm font-semibold text-[var(--color-text)]">{formData.targetName}</div>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedTargetId(null)
+                    setFormData({ ...formData, targetId: undefined, targetName: undefined })
+                  }}
+                  className="p-1 rounded hover:bg-[var(--color-surface-subtle)] transition-colors"
+                >
+                  <X size={14} className="text-[var(--color-text-muted)]" />
+                </button>
+              </div>
+            )}
+
+            <div>
               <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
-                Rule Name
+                Name
               </label>
               <input
                 type="text"
                 value={formData.name || ''}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Motion Activation - Clothing"
+                placeholder={`e.g., ${selectedRuleType === 'schedule' ? 'Morning Schedule' : selectedRuleType === 'override' ? 'Emergency Override' : 'Motion Activation'} - ${formData.targetName || selectedTargetType}`}
                 className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
               />
             </div>
@@ -279,91 +528,170 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
               <textarea
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Optional description of what this rule does"
+                placeholder="Optional description"
                 rows={2}
                 className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all resize-none"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
-                Trigger
-              </label>
-              <select
-                value={formData.trigger || 'motion'}
-                onChange={(e) => setFormData({ ...formData, trigger: e.target.value as Rule['trigger'] })}
-                className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
-              >
-                {triggerOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Condition Fields */}
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
-                Condition
-              </label>
-              <div className="space-y-2">
-                <select
-                  value={formData.condition?.zone || ''}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    condition: { ...formData.condition, zone: e.target.value }
-                  })}
-                  className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
-                >
-                  <option value="">Select zone...</option>
-                  {zones.map(zone => (
-                    <option key={zone.id} value={zone.name}>
-                      {zone.name}
-                    </option>
-                  ))}
-                </select>
-                {(formData.trigger === 'no_motion' || formData.trigger === 'schedule') && (
+            {/* Scheduling-specific fields */}
+            {selectedRuleType === 'schedule' ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+                    Schedule Time
+                  </label>
                   <input
-                    type="number"
-                    value={formData.condition?.duration || ''}
+                    type="time"
+                    value={formData.condition?.scheduleTime || ''}
                     onChange={(e) => setFormData({
                       ...formData,
-                      condition: { ...formData.condition, duration: parseInt(e.target.value) || undefined }
+                      condition: { ...formData.condition, scheduleTime: e.target.value }
                     })}
-                    placeholder="Duration (minutes)"
                     className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+                    Frequency
+                  </label>
+                  <select
+                    value={formData.condition?.scheduleFrequency || 'daily'}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      condition: { 
+                        ...formData.condition, 
+                        scheduleFrequency: e.target.value as ScheduleFrequency 
+                      }
+                    })}
+                    className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="custom">Custom (one-time)</option>
+                  </select>
+                </div>
+
+                {formData.condition?.scheduleFrequency === 'weekly' && (
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+                      Days of Week
+                    </label>
+                    <div className="grid grid-cols-7 gap-1">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                        <button
+                          key={day}
+                          onClick={() => {
+                            const currentDays = formData.condition?.scheduleDays || []
+                            const newDays = currentDays.includes(index)
+                              ? currentDays.filter(d => d !== index)
+                              : [...currentDays, index]
+                            setFormData({
+                              ...formData,
+                              condition: { ...formData.condition, scheduleDays: newDays }
+                            })
+                          }}
+                          className={`p-2 rounded text-xs font-medium transition-all ${
+                            formData.condition?.scheduleDays?.includes(index)
+                              ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)]'
+                              : 'bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface)]'
+                          }`}
+                        >
+                          {day}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
-                {formData.trigger === 'daylight' && (
-                  <div className="flex gap-2">
-                    <select
-                      value={formData.condition?.operator || '>'}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        condition: { ...formData.condition, operator: e.target.value as '>' | '<' | '=' | '>=' }
-                      })}
-                      className="px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
-                    >
-                      <option value=">">{'>'}</option>
-                      <option value="<">{'<'}</option>
-                      <option value=">=">{'>='}</option>
-                      <option value="=">{'='}</option>
-                    </select>
+
+                {formData.condition?.scheduleFrequency === 'custom' && (
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+                      Date
+                    </label>
                     <input
-                      type="number"
-                      value={formData.condition?.level || ''}
+                      type="date"
+                      value={formData.condition?.scheduleDate || ''}
                       onChange={(e) => setFormData({
                         ...formData,
-                        condition: { ...formData.condition, level: parseInt(e.target.value) || undefined }
+                        condition: { ...formData.condition, scheduleDate: e.target.value }
                       })}
-                      placeholder="Level (fc)"
-                      className="flex-1 px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
+                      className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
                     />
                   </div>
                 )}
               </div>
-            </div>
+            ) : (
+              /* Rule/Override trigger fields */
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+                    Trigger
+                  </label>
+                  <select
+                    value={formData.trigger || 'motion'}
+                    onChange={(e) => setFormData({ ...formData, trigger: e.target.value as TriggerType })}
+                    className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
+                  >
+                    {triggerOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Condition Fields */}
+                {(formData.trigger === 'no_motion' || formData.trigger === 'schedule') && (
+                  <div>
+                    <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+                      Duration (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.condition?.duration || ''}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        condition: { ...formData.condition, duration: parseInt(e.target.value) || undefined }
+                      })}
+                      placeholder="Duration"
+                      className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
+                    />
+                  </div>
+                )}
+
+                {formData.trigger === 'daylight' && (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <select
+                        value={formData.condition?.operator || '>'}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          condition: { ...formData.condition, operator: e.target.value as '>' | '<' | '=' | '>=' }
+                        })}
+                        className="px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
+                      >
+                        <option value=">">{'>'}</option>
+                        <option value="<">{'<'}</option>
+                        <option value=">=">{'>='}</option>
+                        <option value="=">{'='}</option>
+                      </select>
+                      <input
+                        type="number"
+                        value={formData.condition?.level || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          condition: { ...formData.condition, level: parseInt(e.target.value) || undefined }
+                        })}
+                        placeholder="Level (fc)"
+                        className="flex-1 px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
 
             {/* Action Fields */}
             <div>
@@ -371,37 +699,62 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
                 Action
               </label>
               <div className="space-y-2">
-                <select
-                  multiple
-                  value={formData.action?.zones || []}
-                  onChange={(e) => {
-                    const selected = Array.from(e.target.selectedOptions, option => option.value)
-                    setFormData({
-                      ...formData,
-                      action: { 
-                        zones: selected,
-                        brightness: formData.action?.brightness,
-                        duration: formData.action?.duration,
-                        returnToBMS: formData.action?.returnToBMS,
-                      }
-                    })
-                  }}
-                  className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all min-h-[80px]"
-                >
-                  {zones.map(zone => (
-                    <option key={zone.id} value={zone.name}>
-                      {zone.name}
-                    </option>
-                  ))}
-                </select>
+                {selectedTargetType === 'zone' ? (
+                  <select
+                    multiple
+                    value={formData.action?.zones || []}
+                    onChange={(e) => {
+                      const selected = Array.from(e.target.selectedOptions, option => option.value)
+                      setFormData({
+                        ...formData,
+                        action: { 
+                          zones: selected,
+                          brightness: formData.action?.brightness,
+                          duration: formData.action?.duration,
+                          returnToBMS: formData.action?.returnToBMS,
+                        }
+                      })
+                    }}
+                    className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all min-h-[80px]"
+                  >
+                    {zones.map(zone => (
+                      <option key={zone.id} value={zone.name}>
+                        {zone.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    multiple
+                    value={formData.action?.devices || []}
+                    onChange={(e) => {
+                      const selected = Array.from(e.target.selectedOptions, option => option.value)
+                      setFormData({
+                        ...formData,
+                        action: { 
+                          devices: selected,
+                          brightness: formData.action?.brightness,
+                          duration: formData.action?.duration,
+                          returnToBMS: formData.action?.returnToBMS,
+                        }
+                      })
+                    }}
+                    className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all min-h-[80px]"
+                  >
+                    {devices.map(device => (
+                      <option key={device.id} value={device.id}>
+                        {device.deviceId}{device.location ? ` - ${device.location}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <input
                   type="number"
                   value={formData.action?.brightness || ''}
                   onChange={(e) => setFormData({
                     ...formData,
                     action: { 
-                      zones: formData.action?.zones || [], 
-                      ...formData.action, 
+                      ...formData.action,
                       brightness: parseInt(e.target.value) || undefined 
                     }
                   })}
@@ -410,53 +763,70 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
                   max="100"
                   className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
                 />
-                <input
-                  type="number"
-                  value={formData.action?.duration || ''}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    action: { 
-                      zones: formData.action?.zones || [], 
-                      ...formData.action, 
-                      duration: parseInt(e.target.value) || undefined 
-                    }
-                  })}
-                  placeholder="Duration (minutes)"
-                  className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
-                />
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-[var(--color-text)]">
+                {selectedRuleType !== 'schedule' && (
                   <input
-                    type="checkbox"
-                    checked={formData.action?.returnToBMS || false}
+                    type="number"
+                    value={formData.action?.duration || ''}
                     onChange={(e) => setFormData({
                       ...formData,
                       action: { 
-                        zones: formData.action?.zones || [], 
-                        ...formData.action, 
-                        returnToBMS: e.target.checked 
+                        ...formData.action,
+                        duration: parseInt(e.target.value) || undefined 
                       }
                     })}
-                    className="fusion-checkbox"
+                    placeholder="Duration (minutes)"
+                    className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
                   />
-                  Return to BMS after duration
-                </label>
+                )}
+                {selectedRuleType !== 'schedule' && (
+                  <label className="flex items-center gap-2 cursor-pointer text-sm text-[var(--color-text)]">
+                    <input
+                      type="checkbox"
+                      checked={formData.action?.returnToBMS || false}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        action: { 
+                          ...formData.action,
+                          returnToBMS: e.target.checked 
+                        }
+                      })}
+                      className="fusion-checkbox"
+                    />
+                    Return to BMS after duration
+                  </label>
+                )}
               </div>
             </div>
+
+            {selectedRuleType !== 'schedule' && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="override-bms"
+                  checked={formData.overrideBMS || false}
+                  onChange={(e) => setFormData({ ...formData, overrideBMS: e.target.checked })}
+                  className="fusion-checkbox"
+                />
+                <label htmlFor="override-bms" className="text-sm text-[var(--color-text-muted)] cursor-pointer">
+                  Override BMS when triggered
+                </label>
+              </div>
+            )}
 
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
-                id="override-bms"
-                checked={formData.overrideBMS || false}
-                onChange={(e) => setFormData({ ...formData, overrideBMS: e.target.checked })}
+                id="enabled"
+                checked={formData.enabled !== false}
+                onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
                 className="fusion-checkbox"
               />
-              <label htmlFor="override-bms" className="text-sm text-[var(--color-text-muted)] cursor-pointer">
-                Override BMS when triggered
+              <label htmlFor="enabled" className="text-sm text-[var(--color-text-muted)] cursor-pointer">
+                Enable immediately
               </label>
             </div>
           </div>
-        ) : (
+        ) : selectedRule ? (
           /* View Mode */
           <div className="space-y-6">
             {/* Rule Summary */}
@@ -486,17 +856,29 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
               <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">Settings</h4>
               <div className="space-y-2">
                 <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+                  <span className="text-sm text-[var(--color-text-muted)]">Type</span>
+                  <span className="text-sm font-medium text-[var(--color-text)]">
+                    {ruleTypeOptions.find(opt => opt.value === selectedRule.ruleType)?.label || selectedRule.ruleType}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+                  <span className="text-sm text-[var(--color-text-muted)]">Target</span>
+                  <span className="text-sm font-medium text-[var(--color-text)]">
+                    {selectedRule.targetType === 'device' ? 'Device' : 'Zone'}: {selectedRule.targetName || 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
                   <span className="text-sm text-[var(--color-text-muted)]">Status</span>
                   <span className={`text-sm font-medium ${selectedRule.enabled ? 'text-[var(--color-success)]' : 'text-[var(--color-text-muted)]'}`}>
                     {selectedRule.enabled ? 'Active' : 'Disabled'}
                   </span>
                 </div>
-                <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
-                  <span className="text-sm text-[var(--color-text-muted)]">Override BMS</span>
-                  <span className={`text-sm font-medium ${selectedRule.overrideBMS ? 'text-[var(--color-warning)]' : 'text-[var(--color-text-muted)]'}`}>
-                    {selectedRule.overrideBMS ? 'Yes' : 'No'}
-                  </span>
-                </div>
+                {selectedRule.overrideBMS && (
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+                    <span className="text-sm text-[var(--color-text-muted)]">Override BMS</span>
+                    <span className="text-sm font-medium text-[var(--color-warning)]">Yes</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
                   <span className="text-sm text-[var(--color-text-muted)]">Last Triggered</span>
                   <span className="text-sm font-medium text-[var(--color-text)]">
@@ -512,19 +894,19 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
               </div>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Action Buttons Footer */}
       <div className="p-4 border-t border-[var(--color-border-subtle)] space-y-2 flex-shrink-0">
-        {isEditing || !selectedRule ? (
+        {(mode === 'create' && creationStep === 'configure') || mode === 'edit' ? (
           <>
             <button
               onClick={handleSave}
               className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
             >
               <Save size={16} />
-              {selectedRule ? 'Save Changes' : 'Create Rule'}
+              {selectedRule ? 'Save Changes' : 'Create'}
             </button>
             <button
               onClick={handleCancel}
@@ -533,7 +915,7 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
               Cancel
             </button>
           </>
-        ) : selectedRule ? (
+        ) : mode === 'view' && selectedRule ? (
           <button
             onClick={handleEdit}
             className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
@@ -541,9 +923,16 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
             <Edit2 size={16} />
             Edit Rule
           </button>
-        ) : null}
+        ) : (
+          <button
+            onClick={handleCreateNew}
+            className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+          >
+            <Plus size={16} />
+            Create New
+          </button>
+        )}
       </div>
     </div>
   )
 }
-

@@ -21,8 +21,8 @@ import { useDevices } from '@/lib/DeviceContext'
 import { useZones } from '@/lib/ZoneContext'
 
 export default function DiscoveryPage() {
-  const { devices, addDevice, setDevices } = useDevices()
-  const { zones, addZone, deleteZone, updateZone, getDevicesInZone } = useZones()
+  const { devices, addDevice, setDevices, updateMultipleDevices } = useDevices()
+  const { zones, addZone, deleteZone, updateZone, getDevicesInZone, syncZoneDeviceIds } = useZones()
   const [isScanning, setIsScanning] = useState(false)
   const [scanProgress, setScanProgress] = useState(0)
   const [devicesFound, setDevicesFound] = useState(0)
@@ -54,14 +54,36 @@ export default function DiscoveryPage() {
     // Assign discovered devices to existing zones based on their positions
     // Base zones should already be initialized from ZoneContext
     let totalAssigned = 0
+    
+    // First, sync zone deviceIds
+    syncZoneDeviceIds(devices)
+    
+    // Then update device zone properties
+    const deviceUpdates: Array<{ deviceId: string; updates: Partial<Device> }> = []
     zones.forEach(zone => {
       const devicesInZone = getDevicesInZone(zone.id, devices)
       
       updateZone(zone.id, {
         deviceIds: devicesInZone.map(d => d.id)
       })
+      
+      // Update device zone property
+      devicesInZone.forEach(device => {
+        if (device.zone !== zone.name) {
+          deviceUpdates.push({
+            deviceId: device.id,
+            updates: { zone: zone.name }
+          })
+        }
+      })
+      
       totalAssigned += devicesInZone.length
     })
+    
+    // Apply device zone updates
+    if (deviceUpdates.length > 0) {
+      updateMultipleDevices(deviceUpdates)
+    }
     
     console.log(`Assigned ${totalAssigned} devices across ${zones.length} zones`)
     setZonesCreated(zones.length)
