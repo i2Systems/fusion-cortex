@@ -3,6 +3,9 @@
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "env": {
+    "SKIP_ENV_VALIDATION": "1"
+  }
 }
 
