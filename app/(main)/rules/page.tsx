@@ -89,19 +89,26 @@ export default function RulesPage() {
       return true
     })
     
-    // Apply search filter
+    // Apply search filter - partial match on all fields
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(rule => 
-        rule.name.toLowerCase().includes(query) ||
-        rule.description?.toLowerCase().includes(query) ||
-        rule.condition.zone?.toLowerCase().includes(query) ||
-        rule.condition.deviceId?.toLowerCase().includes(query) ||
-        rule.targetName?.toLowerCase().includes(query) ||
-        rule.action.zones?.some(z => z.toLowerCase().includes(query)) ||
-        rule.action.devices?.some(d => d.toLowerCase().includes(query)) ||
-        false
-      )
+      filtered = filtered.filter(rule => {
+        // Build searchable text from all rule fields
+        const searchableText = [
+          rule.name,
+          rule.description,
+          rule.ruleType,
+          rule.condition.zone,
+          rule.condition.deviceId,
+          rule.targetName,
+          rule.action.zones?.join(' '),
+          rule.action.devices?.join(' '),
+          rule.trigger,
+          rule.enabled ? 'enabled' : 'disabled',
+        ].filter(Boolean).join(' ').toLowerCase()
+        
+        return searchableText.includes(query)
+      })
     }
     
     // Apply zone filter (only if zone name is provided and zones are loaded)

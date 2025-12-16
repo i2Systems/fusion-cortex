@@ -49,9 +49,10 @@ interface MapCanvasProps {
   devices?: DevicePoint[]
   zones?: Zone[]
   highlightDeviceId?: string | null
-  mode?: 'select' | 'move'
+  mode?: 'select' | 'move' | 'rotate'
   onDeviceMove?: (deviceId: string, x: number, y: number) => void
   onDeviceMoveEnd?: (deviceId: string, x: number, y: number) => void
+  onDeviceRotate?: (deviceId: string) => void
   onComponentExpand?: (deviceId: string, expanded: boolean) => void
   expandedComponents?: Set<string>
   onComponentClick?: (component: Component, parentDevice: any) => void
@@ -93,6 +94,7 @@ export function MapCanvas({
   mode = 'select',
   onDeviceMove,
   onDeviceMoveEnd,
+  onDeviceRotate,
   onComponentExpand,
   expandedComponents = new Set(),
   onComponentClick,
@@ -709,7 +711,12 @@ export function MapCanvas({
                         opacity={0}
                         onClick={(e) => {
                           e.cancelBubble = true
-                          if (mode === 'select') {
+                          if (mode === 'rotate') {
+                            // Rotate mode: rotate the device
+                            if (device.type === 'fixture') {
+                              onDeviceRotate?.(device.id)
+                            }
+                          } else if (mode === 'select') {
                             if (e.evt.shiftKey || e.evt.ctrlKey || e.evt.metaKey) {
                               // Toggle selection
                               if (selectedDeviceIds.includes(device.id)) {
@@ -736,7 +743,12 @@ export function MapCanvas({
                         }}
                         onTap={(e) => {
                           e.cancelBubble = true
-                          if (mode === 'select') {
+                          if (mode === 'rotate') {
+                            // Rotate mode: rotate the device
+                            if (device.type === 'fixture') {
+                              onDeviceRotate?.(device.id)
+                            }
+                          } else if (mode === 'select') {
                             // For tap events, we don't have modifier keys, so just single select
                             onDevicesSelect?.([device.id])
                             onDeviceSelect?.(device.id)

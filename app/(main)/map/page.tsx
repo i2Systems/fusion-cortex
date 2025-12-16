@@ -259,6 +259,23 @@ export default function MapPage() {
     }, 0)
   }
 
+  const handleDeviceRotate = (deviceId: string) => {
+    // Only allow rotating in 'rotate' mode
+    if (toolMode !== 'rotate') return
+    
+    const device = devices.find(d => d.id === deviceId)
+    if (!device || device.type !== 'fixture') return // Only fixtures can be rotated
+    
+    // Rotate by 90 degrees
+    const currentOrientation = device.orientation || 0
+    const newOrientation = (currentOrientation + 90) % 360
+    
+    updateMultipleDevices([{
+      deviceId,
+      updates: { orientation: newOrientation }
+    }])
+  }
+
   const handleToolAction = (action: MapToolMode) => {
     // Actions require a selected zone
     if (!selectedZoneId) {
@@ -301,52 +318,36 @@ export default function MapPage() {
     const zoneHeight = zoneMaxY - zoneMinY
 
     switch (action) {
-      case 'align-grid': {
-        // Snap devices to grid within zone
-        const gridSize = Math.min(zoneWidth / 10, zoneHeight / 10, 0.05) // Adaptive grid size
-        const updates = devicesToProcess.map(d => {
-          // Snap to grid within zone bounds
-          const snappedX = Math.round((d.x || 0) / gridSize) * gridSize
-          const snappedY = Math.round((d.y || 0) / gridSize) * gridSize
-          // Clamp to zone bounds
-          const x = Math.max(zoneMinX, Math.min(zoneMaxX, snappedX))
-          const y = Math.max(zoneMinY, Math.min(zoneMaxY, snappedY))
-          return {
+      case 'align-direction': {
+        // Toggle all lights between horizontal (0°) and vertical (90°)
+        // Determine target orientation: if most lights are horizontal (0° or close), make them vertical (90°), otherwise make them horizontal (0°)
+        const currentOrientations = devicesToProcess
+          .filter(d => d.type === 'fixture') // Only fixtures have orientation
+          .map(d => {
+            const orientation = d.orientation || 0
+            // Normalize to 0-360 range
+            const normalized = ((orientation % 360) + 360) % 360
+            // Consider 0-45 and 315-360 as horizontal, 45-135 as vertical
+            return normalized <= 45 || normalized >= 315 ? 0 : 90
+          })
+        
+        // Count horizontal vs vertical
+        const horizontalCount = currentOrientations.filter(o => o === 0).length
+        const verticalCount = currentOrientations.filter(o => o === 90).length
+        
+        // If more horizontal, switch to vertical; otherwise switch to horizontal
+        const targetOrientation = horizontalCount >= verticalCount ? 90 : 0
+        
+        const updates = devicesToProcess
+          .filter(d => d.type === 'fixture') // Only fixtures
+          .map(d => ({
             deviceId: d.id,
-            updates: { x, y }
-          }
-        })
-        updateMultipleDevices(updates)
-        // Sync zones after arranging
-        setTimeout(() => {
-          syncZoneDeviceIds(devices.map(d => {
-            const update = updates.find(u => u.deviceId === d.id)
-            return update ? { ...d, ...update.updates } : d
+            updates: { orientation: targetOrientation }
           }))
-        }, 0)
-        break
-      }
-      case 'align-aisle': {
-        // Align to nearest horizontal aisle line within zone
-        const aisleSpacing = Math.min(zoneHeight / 10, 0.05) // Adaptive spacing
-        const updates = devicesToProcess.map(d => {
-          const snappedY = Math.round((d.y || 0) / aisleSpacing) * aisleSpacing
-          // Clamp to zone bounds, keep X position
-          const y = Math.max(zoneMinY, Math.min(zoneMaxY, snappedY))
-          const x = Math.max(zoneMinX, Math.min(zoneMaxX, d.x || 0))
-          return {
-            deviceId: d.id,
-            updates: { x, y }
-          }
-        })
-        updateMultipleDevices(updates)
-        // Sync zones after arranging
-        setTimeout(() => {
-          syncZoneDeviceIds(devices.map(d => {
-            const update = updates.find(u => u.deviceId === d.id)
-            return update ? { ...d, ...update.updates } : d
-          }))
-        }, 0)
+        
+        if (updates.length > 0) {
+          updateMultipleDevices(updates)
+        }
         break
       }
       case 'auto-arrange': {
@@ -409,15 +410,24 @@ export default function MapPage() {
   const filteredDevices = useMemo(() => {
     let filtered = devices
 
-    // Search filter - search across device ID, serial number, location, and zone
+    // Search filter - partial match on all device fields including numeric values
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(device => 
-        device.deviceId.toLowerCase().includes(query) ||
-        device.serialNumber.toLowerCase().includes(query) ||
-        (device.location && device.location.toLowerCase().includes(query)) ||
-        (device.zone && device.zone.toLowerCase().includes(query))
-      )
+      filtered = filtered.filter(device => {
+        // Search all text and numeric fields
+        const searchableText = [
+          device.deviceId,
+          device.serialNumber,
+          device.location,
+          device.zone,
+          device.type,
+          device.status,
+          String(device.signal), // Convert numbers to strings for partial matching
+          device.battery !== undefined ? String(device.battery) : '',
+        ].filter(Boolean).join(' ').toLowerCase()
+        
+        return searchableText.includes(query)
+      })
     }
 
     // Zone filter
@@ -577,9 +587,10 @@ export default function MapPage() {
                   mapImageUrl={filters.showMap ? mapImageUrl : null}
                   zones={mapZones}
                   highlightDeviceId={selectedDevice}
-                  mode={toolMode === 'move' ? 'move' : 'select'}
+                  mode={toolMode === 'move' ? 'move' : toolMode === 'rotate' ? 'rotate' : 'select'}
                   onDeviceMove={handleDeviceMove}
                   onDeviceMoveEnd={handleDeviceMoveEnd}
+                  onDeviceRotate={handleDeviceRotate}
                   onComponentExpand={handleComponentExpand}
                   expandedComponents={expandedComponents}
                   onComponentClick={handleComponentClick as any}

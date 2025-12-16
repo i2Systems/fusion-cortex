@@ -32,20 +32,26 @@ export function RulesList({ rules, selectedRuleId, onRuleSelect, searchQuery = '
   const [sortBy, setSortBy] = useState<'name' | 'lastTriggered' | 'createdAt'>('lastTriggered')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-  // Filter rules by search query
+  // Filter rules by search query - partial match on all fields
   const filteredRules = rules.filter(rule => {
     if (!searchQuery.trim()) return true
     const query = searchQuery.toLowerCase()
-    return (
-      rule.name.toLowerCase().includes(query) ||
-      rule.description?.toLowerCase().includes(query) ||
-      rule.condition.zone?.toLowerCase().includes(query) ||
-      rule.condition.deviceId?.toLowerCase().includes(query) ||
-      rule.targetName?.toLowerCase().includes(query) ||
-      rule.action.zones?.some(z => z.toLowerCase().includes(query)) ||
-      rule.action.devices?.some(d => d.toLowerCase().includes(query)) ||
-      false
-    )
+    
+    // Build searchable text from all rule fields
+    const searchableText = [
+      rule.name,
+      rule.description,
+      rule.ruleType,
+      rule.condition.zone,
+      rule.condition.deviceId,
+      rule.targetName,
+      rule.action.zones?.join(' '),
+      rule.action.devices?.join(' '),
+      rule.trigger,
+      rule.enabled ? 'enabled' : 'disabled',
+    ].filter(Boolean).join(' ').toLowerCase()
+    
+    return searchableText.includes(query)
   })
 
   // Sort rules

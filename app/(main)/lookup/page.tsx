@@ -88,17 +88,26 @@ export default function LookupPage() {
     return devices.find(d => d.id === selectedDeviceId) || null
   }, [devices, selectedDeviceId])
 
-  // Filter devices based on search query
+  // Filter devices based on search query - partial match on all fields
   const filteredDevices = useMemo(() => {
     if (!searchQuery.trim()) return devices
     
     const query = searchQuery.toLowerCase().trim()
-    return devices.filter(device => 
-      device.deviceId.toLowerCase().includes(query) ||
-      device.serialNumber.toLowerCase().includes(query) ||
-      (device.location && device.location.toLowerCase().includes(query)) ||
-      (device.zone && device.zone.toLowerCase().includes(query))
-    )
+    return devices.filter(device => {
+      // Search all text fields
+      const searchableText = [
+        device.deviceId,
+        device.serialNumber,
+        device.location,
+        device.zone,
+        device.type,
+        device.status,
+        String(device.signal), // Convert numbers to strings for partial matching
+        device.battery !== undefined ? String(device.battery) : '',
+      ].filter(Boolean).join(' ').toLowerCase()
+      
+      return searchableText.includes(query)
+    })
   }, [devices, searchQuery])
 
   // Prepare devices for map views

@@ -30,15 +30,23 @@ export function DiscoveredDevicesList({
   const [showFilters, setShowFilters] = useState(false)
 
   const filteredDevices = devices.filter(device => {
-    // Search filter
+    // Search filter - partial match on all fields including numeric values
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
-      const matchesSearch = 
-        device.deviceId.toLowerCase().includes(query) ||
-        device.serialNumber.toLowerCase().includes(query) ||
-        device.type.toLowerCase().includes(query) ||
-        (device.location && device.location.toLowerCase().includes(query))
-      if (!matchesSearch) return false
+      
+      // Build searchable text from all device fields
+      const searchableText = [
+        device.deviceId,
+        device.serialNumber,
+        device.location,
+        device.zone,
+        device.type,
+        device.status,
+        String(device.signal), // Convert numbers to strings for partial matching
+        device.battery !== undefined ? String(device.battery) : '',
+      ].filter(Boolean).join(' ').toLowerCase()
+      
+      if (!searchableText.includes(query)) return false
     }
     
     // Type filter

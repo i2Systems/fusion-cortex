@@ -16,8 +16,10 @@ import { X } from 'lucide-react'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { MapUpload } from '@/components/map/MapUpload'
 import { ZonesPanel } from '@/components/zones/ZonesPanel'
+import { ZonesListView } from '@/components/zones/ZonesListView'
 import { ZoneToolbar, ZoneToolMode } from '@/components/zones/ZoneToolbar'
 import { MapFiltersPanel, type MapFilters } from '@/components/map/MapFiltersPanel'
+import { MapViewToggle, MapViewMode } from '@/components/shared/MapViewToggle'
 import { useDevices } from '@/lib/DeviceContext'
 import { useZones } from '@/lib/ZoneContext'
 import { useRole } from '@/lib/role'
@@ -42,6 +44,8 @@ export default function ZonesPage() {
   const [mapUploaded, setMapUploaded] = useState(false)
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(null)
   const [toolMode, setToolMode] = useState<ZoneToolMode>('select')
+  const [viewMode, setViewMode] = useState<MapViewMode>('map')
+  const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState<MapFilters>({
     showMap: true,
@@ -229,10 +233,92 @@ export default function ZonesPage() {
     }
   }
 
+  // Helper function to calculate a position within a zone polygon
+  const calculatePositionInZone = (polygon: Array<{ x: number; y: number }>): { x: number; y: number } => {
+    // Get zone bounds
+    const minX = Math.min(...polygon.map(p => p.x))
+    const maxX = Math.max(...polygon.map(p => p.x))
+    const minY = Math.min(...polygon.map(p => p.y))
+    const maxY = Math.max(...polygon.map(p => p.y))
+    
+    // Calculate center
+    const centerX = (minX + maxX) / 2
+    const centerY = (minY + maxY) / 2
+    
+    // Add some padding from edges
+    const padding = 0.02
+    const paddedMinX = minX + padding
+    const paddedMaxX = maxX - padding
+    const paddedMinY = minY + padding
+    const paddedMaxY = maxY - padding
+    
+    // Use center if it's within padded bounds, otherwise use a random point within bounds
+    let x = centerX
+    let y = centerY
+    
+    // Clamp to padded bounds
+    x = Math.max(paddedMinX, Math.min(paddedMaxX, x))
+    y = Math.max(paddedMinY, Math.min(paddedMaxY, y))
+    
+    return { x, y }
+  }
+
+  // Handle device move between zones
+  const handleDeviceMove = (deviceId: string, fromZoneId: string | null, toZoneId: string) => {
+    const device = devices.find(d => d.id === deviceId)
+    if (!device) return
+
+    // Find the zone objects
+    const fromZone = fromZoneId ? zones.find(z => z.id === fromZoneId) : null
+    const toZone = zones.find(z => z.id === toZoneId)
+    
+    // Calculate new position if moving to a zone
+    let newPosition: { x: number; y: number } | undefined
+    if (toZone) {
+      newPosition = calculatePositionInZone(toZone.polygon)
+    }
+    
+    // Create updated device object for syncing
+    const updatedDevice = { ...device }
+    if (toZone) {
+      updatedDevice.zone = toZone.name
+      updatedDevice.x = newPosition!.x
+      updatedDevice.y = newPosition!.y
+    } else {
+      updatedDevice.zone = undefined
+      // Keep current position when moving to unassigned
+    }
+    
+    // Update device in state
+    if (toZone) {
+      updateMultipleDevices([{
+        deviceId,
+        updates: { 
+          zone: toZone.name,
+          x: newPosition!.x,
+          y: newPosition!.y
+        }
+      }])
+    } else {
+      updateMultipleDevices([{
+        deviceId,
+        updates: { zone: undefined }
+      }])
+    }
+    
+    // Immediately sync zones with the updated device
+    // This ensures deviceIds arrays are updated right away
+    const updatedDevices = devices.map(d => d.id === deviceId ? updatedDevice : d)
+    syncZoneDeviceIds(updatedDevices)
+  }
+
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island - In flow */}
       <div className="flex-shrink-0 px-[20px] pt-4 pb-3 relative">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <MapViewToggle currentView={viewMode} onViewChange={setViewMode} />
+        </div>
         <SearchIsland 
           position="top" 
           fullWidth={true}
@@ -240,6 +326,8 @@ export default function ZonesPage() {
           title="Zones"
           subtitle="Create and manage control zones for your lighting system"
           placeholder={mapUploaded ? "Search zones, devices, or type 'create zone'..." : "Upload a map to manage zones..."}
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
           onLayersClick={() => setShowFilters(!showFilters)}
           filterCount={filters.selectedZones.length > 0 || !filters.showFixtures || !filters.showMotion || !filters.showLightSensors ? 1 : 0}
           onActionDetected={(action) => {
@@ -264,18 +352,38 @@ export default function ZonesPage() {
         )}
       </div>
 
-      {/* Main Content: Map + Zones Panel */}
+      {/* Main Content: Map/List + Zones Panel */}
       <div 
         className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" 
         style={{ overflow: 'visible' }}
         onClick={handleMainContentClick}
       >
-        {/* Map Canvas - Left Side */}
+        {/* Map/List View - Left Side */}
         <div 
           ref={mapContainerRef}
           className="flex-1 relative min-w-0 rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)]" 
           style={{ overflow: 'visible', minHeight: 0 }}
         >
+          {viewMode === 'list' ? (
+            /* List View */
+            <div className="w-full h-full rounded-2xl overflow-hidden bg-[var(--color-surface)]">
+              <ZonesListView
+                zones={zones.map(z => ({
+                  id: z.id,
+                  name: z.name,
+                  color: z.color,
+                  deviceIds: z.deviceIds,
+                }))}
+                devices={devices}
+                selectedZoneId={selectedZone}
+                onZoneSelect={setSelectedZone}
+                onDeviceMove={handleDeviceMove}
+                searchQuery={searchQuery}
+              />
+            </div>
+          ) : (
+            /* Map View */
+            <>
           {/* Zone Toolbar - Top center (hidden for Manager and Technician) */}
           {mapUploaded && role !== 'Manager' && role !== 'Technician' && (
             <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 pointer-events-none" style={{ transform: 'translateX(-50%) translateY(-50%)' }}>
@@ -367,6 +475,8 @@ export default function ZonesPage() {
               />
             </div>
           )}
+            </>
+          )}
         </div>
 
         {/* Zones Panel - Right Side (always show, even without map) */}
@@ -380,13 +490,15 @@ export default function ZonesPage() {
             selectedZoneId={selectedZone}
             onZoneSelect={setSelectedZone}
             onCreateZone={() => {
-              if (!mapUploaded) {
+              if (!mapUploaded && viewMode === 'map') {
                 // Prompt to upload map first
                 alert('Please upload a map first to create zones by drawing on it.')
                 return
               }
               setSelectedZone(null)
-              setToolMode('draw-polygon')
+              if (viewMode === 'map') {
+                setToolMode('draw-polygon')
+              }
             }}
             onDeleteZone={handleDeleteZone}
             onEditZone={(zoneId, updates) => {
@@ -395,6 +507,7 @@ export default function ZonesPage() {
                 updateZone(zoneId, updates)
               }
             }}
+            selectionMode={viewMode === 'list'}
           />
         </div>
       </div>

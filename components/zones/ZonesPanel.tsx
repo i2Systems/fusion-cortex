@@ -28,11 +28,12 @@ interface ZonesPanelProps {
   onCreateZone?: () => void
   onDeleteZone?: (zoneId: string) => void
   onEditZone?: (zoneId: string, updates: { name?: string; description?: string; color?: string }) => void
+  selectionMode?: boolean // When true, hide details and show only zone list
 }
 
 import { ZONE_COLORS, DEFAULT_ZONE_COLOR } from '@/lib/zoneColors'
 
-export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, onDeleteZone, onEditZone }: ZonesPanelProps) {
+export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, onDeleteZone, onEditZone, selectionMode = false }: ZonesPanelProps) {
   const [colors, setColors] = useState<Record<string, string>>({})
   const [isEditing, setIsEditing] = useState(false)
   const [editFormData, setEditFormData] = useState<{ name: string; description: string; color: string }>({
@@ -161,8 +162,8 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
         </div>
       </div>
 
-      {/* Data-Dense Header for Selected Zone */}
-      {selectedZone && (
+      {/* Data-Dense Header for Selected Zone - Hidden in selection mode */}
+      {selectedZone && !selectionMode && (
         <div className="p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)]">
           {isEditing ? (
             /* Edit Form */

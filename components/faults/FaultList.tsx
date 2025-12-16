@@ -32,24 +32,30 @@ export function FaultList({ faults, selectedFaultId, onFaultSelect, searchQuery 
   const [sortBy, setSortBy] = useState<'deviceId' | 'faultType' | 'detectedAt'>('detectedAt')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-  // Filter faults by search query
+  // Filter faults by search query - partial match on all fields including numeric values
   const filteredFaults = faults.filter(fault => {
     if (!searchQuery.trim()) return true
     const query = searchQuery.toLowerCase()
     const categoryInfo = faultCategories[fault.faultType]
-    return (
-      fault.device.deviceId.toLowerCase().includes(query) ||
-      fault.device.serialNumber.toLowerCase().includes(query) ||
-      (fault.device.location && fault.device.location.toLowerCase().includes(query)) ||
-      (fault.device.zone && fault.device.zone.toLowerCase().includes(query)) ||
-      fault.faultType.toLowerCase().includes(query) ||
-      (categoryInfo && (
-        categoryInfo.label.toLowerCase().includes(query) ||
-        categoryInfo.shortLabel.toLowerCase().includes(query) ||
-        categoryInfo.description.toLowerCase().includes(query)
-      )) ||
-      fault.description.toLowerCase().includes(query)
-    )
+    
+    // Build searchable text from all fault and device fields
+    const searchableText = [
+      fault.device.deviceId,
+      fault.device.serialNumber,
+      fault.device.location,
+      fault.device.zone,
+      fault.device.type,
+      fault.device.status,
+      String(fault.device.signal), // Convert numbers to strings
+      fault.device.battery !== undefined ? String(fault.device.battery) : '',
+      fault.faultType,
+      fault.description,
+      categoryInfo?.label,
+      categoryInfo?.shortLabel,
+      categoryInfo?.description,
+    ].filter(Boolean).join(' ').toLowerCase()
+    
+    return searchableText.includes(query)
   })
 
   // Sort faults

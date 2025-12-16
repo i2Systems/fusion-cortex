@@ -205,24 +205,30 @@ export default function FaultsPage() {
       return showCategories[fault.faultType] !== false
     })
     
-    // Apply search filter
+    // Apply search filter - partial match on all fields including numeric values
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
       filtered = filtered.filter(fault => {
         const categoryInfo = faultCategories[fault.faultType]
-        return (
-          fault.device.deviceId.toLowerCase().includes(query) ||
-          fault.device.serialNumber.toLowerCase().includes(query) ||
-          (fault.device.location && fault.device.location.toLowerCase().includes(query)) ||
-          (fault.device.zone && fault.device.zone.toLowerCase().includes(query)) ||
-          fault.faultType.toLowerCase().includes(query) ||
-          (categoryInfo && (
-            categoryInfo.label.toLowerCase().includes(query) ||
-            categoryInfo.shortLabel.toLowerCase().includes(query) ||
-            categoryInfo.description.toLowerCase().includes(query)
-          )) ||
-          fault.description.toLowerCase().includes(query)
-        )
+        
+        // Build searchable text from all fields including numeric values
+        const searchableText = [
+          fault.device.deviceId,
+          fault.device.serialNumber,
+          fault.device.location,
+          fault.device.zone,
+          fault.device.type,
+          fault.device.status,
+          String(fault.device.signal), // Convert numbers to strings
+          fault.device.battery !== undefined ? String(fault.device.battery) : '',
+          fault.faultType,
+          fault.description,
+          categoryInfo?.label,
+          categoryInfo?.shortLabel,
+          categoryInfo?.description,
+        ].filter(Boolean).join(' ').toLowerCase()
+        
+        return searchableText.includes(query)
       })
     }
     

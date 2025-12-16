@@ -138,6 +138,7 @@ export default function BACnetPage() {
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(null)
   const [mapUploaded, setMapUploaded] = useState(false)
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const listContainerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -402,13 +403,40 @@ export default function BACnetPage() {
     }
   }
 
-  // Filter mappings based on selected zone
+  // Filter mappings based on selected zone and search query
   const filteredMappings = useMemo(() => {
     // If zones are still initializing, return empty array
     if (zones.length === 0) return []
-    if (!selectedZoneId) return zoneMappings
-    return zoneMappings.filter(m => m.zoneId === selectedZoneId)
-  }, [zoneMappings, selectedZoneId, zones.length])
+    
+    let filtered = zoneMappings
+    
+    // Apply zone filter
+    if (selectedZoneId) {
+      filtered = filtered.filter(m => m.zoneId === selectedZoneId)
+    }
+    
+    // Apply search filter - partial match on all fields including numeric values
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(mapping => {
+        // Build searchable text from all mapping fields
+        const searchableText = [
+          mapping.zoneName,
+          mapping.bacnetObjectId,
+          mapping.description,
+          mapping.networkAddress,
+          mapping.status,
+          String(mapping.deviceCount), // Convert numbers to strings
+          mapping.priority !== undefined ? String(mapping.priority) : '',
+          mapping.controlCapabilities.map(cap => capabilityLabels[cap].label).join(' '),
+        ].filter(Boolean).join(' ').toLowerCase()
+        
+        return searchableText.includes(query)
+      })
+    }
+    
+    return filtered
+  }, [zoneMappings, selectedZoneId, zones.length, searchQuery])
 
   // Keyboard navigation: up/down arrows
   useEffect(() => {
@@ -473,6 +501,8 @@ export default function BACnetPage() {
           title="BACnet Mapping"
           subtitle="Map zones to BACnet objects for BMS integration"
           placeholder="Search mappings or type 'add mapping'..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
           onActionDetected={(action) => {
             if (action.id === 'add-mapping') {
               handleAddNew()

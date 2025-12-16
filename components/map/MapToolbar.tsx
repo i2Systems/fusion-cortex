@@ -14,8 +14,8 @@ import { useState } from 'react'
 import { 
   MousePointer2, 
   Move, 
-  Grid3x3, 
-  AlignLeft, 
+  RotateCw,
+  ArrowUpDown,
   Sparkles, 
   Undo2, 
   Redo2
@@ -24,8 +24,8 @@ import {
 export type MapToolMode = 
   | 'select' 
   | 'move' 
-  | 'align-grid' 
-  | 'align-aisle' 
+  | 'rotate'
+  | 'align-direction' 
   | 'auto-arrange'
 
 interface MapToolbarProps {
@@ -63,17 +63,17 @@ const toolOptions: ToolOption[] = [
     isToggle: true,
   },
   {
-    id: 'align-grid',
-    label: 'Align Grid',
-    icon: Grid3x3,
-    description: 'Snap selected devices to grid',
-    isAction: true,
+    id: 'rotate',
+    label: 'Rotate',
+    icon: RotateCw,
+    description: 'Click devices to rotate them',
+    isToggle: true,
   },
   {
-    id: 'align-aisle',
-    label: 'Align Aisle',
-    icon: AlignLeft,
-    description: 'Align devices along aisles',
+    id: 'align-direction',
+    label: 'Align Direction',
+    icon: ArrowUpDown,
+    description: 'Make all lights face the same direction (horizontal/vertical)',
     isAction: true,
   },
   {

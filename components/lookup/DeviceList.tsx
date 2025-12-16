@@ -29,16 +29,24 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
   const tableRef = useRef<HTMLDivElement>(null)
   const selectedRowRef = useRef<HTMLTableRowElement>(null)
 
-  // Filter devices by search query
+  // Filter devices by search query - partial match on all fields including numeric values
   const filteredDevices = devices.filter(device => {
     if (!searchQuery.trim()) return true
     const query = searchQuery.toLowerCase()
-    return (
-      device.deviceId.toLowerCase().includes(query) ||
-      device.serialNumber.toLowerCase().includes(query) ||
-      (device.location && device.location.toLowerCase().includes(query)) ||
-      (device.zone && device.zone.toLowerCase().includes(query))
-    )
+    
+    // Build searchable text from all device fields
+    const searchableText = [
+      device.deviceId,
+      device.serialNumber,
+      device.location,
+      device.zone,
+      device.type,
+      device.status,
+      String(device.signal), // Convert numbers to strings for partial matching
+      device.battery !== undefined ? String(device.battery) : '',
+    ].filter(Boolean).join(' ').toLowerCase()
+    
+    return searchableText.includes(query)
   })
 
   // Sort devices
