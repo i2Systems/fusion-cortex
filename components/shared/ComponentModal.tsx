@@ -12,6 +12,7 @@
 
 import { X, Package, Shield, Calendar, CheckCircle2, AlertCircle, XCircle, FileText, ExternalLink } from 'lucide-react'
 import { Component, Device } from '@/lib/mockData'
+import { calculateWarrantyStatus, getWarrantyStatusLabel, getWarrantyStatusTokenClass, formatWarrantyExpiry } from '@/lib/warranty'
 
 interface ComponentModalProps {
   component: Component | null
@@ -25,12 +26,16 @@ export function ComponentModal({ component, parentDevice, isOpen, onClose }: Com
     return null
   }
 
-  const getWarrantyIcon = (warrantyStatus?: string) => {
-    switch (warrantyStatus) {
-      case 'Active':
+  const warrantyInfo = component.warrantyExpiry ? calculateWarrantyStatus(component.warrantyExpiry) : null
+
+  const getWarrantyIcon = (status: string) => {
+    switch (status) {
+      case 'in-warranty':
         return <CheckCircle2 size={20} className="text-[var(--color-success)]" />
-      case 'Expired':
+      case 'out-of-warranty':
         return <XCircle size={20} className="text-[var(--color-danger)]" />
+      case 'near-end':
+        return <AlertCircle size={20} className="text-[var(--color-warning)]" />
       default:
         return <AlertCircle size={20} className="text-[var(--color-text-muted)]" />
     }
@@ -49,11 +54,6 @@ export function ComponentModal({ component, parentDevice, isOpen, onClose }: Com
     }
   }
 
-  const warrantyColor = component.warrantyStatus === 'Active' 
-    ? 'text-[var(--color-success)]' 
-    : component.warrantyStatus === 'Expired'
-    ? 'text-[var(--color-danger)]'
-    : 'text-[var(--color-text-muted)]'
 
   return (
     <div
@@ -127,12 +127,12 @@ export function ComponentModal({ component, parentDevice, isOpen, onClose }: Com
               Warranty Information
             </h3>
             <div className="space-y-3">
-              {component.warrantyStatus && (
+              {warrantyInfo ? (
                 <div className="p-4 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)]">
                   <div className="flex items-center gap-3 mb-2">
-                    {getWarrantyIcon(component.warrantyStatus)}
-                    <span className={`text-lg font-semibold ${warrantyColor}`}>
-                      {component.warrantyStatus}
+                    {getWarrantyIcon(warrantyInfo.status)}
+                    <span className={getWarrantyStatusTokenClass(warrantyInfo.status)}>
+                      {getWarrantyStatusLabel(warrantyInfo.status)}
                     </span>
                   </div>
                   {component.warrantyExpiry && (
@@ -141,29 +141,42 @@ export function ComponentModal({ component, parentDevice, isOpen, onClose }: Com
                       <div>
                         <p className="text-xs text-[var(--color-text-muted)]">Expiry Date</p>
                         <p className="text-sm font-medium text-[var(--color-text)]">
-                          {component.warrantyExpiry.toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
-                          })}
+                          {formatWarrantyExpiry(component.warrantyExpiry)}
                         </p>
                       </div>
                     </div>
                   )}
-                  {component.warrantyStatus === 'Active' && component.warrantyExpiry && (
+                  {warrantyInfo.daysRemaining !== null && (
+                    <div className="mt-3 pt-3 border-t border-[var(--color-border-subtle)]">
+                      <p className="text-xs text-[var(--color-text-muted)] mb-1">Days Remaining</p>
+                      <p className={`text-sm font-medium ${
+                        warrantyInfo.isNearEnd
+                          ? 'text-[var(--color-warning)]'
+                          : 'text-[var(--color-text)]'
+                      }`}>
+                        {warrantyInfo.daysRemaining} days
+                      </p>
+                    </div>
+                  )}
+                  {warrantyInfo.status !== 'out-of-warranty' && component.warrantyExpiry && (
                     <div className="mt-3 pt-3 border-t border-[var(--color-border-subtle)]">
                       <button
-                        className="flex items-center gap-2 text-sm text-[var(--color-primary)] hover:text-[var(--color-primary)]/80 transition-colors"
+                        className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
                         onClick={() => {
-                          // TODO: Open warranty claim or documentation
-                          window.open('#', '_blank')
+                          // Navigate to i2systems.com for replacement parts
+                          window.open('https://i2systems.com', '_blank')
                         }}
                       >
-                        <ExternalLink size={14} />
-                        <span>View Warranty Details</span>
+                        <Package size={14} />
+                        Request Replacement
+                        <ExternalLink size={12} />
                       </button>
                     </div>
                   )}
+                </div>
+              ) : (
+                <div className="p-4 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)]">
+                  <p className="text-sm text-[var(--color-text-muted)]">No warranty information available</p>
                 </div>
               )}
             </div>

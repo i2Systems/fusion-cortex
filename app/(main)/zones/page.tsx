@@ -32,14 +32,7 @@ const ZoneCanvas = dynamic(() => import('@/components/map/ZoneCanvas').then(mod 
   ),
 })
 
-const ZONE_COLORS = [
-  '#4c7dff', // primary blue
-  '#f97316', // accent orange
-  '#22c55e', // success green
-  '#eab308', // warning yellow
-  '#a855f7', // purple
-  '#ec4899', // pink
-]
+import { ZONE_COLORS } from '@/lib/zoneColors'
 
 export default function ZonesPage() {
   const { devices, updateMultipleDevices, saveDevices } = useDevices()

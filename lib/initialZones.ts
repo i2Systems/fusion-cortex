@@ -9,11 +9,12 @@
  */
 
 import { Zone } from './ZoneContext'
+import { ZONE_COLORS } from './zoneColors'
 
 export const initialZones: Omit<Zone, 'id' | 'createdAt' | 'updatedAt'>[] = [
   {
     name: 'Electronics & Technology',
-    color: '#22c55e', // success green
+    color: ZONE_COLORS[2], // success green
     description: 'Stockroom, Pharmacy/Health & Beauty, and Home sections',
     polygon: [
       { x: 0.0, y: 0.0 },
@@ -28,7 +29,7 @@ export const initialZones: Omit<Zone, 'id' | 'createdAt' | 'updatedAt'>[] = [
   },
   {
     name: 'Pickup & Delivery',
-    color: '#4c7dff', // primary blue
+    color: ZONE_COLORS[0], // primary blue
     description: 'Pickup & Delivery, Electronics, and Sporting Goods',
     polygon: [
       { x: 0.25, y: 0.0 },
@@ -43,7 +44,7 @@ export const initialZones: Omit<Zone, 'id' | 'createdAt' | 'updatedAt'>[] = [
   },
   {
     name: 'Apparel & Clothing',
-    color: '#f97316', // accent orange
+    color: ZONE_COLORS[1], // accent orange
     description: 'All Apparel sections including aisles 1-10, 11-18, 23-31, 32-38, 39-49, 50-52, 53-60',
     polygon: [
       { x: 0.0, y: 0.5 },
@@ -58,7 +59,7 @@ export const initialZones: Omit<Zone, 'id' | 'createdAt' | 'updatedAt'>[] = [
   },
   {
     name: 'Toys & Sporting Goods',
-    color: '#a855f7', // purple
+    color: ZONE_COLORS[4], // purple
     description: 'Toys sections with aisles 11-18, 61-67',
     polygon: [
       { x: 0.35, y: 0.4 },
@@ -73,7 +74,7 @@ export const initialZones: Omit<Zone, 'id' | 'createdAt' | 'updatedAt'>[] = [
   },
   {
     name: 'Grocery & Food',
-    color: '#eab308', // warning yellow
+    color: ZONE_COLORS[3], // warning yellow
     description: 'Meat & Seafood, Produce, Grocery aisles 19-22, Deli, Bakery, Main Lobby, and Stockroom',
     polygon: [
       { x: 0.6, y: 0.0 },

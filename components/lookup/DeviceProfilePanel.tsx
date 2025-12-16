@@ -9,9 +9,13 @@
 
 'use client'
 
-import { Image, Calendar, Thermometer, Shield, Package, MapPin, Radio, Battery, Wifi, WifiOff, CheckCircle2, AlertCircle, XCircle, QrCode } from 'lucide-react'
+import { Image, Calendar, Thermometer, Shield, Package, MapPin, Radio, Battery, Wifi, WifiOff, CheckCircle2, AlertCircle, XCircle, QrCode, AlertTriangle, ExternalLink } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { Device, Component } from '@/lib/mockData'
 import { ComponentTree } from '@/components/shared/ComponentTree'
+import { calculateWarrantyStatus, getWarrantyStatusLabel, getWarrantyStatusTokenClass, formatWarrantyExpiry } from '@/lib/warranty'
+import { assignFaultCategory, generateFaultDescription, faultCategories } from '@/lib/faultDefinitions'
+import { useDevices } from '@/lib/DeviceContext'
 
 interface DeviceProfilePanelProps {
   device: Device | null
@@ -19,6 +23,9 @@ interface DeviceProfilePanelProps {
 }
 
 export function DeviceProfilePanel({ device, onComponentClick }: DeviceProfilePanelProps) {
+  const router = useRouter()
+  const { devices } = useDevices()
+  
   if (!device) {
     return (
       <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
@@ -76,15 +83,47 @@ export function DeviceProfilePanel({ device, onComponentClick }: DeviceProfilePa
     return 'token token-data token-data-battery-low'
   }
 
-  // Generate fake I2QR data based on device
-  const buildDate = new Date(2024, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1)
+  // Get warranty info
+  const warrantyInfo = calculateWarrantyStatus(device.warrantyExpiry)
+  
+  // Generate fake I2QR data based on device (use actual data if available)
+  const buildDate = device.warrantyExpiry 
+    ? new Date(new Date(device.warrantyExpiry).getTime() - 5 * 365 * 24 * 60 * 60 * 1000) // Approximate 5 years before warranty expiry
+    : new Date(2024, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1)
   const cct = device.type === 'fixture' ? [2700, 3000, 3500, 4000, 5000][Math.floor(Math.random() * 5)] : undefined
-  const warrantyStatus = ['Active', 'Expired', 'Active'][Math.floor(Math.random() * 3)]
   const partsList = device.type === 'fixture' 
     ? ['LED Module', 'Driver', 'Lens', 'Mounting Bracket']
     : device.type === 'motion'
     ? ['PIR Sensor', 'Lens', 'Mounting Bracket']
     : ['Photodiode', 'Lens', 'Mounting Bracket']
+
+  // Generate faults for this device (similar to faults page logic)
+  const deviceFaults = (() => {
+    const faults: Array<{ faultType: string; description: string; detectedAt: Date }> = []
+    
+    // Check if device has fault status
+    if (device.status === 'missing' || device.status === 'offline') {
+      const faultCategory = assignFaultCategory(device)
+      faults.push({
+        faultType: faultCategory,
+        description: generateFaultDescription(faultCategory, device.deviceId),
+        detectedAt: new Date(Date.now() - 1000 * 60 * 60 * (Math.floor(Math.random() * 48) + 1)),
+      })
+    }
+    
+    // Check for low battery
+    if (device.battery !== undefined && device.battery < 20) {
+      faults.push({
+        faultType: 'electrical-driver',
+        description: device.battery < 10 
+          ? `Critical battery level (${device.battery}%). Device may shut down. Power supply or charging system issue suspected.`
+          : `Battery level is below 20% (${device.battery}%). Replacement recommended. May indicate charging system or power supply problem.`,
+        detectedAt: new Date(Date.now() - 1000 * 60 * (Math.floor(Math.random() * 120) + 30)),
+      })
+    }
+    
+    return faults
+  })()
 
   return (
     <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
@@ -275,21 +314,111 @@ export function DeviceProfilePanel({ device, onComponentClick }: DeviceProfilePa
                 </span>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Warranty Information */}
+        <div>
+          <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3 flex items-center gap-2">
+            <Shield size={16} />
+            Warranty Information
+          </h4>
+          <div className="space-y-2">
             <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
               <span className="text-sm text-[var(--color-text-muted)] flex items-center gap-1">
                 <Shield size={14} />
                 Warranty Status
               </span>
-              <span className={`text-sm font-medium ${
-                warrantyStatus === 'Active' 
-                  ? 'text-[var(--color-success)]' 
-                  : 'text-[var(--color-warning)]'
-              }`}>
-                {warrantyStatus}
-              </span>
+              {device.warrantyExpiry ? (
+                <span className={getWarrantyStatusTokenClass(warrantyInfo.status)}>
+                  {getWarrantyStatusLabel(warrantyInfo.status)}
+                </span>
+              ) : (
+                <span className="text-sm font-medium text-[var(--color-text-muted)]">
+                  No warranty
+                </span>
+              )}
             </div>
+            {device.warrantyExpiry && (
+              <>
+                <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+                  <span className="text-sm text-[var(--color-text-muted)]">Expiry Date</span>
+                  <span className="text-sm font-medium text-[var(--color-text)]">
+                    {formatWarrantyExpiry(device.warrantyExpiry)}
+                  </span>
+                </div>
+                {warrantyInfo.daysRemaining !== null && (
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+                    <span className="text-sm text-[var(--color-text-muted)]">Days Remaining</span>
+                    <span className={`text-sm font-medium ${
+                      warrantyInfo.isNearEnd
+                        ? 'text-[var(--color-warning)]'
+                        : 'text-[var(--color-text)]'
+                    }`}>
+                      {warrantyInfo.daysRemaining} days
+                    </span>
+                  </div>
+                )}
+                <div className="pt-2 border-t border-[var(--color-border-subtle)]">
+                  <button
+                    onClick={() => {
+                      // Navigate to i2systems.com for replacement parts
+                      window.open('https://i2systems.com', '_blank')
+                    }}
+                    className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+                  >
+                    <Package size={14} />
+                    Request Replacement
+                    <ExternalLink size={12} />
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
+
+        {/* Device Faults */}
+        {deviceFaults.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3 flex items-center gap-2">
+              <AlertTriangle size={16} className="text-[var(--color-warning)]" />
+              Active Faults
+            </h4>
+            <div className="space-y-2">
+              {deviceFaults.map((fault, index) => {
+                const categoryInfo = faultCategories[fault.faultType as keyof typeof faultCategories]
+                return (
+                  <div
+                    key={index}
+                    className="p-3 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)]"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <span className="text-xs font-medium text-[var(--color-text-muted)]">
+                        {categoryInfo?.shortLabel || fault.faultType}
+                      </span>
+                      <span className="text-xs text-[var(--color-text-soft)]">
+                        {new Date(fault.detectedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[var(--color-text-muted)]">
+                      {fault.description}
+                    </p>
+                    <button
+                      onClick={() => {
+                        sessionStorage.setItem('highlightDevice', device.deviceId)
+                        router.push('/faults')
+                      }}
+                      className="mt-2 text-xs text-[var(--color-primary)] hover:text-[var(--color-primary)]/80 flex items-center gap-1"
+                    >
+                      View on Faults page
+                      <ExternalLink size={12} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Components */}
         {device.components && device.components.length > 0 && (

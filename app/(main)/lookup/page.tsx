@@ -70,6 +70,20 @@ export default function LookupPage() {
     setMapUploaded(true)
   }
 
+  // Check if we should select a device from sessionStorage (e.g., from faults page)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedDeviceId = sessionStorage.getItem('selectedDeviceId')
+      if (savedDeviceId) {
+        const device = devices.find(d => d.id === savedDeviceId)
+        if (device) {
+          setSelectedDeviceId(savedDeviceId)
+        }
+        sessionStorage.removeItem('selectedDeviceId')
+      }
+    }
+  }, [devices])
+
   const selectedDevice = useMemo(() => {
     return devices.find(d => d.id === selectedDeviceId) || null
   }, [devices, selectedDeviceId])

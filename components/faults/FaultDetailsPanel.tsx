@@ -9,9 +9,11 @@
 
 'use client'
 
-import { AlertCircle, Droplets, Zap, Thermometer, Plug, Settings, Package, Wrench, Lightbulb, MapPin, Radio, RefreshCw, CheckCircle2, Clock, TrendingDown, XCircle, Battery } from 'lucide-react'
+import { AlertCircle, Droplets, Zap, Thermometer, Plug, Settings, Package, Wrench, Lightbulb, MapPin, Radio, RefreshCw, CheckCircle2, Clock, TrendingDown, XCircle, Battery, Shield, ExternalLink } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { Device } from '@/lib/mockData'
 import { FaultCategory, faultCategories } from '@/lib/faultDefinitions'
+import { calculateWarrantyStatus, getWarrantyStatusLabel, getWarrantyStatusTokenClass, formatWarrantyExpiry } from '@/lib/warranty'
 
 interface Fault {
   device: Device
@@ -25,6 +27,8 @@ interface FaultDetailsPanelProps {
 }
 
 export function FaultDetailsPanel({ fault }: FaultDetailsPanelProps) {
+  const router = useRouter()
+  
   if (!fault) {
     return (
       <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
@@ -125,9 +129,19 @@ export function FaultDetailsPanel({ fault }: FaultDetailsPanelProps) {
           {/* Meta Information */}
           <div className="flex-1 min-w-0">
             <div className="mb-2">
-              <h3 className="text-base font-bold text-[var(--color-text)] mb-0.5 truncate">
-                {fault.device.deviceId}
-              </h3>
+              <button
+                onClick={() => {
+                  // Navigate to lookup page with device selected
+                  sessionStorage.setItem('selectedDeviceId', fault.device.id)
+                  router.push('/lookup')
+                }}
+                className="group flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+              >
+                <h3 className="text-base font-bold text-[var(--color-text)] mb-0.5 truncate group-hover:text-[var(--color-primary)] transition-colors">
+                  {fault.device.deviceId}
+                </h3>
+                <ExternalLink size={14} className="text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)] transition-colors flex-shrink-0" />
+              </button>
               <p className="text-xs text-[var(--color-text-muted)]">
                 {faultCategories[fault.faultType]?.shortLabel || getFaultLabel(fault.faultType)} • {getTypeLabel(fault.device.type)}
               </p>
@@ -204,6 +218,45 @@ export function FaultDetailsPanel({ fault }: FaultDetailsPanelProps) {
             )}
           </div>
         </div>
+
+        {/* Warranty Information */}
+        {fault.device.warrantyExpiry && (
+          <div>
+            <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3 flex items-center gap-2">
+              <Shield size={16} />
+              Warranty Information
+            </h4>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+                <span className="text-sm text-[var(--color-text-muted)] flex items-center gap-1">
+                  <Shield size={14} />
+                  Warranty Status
+                </span>
+                <span className={getWarrantyStatusTokenClass(calculateWarrantyStatus(fault.device.warrantyExpiry).status)}>
+                  {getWarrantyStatusLabel(calculateWarrantyStatus(fault.device.warrantyExpiry).status)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+                <span className="text-sm text-[var(--color-text-muted)]">Expiry Date</span>
+                <span className="text-sm font-medium text-[var(--color-text)]">
+                  {formatWarrantyExpiry(fault.device.warrantyExpiry)}
+                </span>
+              </div>
+              {calculateWarrantyStatus(fault.device.warrantyExpiry).daysRemaining !== null && (
+                <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+                  <span className="text-sm text-[var(--color-text-muted)]">Days Remaining</span>
+                  <span className={`text-sm font-medium ${
+                    calculateWarrantyStatus(fault.device.warrantyExpiry).isNearEnd
+                      ? 'text-[var(--color-warning)]'
+                      : 'text-[var(--color-text)]'
+                  }`}>
+                    {calculateWarrantyStatus(fault.device.warrantyExpiry).daysRemaining} days
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Device Information */}
         <div>
@@ -329,7 +382,10 @@ export function FaultDetailsPanel({ fault }: FaultDetailsPanelProps) {
           <RefreshCw size={16} />
           Retry Connection
         </button>
-        <button className="w-full px-4 py-2 bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)] rounded-lg hover:bg-[var(--color-surface)] transition-colors text-sm font-medium">
+        <button 
+          className="w-full fusion-button"
+          style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text-muted)' }}
+        >
           Mark as Resolved
         </button>
       </div>

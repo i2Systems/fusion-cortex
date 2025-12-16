@@ -110,7 +110,8 @@ export function ManualDeviceEntry({ isOpen, onClose, onAdd }: ManualDeviceEntryP
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-border-strong)] transition-all"
+              className="flex-1 fusion-button"
+              style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text)', border: '1px solid var(--color-border-subtle)' }}
             >
               Cancel
             </button>

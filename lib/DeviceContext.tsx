@@ -43,7 +43,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
     const initialDevices = initialMockDevices
     
     // Check for data version to force regeneration when positioning logic changes
-    const DATA_VERSION = 'v2-grid-placement'
+    const DATA_VERSION = 'v3-warranty-fix'
     const savedVersion = typeof window !== 'undefined' ? localStorage.getItem('fusion_devices_version') : null
     const devicesSaved = typeof window !== 'undefined' ? localStorage.getItem('fusion_devices_saved') === 'true' : false
     

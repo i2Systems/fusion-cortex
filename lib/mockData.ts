@@ -112,7 +112,7 @@ function generateDevices(): Device[] {
   let componentCounter = 1
 
   // Helper function to generate components for a fixture
-  function generateComponentsForFixture(fixtureId: string, fixtureSerial: string): Component[] {
+  function generateComponentsForFixture(fixtureId: string, fixtureSerial: string, parentWarrantyExpiry?: Date): Component[] {
     const componentTypes = ['LED Module', 'Driver', 'Lens', 'Mounting Bracket']
     const components: Component[] = []
     
@@ -126,11 +126,27 @@ function generateDevices(): Device[] {
       undefined,
     ]
     
-    for (const componentType of componentTypes) {
+    const now = new Date()
+    
+    for (let i = 0; i < componentTypes.length; i++) {
+      const componentType = componentTypes[i]
       const buildDate = new Date(2024, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1)
-      const warrantyExpiry = new Date(buildDate)
-      warrantyExpiry.setFullYear(warrantyExpiry.getFullYear() + (Math.random() > 0.7 ? 3 : 5)) // 3 or 5 year warranty
-      const warrantyStatus = warrantyExpiry > new Date() ? 'Active' : 'Expired'
+      const warrantyExpiry = new Date()
+      
+      // Create variety: some expired, some near end, some active
+      const rand = Math.random()
+      if (rand < 0.15) {
+        // 15% expired (expired 1-6 months ago)
+        warrantyExpiry.setTime(now.getTime() - (1000 * 60 * 60 * 24 * (Math.floor(Math.random() * 180) + 30))) // 30-210 days ago
+      } else if (rand < 0.35) {
+        // 20% near end (expires within 30 days from now)
+        warrantyExpiry.setTime(now.getTime() + (1000 * 60 * 60 * 24 * Math.floor(Math.random() * 30))) // 0-30 days from now
+      } else {
+        // 65% active (expires in future, 1-5 years from now)
+        warrantyExpiry.setTime(now.getTime() + (1000 * 60 * 60 * 24 * (365 + Math.floor(Math.random() * 1460)))) // 1-5 years from now
+      }
+      
+      const warrantyStatus = warrantyExpiry > now ? 'Active' : 'Expired'
       const status: DeviceStatus = Math.random() > 0.1 ? 'online' : 'offline'
       const notes = Math.random() > 0.6 ? sampleNotes[Math.floor(Math.random() * sampleNotes.length)] : undefined
       
@@ -219,9 +235,23 @@ function generateDevices(): Device[] {
         const fixtureSerial = `SN-2024-${String(serialCounter).padStart(4, '0')}-F${String(Math.floor(Math.random() * 9) + 1)}`
         const fixtureId = `device-${deviceCounter++}`
         const buildDate = new Date(2024, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1)
-        const warrantyExpiry = new Date(buildDate)
-        warrantyExpiry.setFullYear(warrantyExpiry.getFullYear() + 5)
-        const warrantyStatus = warrantyExpiry > new Date() ? 'Active' : 'Expired'
+        const now = new Date()
+        const warrantyExpiry = new Date()
+        
+        // Create variety in warranty dates: some expired, some near end, most active
+        const warrantyRand = Math.random()
+        if (warrantyRand < 0.1) {
+          // 10% expired (expired 1-12 months ago)
+          warrantyExpiry.setTime(now.getTime() - (1000 * 60 * 60 * 24 * (Math.floor(Math.random() * 365) + 30))) // 30-395 days ago
+        } else if (warrantyRand < 0.25) {
+          // 15% near end (expires within 30 days from now)
+          warrantyExpiry.setTime(now.getTime() + (1000 * 60 * 60 * 24 * Math.floor(Math.random() * 30))) // 0-30 days from now
+        } else {
+          // 75% active (expires in future, 1-5 years from now)
+          warrantyExpiry.setTime(now.getTime() + (1000 * 60 * 60 * 24 * (365 + Math.floor(Math.random() * 1460)))) // 1-5 years from now
+        }
+        
+        const warrantyStatus = warrantyExpiry > now ? 'Active' : 'Expired'
         
         devices.push({
           id: fixtureId,
@@ -236,7 +266,7 @@ function generateDevices(): Device[] {
           x: finalX,
           y: finalY,
           orientation,
-          components: generateComponentsForFixture(fixtureId, fixtureSerial),
+          components: generateComponentsForFixture(fixtureId, fixtureSerial, warrantyExpiry),
           warrantyStatus,
           warrantyExpiry,
         })
@@ -362,11 +392,11 @@ function generateDevices(): Device[] {
       zone: 'Zone 7 - Grocery',
       x: 0.72,
       y: 0.35,
-      components: generateComponentsForFixture('device-fault-grocery-001', 'SN-2024-3158-F3'),
+      components: generateComponentsForFixture('device-fault-grocery-001', 'SN-2024-3158-F3', new Date(2028, 5, 15)),
       warrantyStatus: 'Active',
       warrantyExpiry: new Date(2028, 5, 15),
     },
-    // Electrical Driver - Electronics section
+    // Electrical Driver - Electronics section (warranty expired)
     {
       id: 'device-fault-electronics-001',
       deviceId: 'FLX-2041',
@@ -378,9 +408,9 @@ function generateDevices(): Device[] {
       zone: 'Electronics & Technology',
       x: 0.50,
       y: 0.15,
-      components: generateComponentsForFixture('device-fault-electronics-001', 'SN-2024-2041-F2'),
-      warrantyStatus: 'Active',
-      warrantyExpiry: new Date(2027, 2, 10),
+      components: generateComponentsForFixture('device-fault-electronics-001', 'SN-2024-2041-F2', new Date(Date.now() - 1000 * 60 * 60 * 24 * 45)),
+      warrantyStatus: 'Expired',
+      warrantyExpiry: new Date(Date.now() - 1000 * 60 * 60 * 24 * 45), // Expired 45 days ago
     },
     // Thermal Overheat - Apparel section
     {
@@ -394,7 +424,7 @@ function generateDevices(): Device[] {
       zone: 'Apparel & Clothing',
       x: 0.19,
       y: 0.55,
-      components: generateComponentsForFixture('device-fault-apparel-001', 'SN-2024-2125-F5'),
+      components: generateComponentsForFixture('device-fault-apparel-001', 'SN-2024-2125-F5', new Date(2026, 8, 22)),
       warrantyStatus: 'Active',
       warrantyExpiry: new Date(2026, 8, 22),
     },
@@ -410,11 +440,11 @@ function generateDevices(): Device[] {
       zone: 'Home & Garden',
       x: 0.35,
       y: 0.275,
-      components: generateComponentsForFixture('device-fault-home-001', 'SN-2024-2063-F1'),
+      components: generateComponentsForFixture('device-fault-home-001', 'SN-2024-2063-F1', new Date(2029, 1, 5)),
       warrantyStatus: 'Active',
       warrantyExpiry: new Date(2029, 1, 5),
     },
-    // Control Integration - Electronics section
+    // Control Integration - Electronics section (warranty near end)
     {
       id: 'device-fault-electronics-002',
       deviceId: 'FLX-2088',
@@ -426,9 +456,9 @@ function generateDevices(): Device[] {
       zone: 'Electronics & Technology',
       x: 0.50,
       y: 0.125,
-      components: generateComponentsForFixture('device-fault-electronics-002', 'SN-2024-2088-F4'),
+      components: generateComponentsForFixture('device-fault-electronics-002', 'SN-2024-2088-F4', new Date(Date.now() + 1000 * 60 * 60 * 24 * 15)),
       warrantyStatus: 'Active',
-      warrantyExpiry: new Date(2027, 11, 18),
+      warrantyExpiry: new Date(Date.now() + 1000 * 60 * 60 * 24 * 15), // Expires in 15 days
     },
     // Manufacturing Defect - Toys section
     {
@@ -442,7 +472,7 @@ function generateDevices(): Device[] {
       zone: 'Toys & Sporting Goods',
       x: 0.45,
       y: 0.60,
-      components: generateComponentsForFixture('device-fault-toys-001', 'SN-2024-2078-F6'),
+      components: generateComponentsForFixture('device-fault-toys-001', 'SN-2024-2078-F6', new Date(2029, 3, 12)),
       warrantyStatus: 'Active',
       warrantyExpiry: new Date(2029, 3, 12),
     },
@@ -458,7 +488,7 @@ function generateDevices(): Device[] {
       zone: 'Apparel & Clothing',
       x: 0.19,
       y: 0.325,
-      components: generateComponentsForFixture('device-fault-apparel-002', 'SN-2024-2092-F7'),
+      components: generateComponentsForFixture('device-fault-apparel-002', 'SN-2024-2092-F7', new Date(2028, 6, 30)),
       warrantyStatus: 'Active',
       warrantyExpiry: new Date(2028, 6, 30),
     },
@@ -475,7 +505,7 @@ function generateDevices(): Device[] {
       x: 0.68,
       y: 0.25,
       battery: 15, // Low battery indicating power issue
-      components: generateComponentsForFixture('device-fault-grocery-002', 'SN-2024-2105-F8'),
+      components: generateComponentsForFixture('device-fault-grocery-002', 'SN-2024-2105-F8', new Date(2027, 4, 20)),
       warrantyStatus: 'Active',
       warrantyExpiry: new Date(2027, 4, 20),
     },

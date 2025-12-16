@@ -159,10 +159,18 @@ export default function DashboardPage() {
               <Link href="/discovery" className="w-full fusion-button fusion-button-primary text-left justify-start block">
                 Start Discovery
               </Link>
-              <Link href="/zones" className="w-full fusion-button block text-left justify-start" style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text)' }}>
+              <Link 
+                href="/zones" 
+                className="w-full fusion-button block text-left justify-start"
+                style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text)' }}
+              >
                 Create Zone
               </Link>
-              <Link href="/map" className="w-full fusion-button block text-left justify-start" style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text)' }}>
+              <Link 
+                href="/map" 
+                className="w-full fusion-button block text-left justify-start"
+                style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text)' }}
+              >
                 View Map
               </Link>
             </div>

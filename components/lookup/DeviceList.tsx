@@ -10,8 +10,9 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Signal, Battery, Wifi, WifiOff } from 'lucide-react'
+import { Signal, Battery, Wifi, WifiOff, Shield } from 'lucide-react'
 import { Device } from '@/lib/mockData'
+import { calculateWarrantyStatus, getWarrantyStatusLabel, getWarrantyStatusTokenClass } from '@/lib/warranty'
 
 interface DeviceListProps {
   devices: Device[]
@@ -20,8 +21,10 @@ interface DeviceListProps {
   searchQuery?: string
 }
 
+type SortableField = keyof Device | 'warrantyStatus'
+
 export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQuery = '' }: DeviceListProps) {
-  const [sortField, setSortField] = useState<keyof Device>('deviceId')
+  const [sortField, setSortField] = useState<SortableField>('deviceId')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const tableRef = useRef<HTMLDivElement>(null)
   const selectedRowRef = useRef<HTMLTableRowElement>(null)
@@ -40,14 +43,27 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
 
   // Sort devices
   const sortedDevices = [...filteredDevices].sort((a, b) => {
-    const aVal = a[sortField]
-    const bVal = b[sortField]
+    let aVal: any
+    let bVal: any
+    
+    if (sortField === 'warrantyStatus') {
+      // Sort by warranty status: in-warranty > near-end > out-of-warranty
+      const aWarranty = calculateWarrantyStatus(a.warrantyExpiry)
+      const bWarranty = calculateWarrantyStatus(b.warrantyExpiry)
+      const statusOrder = { 'in-warranty': 0, 'near-end': 1, 'out-of-warranty': 2 }
+      aVal = statusOrder[aWarranty.status]
+      bVal = statusOrder[bWarranty.status]
+    } else {
+      aVal = a[sortField as keyof Device]
+      bVal = b[sortField as keyof Device]
+    }
+    
     if (aVal === undefined || bVal === undefined) return 0
     const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0
     return sortDirection === 'asc' ? comparison : -comparison
   })
 
-  const handleSort = (field: keyof Device) => {
+  const handleSort = (field: SortableField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
     } else {
@@ -186,6 +202,12 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
                 >
                   Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
+                <th 
+                  className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
+                  onClick={() => handleSort('warrantyStatus')}
+                >
+                  Warranty {sortField === 'warrantyStatus' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
                   Location
                 </th>
@@ -247,6 +269,15 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
                     <span className={getStatusTokenClass(device.status)}>
                       {device.status}
                     </span>
+                  </td>
+                  <td className="py-3 px-4">
+                    {device.warrantyExpiry ? (
+                      <span className={getWarrantyStatusTokenClass(calculateWarrantyStatus(device.warrantyExpiry).status)}>
+                        {getWarrantyStatusLabel(calculateWarrantyStatus(device.warrantyExpiry).status)}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-[var(--color-text-soft)]">—</span>
+                    )}
                   </td>
                   <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">
                     {device.location}

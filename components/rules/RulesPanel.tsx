@@ -998,7 +998,8 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
             </button>
             <button
               onClick={handleCancel}
-              className="w-full px-4 py-2 bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)] rounded-lg hover:bg-[var(--color-surface)] transition-colors text-sm font-medium"
+              className="w-full fusion-button"
+              style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text-muted)' }}
             >
               Cancel
             </button>

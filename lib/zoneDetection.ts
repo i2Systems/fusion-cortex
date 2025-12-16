@@ -10,18 +10,7 @@
 import { Device } from './mockData'
 import { Zone } from './ZoneContext'
 
-const ZONE_COLORS = [
-  '#4c7dff', // primary blue
-  '#f97316', // accent orange
-  '#22c55e', // success green
-  '#eab308', // warning yellow
-  '#8b5cf6', // purple
-  '#ec4899', // pink
-  '#06b6d4', // cyan
-  '#f59e0b', // amber
-  '#10b981', // emerald
-  '#6366f1', // indigo
-]
+import { ZONE_COLORS } from './zoneColors'
 
 const MAX_ZONES = 12
 

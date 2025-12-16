@@ -30,14 +30,7 @@ interface ZonesPanelProps {
   onEditZone?: (zoneId: string, updates: { name?: string; description?: string; color?: string }) => void
 }
 
-const ZONE_COLORS = [
-  '#4c7dff', // primary blue
-  '#f97316', // accent orange
-  '#22c55e', // success green
-  '#eab308', // warning yellow
-  '#a855f7', // purple
-  '#ec4899', // pink
-]
+import { ZONE_COLORS, DEFAULT_ZONE_COLOR } from '@/lib/zoneColors'
 
 export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, onDeleteZone, onEditZone }: ZonesPanelProps) {
   const [colors, setColors] = useState<Record<string, string>>({})
@@ -45,7 +38,7 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
   const [editFormData, setEditFormData] = useState<{ name: string; description: string; color: string }>({
     name: '',
     description: '',
-    color: '#4c7dff',
+    color: DEFAULT_ZONE_COLOR,
   })
 
   const selectedZone = zones.find(z => z.id === selectedZoneId)
@@ -71,7 +64,7 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
     
     // Update edit form color if editing and zone color changed
     if (isEditing && selectedZone) {
-      const newColor = colorMap[selectedZone.id] || selectedZone.color || '#4c7dff'
+      const newColor = colorMap[selectedZone.id] || selectedZone.color || DEFAULT_ZONE_COLOR
       if (editFormData.color !== newColor) {
         setEditFormData(prev => ({ ...prev, color: newColor }))
       }
@@ -84,7 +77,7 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
       setEditFormData({
         name: selectedZone.name,
         description: selectedZone.description || '',
-        color: colors[selectedZone.id] || selectedZone.color || '#4c7dff',
+        color: colors[selectedZone.id] || selectedZone.color || DEFAULT_ZONE_COLOR,
       })
     } else if (!selectedZone) {
       // Exit edit mode if zone is deselected
@@ -152,7 +145,7 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
       setEditFormData({
         name: selectedZone.name,
         description: selectedZone.description || '',
-        color: colors[selectedZone.id] || selectedZone.color || '#4c7dff',
+        color: colors[selectedZone.id] || selectedZone.color || DEFAULT_ZONE_COLOR,
       })
     }
   }
