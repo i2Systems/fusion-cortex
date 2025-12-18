@@ -7,8 +7,9 @@
 'use client'
 
 import { Stage, Layer, Circle, Image as KonvaImage, Group, Text, Rect, Line } from 'react-konva'
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { CheckCircle2, AlertCircle, XCircle } from 'lucide-react'
+import { FloorPlanImage, type ImageBounds } from '@/components/map/FloorPlanImage'
 
 interface DevicePoint {
   id: string
@@ -46,27 +47,6 @@ interface BACnetZoneCanvasProps {
   devicesData?: any[]
 }
 
-function FloorPlanImage({ url, width, height }: { url: string; width: number; height: number }) {
-  const [image, setImage] = useState<HTMLImageElement | null>(null)
-
-  useEffect(() => {
-    const img = new window.Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => setImage(img)
-    img.src = url
-  }, [url])
-
-  return image ? (
-    <KonvaImage
-      image={image}
-      x={0}
-      y={0}
-      width={width}
-      height={height}
-      opacity={0.8}
-    />
-  ) : null
-}
 
 export function BACnetZoneCanvas({
   zones,
@@ -81,6 +61,22 @@ export function BACnetZoneCanvas({
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 })
   const [scale, setScale] = useState(1)
   const [hoveredZone, setHoveredZone] = useState<Zone | null>(null)
+  const [imageBounds, setImageBounds] = useState<ImageBounds | null>(null)
+  
+  // Convert normalized coordinates to canvas coordinates using actual image bounds
+  const toCanvasCoords = useCallback((point: { x: number; y: number }) => {
+    if (imageBounds) {
+      return {
+        x: imageBounds.x + point.x * imageBounds.width,
+        y: imageBounds.y + point.y * imageBounds.height,
+      }
+    } else {
+      return {
+        x: point.x * dimensions.width,
+        y: point.y * dimensions.height,
+      }
+    }
+  }, [imageBounds, dimensions])
   const [colors, setColors] = useState({
     primary: '#4c7dff',
     accent: '#f97316',
@@ -156,10 +152,6 @@ export function BACnetZoneCanvas({
     }
   }
 
-  const toCanvasCoords = (point: { x: number; y: number }) => ({
-    x: point.x * dimensions.width,
-    y: point.y * dimensions.height,
-  })
 
   return (
     <div className="w-full h-full overflow-hidden">
@@ -211,6 +203,7 @@ export function BACnetZoneCanvas({
               url={mapImageUrl} 
               width={dimensions.width} 
               height={dimensions.height}
+              onImageBoundsChange={setImageBounds}
             />
           )}
         </Layer>

@@ -24,6 +24,7 @@ import { useDevices } from '@/lib/DeviceContext'
 import { useZones } from '@/lib/ZoneContext'
 import { useStore } from '@/lib/StoreContext'
 import { useRole } from '@/lib/role'
+import { trpc } from '@/lib/trpc/client'
 
 // Dynamically import ZoneCanvas to avoid SSR issues with Konva
 const ZoneCanvas = dynamic(() => import('@/components/map/ZoneCanvas').then(mod => ({ default: mod.ZoneCanvas })), {
@@ -42,6 +43,9 @@ export default function ZonesPage() {
   const { zones, addZone, updateZone, deleteZone, getDevicesInZone, syncZoneDeviceIds, saveZones, isZonesSaved } = useZones()
   const { activeStoreId } = useStore()
   const { role } = useRole()
+  
+  // tRPC mutations for database persistence
+  const saveZonesMutation = trpc.zone.saveAll.useMutation()
 
   // Helper to get store-scoped localStorage key
   const getMapImageKey = () => {
@@ -60,6 +64,10 @@ export default function ZonesPage() {
     showFixtures: true,
     showMotion: true,
     showLightSensors: true,
+    showZones: true,
+    showWalls: true,
+    showAnnotations: true,
+    showText: true,
     selectedZones: [],
   })
   const mapContainerRef = useRef<HTMLDivElement>(null)
@@ -72,24 +80,42 @@ export default function ZonesPage() {
       const vectorKey = `${imageKey}_vector`
       
       // Try to load vector data first (preferred)
-      const savedVectorData = localStorage.getItem(vectorKey)
-      if (savedVectorData) {
+      // Check IndexedDB first (for large datasets), then localStorage
+      const loadVectorData = async () => {
         try {
-          const parsed = JSON.parse(savedVectorData)
-          setVectorData(parsed)
-          setMapUploaded(true)
-          return
+          const { getVectorData } = await import('@/lib/indexedDB')
+          const vectorData = await getVectorData(activeStoreId, vectorKey)
+          if (vectorData) {
+            setVectorData(vectorData)
+            setMapUploaded(true)
+            return
+          }
         } catch (e) {
-          console.warn('Failed to parse saved vector data:', e)
+          console.warn('Failed to load vector data from IndexedDB:', e)
+        }
+        
+        // Fallback to localStorage
+        try {
+          const savedVectorData = localStorage.getItem(vectorKey)
+          if (savedVectorData) {
+            const parsed = JSON.parse(savedVectorData)
+            setVectorData(parsed)
+            setMapUploaded(true)
+            return
+          }
+        } catch (e) {
+          console.warn('Failed to parse saved vector data from localStorage:', e)
+        }
+        
+        // Fallback to image
+        const savedImageUrl = localStorage.getItem(imageKey)
+        if (savedImageUrl) {
+          setMapImageUrl(savedImageUrl)
+          setMapUploaded(true)
         }
       }
       
-      // Fallback to image
-      const savedImageUrl = localStorage.getItem(imageKey)
-      if (savedImageUrl) {
-        setMapImageUrl(savedImageUrl)
-        setMapUploaded(true)
-      }
+      loadVectorData()
     }
   }, [activeStoreId])
 
@@ -103,15 +129,26 @@ export default function ZonesPage() {
     setMapUploaded(true)
   }
 
-  const handleClearMap = () => {
+  const handleClearMap = async () => {
     setMapImageUrl(null)
     setVectorData(null)
     setMapUploaded(false)
     setSelectedZone(null)
     if (typeof window !== 'undefined' && activeStoreId) {
       const imageKey = getMapImageKey()
+      const vectorKey = `${imageKey}_vector`
+      
+      // Delete from localStorage
       localStorage.removeItem(imageKey)
-      localStorage.removeItem(`${imageKey}_vector`)
+      localStorage.removeItem(vectorKey)
+      
+      // Delete from IndexedDB
+      try {
+        const { deleteVectorData } = await import('@/lib/indexedDB')
+        await deleteVectorData(activeStoreId, vectorKey)
+      } catch (e) {
+        console.warn('Failed to delete vector data from IndexedDB:', e)
+      }
     }
   }
 
@@ -169,12 +206,13 @@ export default function ZonesPage() {
     }
   }, [selectedZone, toolMode])
 
-  const handleDeleteZone = () => {
-    if (selectedZone) {
-      const zoneToDelete = zones.find(z => z.id === selectedZone)
+  const handleDeleteZone = (zoneId?: string) => {
+    const zoneIdToDelete = zoneId || selectedZone
+    if (zoneIdToDelete) {
+      const zoneToDelete = zones.find(z => z.id === zoneIdToDelete)
       if (zoneToDelete) {
         // Clear zone property from devices in this zone
-        const devicesInZone = getDevicesInZone(selectedZone, devices)
+        const devicesInZone = getDevicesInZone(zoneIdToDelete, devices)
         if (devicesInZone.length > 0) {
           updateMultipleDevices(
             devicesInZone.map(device => ({
@@ -184,7 +222,31 @@ export default function ZonesPage() {
           )
         }
       }
-      deleteZone(selectedZone)
+      deleteZone(zoneIdToDelete)
+      if (selectedZone === zoneIdToDelete) {
+        setSelectedZone(null)
+      }
+    }
+  }
+
+  const handleDeleteZones = (zoneIds: string[]) => {
+    zoneIds.forEach(zoneId => {
+      const zoneToDelete = zones.find(z => z.id === zoneId)
+      if (zoneToDelete) {
+        // Clear zone property from devices in this zone
+        const devicesInZone = getDevicesInZone(zoneId, devices)
+        if (devicesInZone.length > 0) {
+          updateMultipleDevices(
+            devicesInZone.map(device => ({
+              deviceId: device.id,
+              updates: { zone: undefined }
+            }))
+          )
+        }
+      }
+      deleteZone(zoneId)
+    })
+    if (selectedZone && zoneIds.includes(selectedZone)) {
       setSelectedZone(null)
     }
   }
@@ -362,7 +424,17 @@ export default function ZonesPage() {
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
           onLayersClick={() => setShowFilters(!showFilters)}
-          filterCount={filters.selectedZones.length > 0 || !filters.showFixtures || !filters.showMotion || !filters.showLightSensors ? 1 : 0}
+          filterCount={
+            filters.selectedZones.length > 0 || 
+            !filters.showFixtures || 
+            !filters.showMotion || 
+            !filters.showLightSensors ||
+            !filters.showZones ||
+            !filters.showWalls ||
+            !filters.showAnnotations ||
+            !filters.showText
+              ? 1 : 0
+          }
           onActionDetected={(action) => {
             if (action.id === 'create-zone' && mapUploaded) {
               setToolMode('draw-polygon')
@@ -425,11 +497,18 @@ export default function ZonesPage() {
                 onModeChange={setToolMode}
                 onDeleteZone={handleDeleteZone}
                 canDelete={!!selectedZone}
-                onSave={() => {
-                  // Save zones
+                onSave={async () => {
+                  if (!activeStoreId) {
+                    alert('No active store selected')
+                    return
+                  }
+                  
+                  // Always save to localStorage first (primary storage)
                   saveZones()
+                  
                   // Also save devices to ensure their positions and zone assignments are preserved
                   saveDevices()
+                  
                   // Mark BACnet mappings as saved too (they're already in localStorage)
                   if (typeof window !== 'undefined' && activeStoreId) {
                     const bacnetKey = activeStoreId ? `fusion_bacnet_mappings_${activeStoreId}` : 'fusion_bacnet_mappings'
@@ -439,9 +518,33 @@ export default function ZonesPage() {
                       localStorage.setItem(bacnetSavedKey, 'true')
                     }
                   }
-                  // Show confirmation
+                  
+                  // Try to save to database via tRPC (optional - database may not be configured)
+                  let dbSaveSuccess = false
+                  try {
+                    await saveZonesMutation.mutateAsync({
+                      siteId: activeStoreId,
+                      zones: zones.map(zone => ({
+                        id: zone.id,
+                        name: zone.name,
+                        color: zone.color,
+                        description: zone.description,
+                        polygon: zone.polygon,
+                        deviceIds: zone.deviceIds,
+                      })),
+                    })
+                    dbSaveSuccess = true
+                  } catch (error) {
+                    // Database save failed - this is okay, localStorage is the primary storage
+                    console.warn('Database save failed (database may not be configured):', error)
+                    // Don't show error to user - localStorage save succeeded
+                  }
+                  
+                  // Show success notification
                   const notification = document.createElement('div')
-                  notification.textContent = `✅ Saved ${zones.length} zones and ${devices.length} devices! Layout preserved for demo.`
+                  notification.textContent = dbSaveSuccess
+                    ? `✅ Saved ${zones.length} zones and ${devices.length} devices! Layout preserved.`
+                    : `✅ Saved ${zones.length} zones and ${devices.length} devices to localStorage! Layout preserved.`
                   notification.style.cssText = `
                     position: fixed;
                     top: 20px;
@@ -511,6 +614,10 @@ export default function ZonesPage() {
                 onZoneUpdated={(zoneId, polygon) => {
                   updateZone(zoneId, { polygon })
                 }}
+                showWalls={filters.showWalls}
+                showAnnotations={filters.showAnnotations}
+                showText={filters.showText}
+                showZones={filters.showZones}
               />
             </div>
           )}
@@ -540,6 +647,7 @@ export default function ZonesPage() {
               }
             }}
             onDeleteZone={handleDeleteZone}
+            onDeleteZones={handleDeleteZones}
             onEditZone={(zoneId, updates) => {
               const zone = zones.find(z => z.id === zoneId)
               if (zone) {

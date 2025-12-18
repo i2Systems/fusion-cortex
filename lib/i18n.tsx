@@ -42,7 +42,7 @@ const translations: Record<Language, Translations> = {
     search: 'Search',
     // Navigation
     dashboard: 'Dashboard',
-    map: 'Map & Devices',
+    map: 'Locations & Devices',
     zones: 'Zones',
     lookup: 'Device Lookup',
     bacnet: 'BACnet Mapping',
@@ -80,7 +80,7 @@ const translations: Record<Language, Translations> = {
     search: 'Buscar',
     // Navigation
     dashboard: 'Panel',
-    map: 'Mapa y Dispositivos',
+    map: 'Ubicaciones y Dispositivos',
     zones: 'Zonas',
     lookup: 'Búsqueda de Dispositivos',
     bacnet: 'Mapeo BACnet',
@@ -118,7 +118,7 @@ const translations: Record<Language, Translations> = {
     search: 'Rechercher',
     // Navigation
     dashboard: 'Tableau de bord',
-    map: 'Carte et Appareils',
+    map: 'Emplacements et Appareils',
     zones: 'Zones',
     lookup: 'Recherche d\'Appareils',
     bacnet: 'Cartographie BACnet',

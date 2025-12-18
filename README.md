@@ -38,7 +38,7 @@ Fusion/Cortex is **not**:
 ├── app/                    # Next.js App Router
 │   ├── (main)/            # Main layout group
 │   │   ├── dashboard/      # Multi-store dashboard
-│   │   ├── map/           # Map & Devices section
+│   │   ├── map/           # Locations & Devices section
 │   │   ├── zones/         # Zones section
 │   │   ├── bacnet/        # BACnet Mapping section
 │   │   ├── rules/         # Rules & Overrides section
@@ -129,7 +129,7 @@ The app uses a **main + panel** system:
 - Quick navigation to store-specific pages
 - Detailed store information panel
 
-### 2. Map & Devices
+### 2. Locations & Devices
 - Point cloud visualization over blueprint
 - Color-coded by device type (fixtures, motion, light sensors)
 - Zoom, pan, drag-select

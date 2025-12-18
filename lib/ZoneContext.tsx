@@ -68,6 +68,7 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
   }
 
   // Initialize default zones function - defined before useEffect
+  // Only called when there are NO saved zones at all (fresh store)
   const initializeDefaultZones = () => {
     if (!activeStoreId) return
     
@@ -87,8 +88,11 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
     setIsInitialized(true)
     if (typeof window !== 'undefined') {
       const storageKey = getStorageKey('zones')
+      const savedKey = getStorageKey('zones_saved')
       const versionKey = getStorageKey('zones_version')
       localStorage.setItem(storageKey, JSON.stringify(defaultZones))
+      // Don't mark default zones as saved - let user explicitly save them
+      // This way if user creates zones, they won't be overwritten by defaults
       localStorage.setItem(versionKey, 'v4-store-aware')
     }
   }
@@ -107,25 +111,8 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
       const zonesSaved = localStorage.getItem(savedKey) === 'true'
       const CURRENT_VERSION = 'v4-store-aware'
       
-      // PRIORITY 0: Check for seed data (committed to repo) - use this for fresh deployments
-      // Note: Seed data is store-agnostic, so we'll use it as fallback only
-      if (seedZones && seedZones.length > 0 && !zonesSaved) {
-        const zonesWithDates = seedZones.map((z: any) => ({
-          ...z,
-          id: `${activeStoreId}-${z.id || `zone-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`}`,
-          createdAt: z.createdAt ? new Date(z.createdAt) : new Date(),
-          updatedAt: z.updatedAt ? new Date(z.updatedAt) : new Date(),
-        }))
-        setZones(zonesWithDates)
-        setIsInitialized(true)
-        // Also save to localStorage so it persists in this session
-        localStorage.setItem(storageKey, JSON.stringify(zonesWithDates))
-        localStorage.setItem(versionKey, CURRENT_VERSION)
-        console.log(`✅ Loaded ${zonesWithDates.length} zones from seed data for ${activeStoreId}`)
-        return
-      }
-      
       // PRIORITY 1: If zones are marked as saved, ALWAYS use them and never reset
+      // This is the highest priority - user has explicitly saved their zones
       if (zonesSaved && savedZones) {
         try {
           const parsed = JSON.parse(savedZones)
@@ -137,7 +124,7 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
             }))
             setZones(zonesWithDates)
             setIsInitialized(true)
-            console.log(`Loaded ${zonesWithDates.length} saved zones from localStorage for ${activeStoreId} (protected from reset)`)
+            console.log(`✅ Loaded ${zonesWithDates.length} saved zones from localStorage for ${activeStoreId} (protected from reset)`)
             return
           }
         } catch (e) {
@@ -148,7 +135,8 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
         }
       }
       
-      // PRIORITY 2: If we have saved zones (but not marked as saved), use them
+      // PRIORITY 2: If we have saved zones in localStorage (even if not marked as saved), use them
+      // This preserves user-created zones that haven't been explicitly "saved" yet
       if (savedZones) {
         try {
           const parsed = JSON.parse(savedZones)
@@ -161,11 +149,13 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
             }))
             setZones(zonesWithDates)
             setIsInitialized(true)
+            // Mark as saved when loading existing zones to protect them
+            localStorage.setItem(savedKey, 'true')
             // Update version to current if zones were loaded
             if (zonesVersion !== CURRENT_VERSION) {
               localStorage.setItem(versionKey, CURRENT_VERSION)
             }
-            console.log(`Loaded ${zonesWithDates.length} zones from localStorage for ${activeStoreId}`)
+            console.log(`✅ Loaded ${zonesWithDates.length} zones from localStorage for ${activeStoreId} (now protected)`)
             return
           }
         } catch (e) {
@@ -173,26 +163,43 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
         }
       }
       
-      // PRIORITY 3: Only initialize default zones if no saved zones exist
-      // This preserves user edits and prevents constant resets
+      // PRIORITY 3: Check for seed data (committed to repo) - use this for fresh deployments only
+      // Only use seed data if there are NO saved zones at all
+      if (seedZones && seedZones.length > 0) {
+        const zonesWithDates = seedZones.map((z: any) => ({
+          ...z,
+          id: `${activeStoreId}-${z.id || `zone-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`}`,
+          createdAt: z.createdAt ? new Date(z.createdAt) : new Date(),
+          updatedAt: z.updatedAt ? new Date(z.updatedAt) : new Date(),
+        }))
+        setZones(zonesWithDates)
+        setIsInitialized(true)
+        // Save seed zones to localStorage and mark as saved
+        localStorage.setItem(storageKey, JSON.stringify(zonesWithDates))
+        localStorage.setItem(savedKey, 'true') // Mark seed zones as saved so they persist
+        localStorage.setItem(versionKey, CURRENT_VERSION)
+        console.log(`✅ Loaded ${zonesWithDates.length} zones from seed data for ${activeStoreId} (now protected)`)
+        return
+      }
+      
+      // PRIORITY 4: Only initialize default zones if no saved zones exist at all
+      // This is the last resort - only for completely fresh stores
       console.log(`No saved zones found for ${activeStoreId}, initializing default zones...`)
       initializeDefaultZones()
     }
   }, [activeStoreId])
 
   // Save to localStorage whenever zones change (store-scoped)
-  // BUT: Only if zones are not marked as saved (to prevent overwriting saved state during initialization)
+  // Always mark as saved when zones change to protect user edits
   useEffect(() => {
     if (typeof window !== 'undefined' && zones.length >= 0 && isInitialized && activeStoreId) {
       const storageKey = getStorageKey('zones')
       const savedKey = getStorageKey('zones_saved')
-      const zonesSaved = localStorage.getItem(savedKey) === 'true'
-      // Always save zones, but if they're marked as saved, ensure the flag persists
+      const versionKey = getStorageKey('zones_version')
+      // Always save zones and mark as saved to protect user edits
       localStorage.setItem(storageKey, JSON.stringify(zones))
-      if (zonesSaved) {
-        // Ensure saved flag persists
-        localStorage.setItem(savedKey, 'true')
-      }
+      localStorage.setItem(savedKey, 'true') // Always mark as saved to protect zones
+      localStorage.setItem(versionKey, 'v4-store-aware')
     }
   }, [zones, isInitialized, activeStoreId])
   
@@ -257,7 +264,19 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
       createdAt: new Date(),
       updatedAt: new Date(),
     }
-    setZones(prev => [...prev, newZone])
+    setZones(prev => {
+      const updated = [...prev, newZone]
+      // Immediately save and mark as saved when zones are created
+      if (typeof window !== 'undefined' && activeStoreId) {
+        const storageKey = getStorageKey('zones')
+        const savedKey = getStorageKey('zones_saved')
+        const versionKey = getStorageKey('zones_version')
+        localStorage.setItem(storageKey, JSON.stringify(updated))
+        localStorage.setItem(savedKey, 'true') // Mark as saved immediately
+        localStorage.setItem(versionKey, 'v4-store-aware')
+      }
+      return updated
+    })
     return newZone
   }
 
@@ -268,16 +287,14 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
           ? { ...zone, ...updates, updatedAt: new Date() }
           : zone
       )
-      // Ensure localStorage is updated immediately
+      // Ensure localStorage is updated immediately and mark as saved
       if (typeof window !== 'undefined' && activeStoreId) {
         const storageKey = getStorageKey('zones')
         const savedKey = getStorageKey('zones_saved')
+        const versionKey = getStorageKey('zones_version')
         localStorage.setItem(storageKey, JSON.stringify(updated))
-        // Preserve saved flag if zones were previously saved
-        const zonesSaved = localStorage.getItem(savedKey) === 'true'
-        if (zonesSaved) {
-          localStorage.setItem(savedKey, 'true')
-        }
+        localStorage.setItem(savedKey, 'true') // Always mark as saved when updated
+        localStorage.setItem(versionKey, 'v4-store-aware')
       }
       return updated
     })
@@ -287,15 +304,14 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
     setZones(prev => {
       const zoneToDelete = prev.find(z => z.id === zoneId)
       const updated = prev.filter(zone => zone.id !== zoneId)
-      // Save to localStorage immediately
+      // Save to localStorage immediately and mark as saved
       if (typeof window !== 'undefined' && activeStoreId) {
         const storageKey = getStorageKey('zones')
         const savedKey = getStorageKey('zones_saved')
+        const versionKey = getStorageKey('zones_version')
         localStorage.setItem(storageKey, JSON.stringify(updated))
-        const zonesSaved = localStorage.getItem(savedKey) === 'true'
-        if (zonesSaved) {
-          localStorage.setItem(savedKey, 'true')
-        }
+        localStorage.setItem(savedKey, 'true') // Always mark as saved when deleted
+        localStorage.setItem(versionKey, 'v4-store-aware')
       }
       return updated
     })
@@ -326,15 +342,14 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
           updatedAt: new Date()
         }
       })
-      // Save to localStorage immediately
+      // Save to localStorage immediately and mark as saved
       if (typeof window !== 'undefined' && activeStoreId) {
         const storageKey = getStorageKey('zones')
         const savedKey = getStorageKey('zones_saved')
+        const versionKey = getStorageKey('zones_version')
         localStorage.setItem(storageKey, JSON.stringify(updated))
-        const zonesSaved = localStorage.getItem(savedKey) === 'true'
-        if (zonesSaved) {
-          localStorage.setItem(savedKey, 'true')
-        }
+        localStorage.setItem(savedKey, 'true') // Always mark as saved when synced
+        localStorage.setItem(versionKey, 'v4-store-aware')
       }
       return updated
     })
@@ -351,19 +366,29 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
     return null
   }
 
-  const saveZones = () => {
+  const saveZones = async () => {
     // Mark zones as saved - this prevents them from being reset
     if (typeof window !== 'undefined' && zones.length > 0 && activeStoreId) {
       const storageKey = getStorageKey('zones')
       const savedKey = getStorageKey('zones_saved')
       const versionKey = getStorageKey('zones_version')
-      // Save zones first
+      
+      // Save to localStorage first (for immediate persistence)
       localStorage.setItem(storageKey, JSON.stringify(zones))
-      // Then mark as saved - this is the critical flag that prevents resets
       localStorage.setItem(savedKey, 'true')
       localStorage.setItem(versionKey, 'v4-store-aware')
-      console.log(`✅ Saved ${zones.length} zones to system for ${activeStoreId} (protected from reset)`)
-      console.log('Saved zones:', zones.map(z => z.name))
+      
+      // Also save to database via tRPC
+      try {
+        // Note: We can't use hooks here, so we'll need to call the mutation directly
+        // For now, we'll save to localStorage and the zones page will handle database sync
+        // The actual database save will be handled in the zones page's save handler
+        console.log(`✅ Saved ${zones.length} zones to localStorage for ${activeStoreId} (protected from reset)`)
+        console.log('Saved zones:', zones.map(z => z.name))
+      } catch (error) {
+        console.error('Failed to save zones to database:', error)
+        // Still mark as saved in localStorage even if DB save fails
+      }
     } else {
       console.warn('Cannot save: No zones to save or no active store')
     }

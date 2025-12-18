@@ -10,8 +10,9 @@
 'use client'
 
 import { Stage, Layer, Circle, Image as KonvaImage, Group, Text, Rect, Line } from 'react-konva'
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { VectorFloorPlan } from './VectorFloorPlan'
+import { FloorPlanImage, type ImageBounds } from './FloorPlanImage'
 import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 
 interface DevicePoint {
@@ -46,29 +47,12 @@ interface ZoneCanvasProps {
   onZoneCreated?: (polygon: Array<{ x: number; y: number }>) => void
   onZoneUpdated?: (zoneId: string, polygon: Array<{ x: number; y: number }>) => void
   devicesData?: any[] // Full device data with serial numbers, components, etc.
+  showWalls?: boolean
+  showAnnotations?: boolean
+  showText?: boolean
+  showZones?: boolean
 }
 
-function FloorPlanImage({ url, width, height }: { url: string; width: number; height: number }) {
-  const [image, setImage] = useState<HTMLImageElement | null>(null)
-
-  useEffect(() => {
-    const img = new window.Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => setImage(img)
-    img.src = url
-  }, [url])
-
-  return image ? (
-    <KonvaImage
-      image={image}
-      x={0}
-      y={0}
-      width={width}
-      height={height}
-      opacity={0.8}
-    />
-  ) : null
-}
 
 export function ZoneCanvas({ 
   onDeviceSelect, 
@@ -83,13 +67,18 @@ export function ZoneCanvas({
   mode = 'select',
   onZoneCreated,
   onZoneUpdated,
-  devicesData = []
+  devicesData = [],
+  showWalls = true,
+  showAnnotations = true,
+  showText = true,
+  showZones = true
 }: ZoneCanvasProps) {
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 })
   const [scale, setScale] = useState(1)
   const [hoveredDevice, setHoveredDevice] = useState<DevicePoint | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 })
+  const [imageBounds, setImageBounds] = useState<ImageBounds | null>(null)
   
   // Get full device data for hovered device
   const hoveredDeviceData = useMemo(() => {
@@ -158,6 +147,32 @@ export function ZoneCanvas({
     }
   }, [])
 
+  // Calculate image bounds for vector data
+  useEffect(() => {
+    if (vectorData) {
+      // Calculate scale to fit vector data into canvas (same logic as VectorFloorPlan)
+      const scaleX = dimensions.width / vectorData.bounds.width
+      const scaleY = dimensions.height / vectorData.bounds.height
+      const scale = Math.min(scaleX, scaleY)
+      
+      // Center the drawing
+      const offsetX = (dimensions.width - vectorData.bounds.width * scale) / 2
+      const offsetY = (dimensions.height - vectorData.bounds.height * scale) / 2
+      
+      setImageBounds({
+        x: offsetX,
+        y: offsetY,
+        width: vectorData.bounds.width * scale,
+        height: vectorData.bounds.height * scale,
+        naturalWidth: vectorData.bounds.width,
+        naturalHeight: vectorData.bounds.height,
+      })
+    } else if (!mapImageUrl) {
+      // Reset bounds when both vector data and image URL are removed
+      setImageBounds(null)
+    }
+  }, [vectorData, mapImageUrl, dimensions])
+
   const getDeviceColor = (type: string) => {
     switch (type) {
       case 'fixture':
@@ -189,9 +204,20 @@ export function ZoneCanvas({
     const stageX = (pointerPos.x - stagePosition.x) / scale
     const stageY = (pointerPos.y - stagePosition.y) / scale
 
-    // Convert to normalized coordinates (0-1)
-    const normalizedX = Math.max(0, Math.min(1, stageX / dimensions.width))
-    const normalizedY = Math.max(0, Math.min(1, stageY / dimensions.height))
+    // Convert to normalized coordinates (0-1) using actual image bounds
+    let normalizedX: number
+    let normalizedY: number
+    if (imageBounds) {
+      // Convert from canvas coordinates to normalized coordinates within image bounds
+      const imageX = stageX - imageBounds.x
+      const imageY = stageY - imageBounds.y
+      normalizedX = Math.max(0, Math.min(1, imageX / imageBounds.width))
+      normalizedY = Math.max(0, Math.min(1, imageY / imageBounds.height))
+    } else {
+      // Fallback to canvas dimensions
+      normalizedX = Math.max(0, Math.min(1, stageX / dimensions.width))
+      normalizedY = Math.max(0, Math.min(1, stageY / dimensions.height))
+    }
 
     if (mode === 'draw-rectangle') {
       if (!drawStart) {
@@ -253,11 +279,22 @@ export function ZoneCanvas({
     }
   }
 
-  // Convert normalized coordinates to canvas coordinates
-  const toCanvasCoords = (point: { x: number; y: number }) => ({
-    x: point.x * dimensions.width,
-    y: point.y * dimensions.height,
-  })
+  // Convert normalized coordinates to canvas coordinates using actual image bounds
+  const toCanvasCoords = useCallback((point: { x: number; y: number }) => {
+    if (imageBounds) {
+      // Use actual image bounds for coordinate conversion
+      return {
+        x: imageBounds.x + point.x * imageBounds.width,
+        y: imageBounds.y + point.y * imageBounds.height,
+      }
+    } else {
+      // Fallback to canvas dimensions if image bounds not available
+      return {
+        x: point.x * dimensions.width,
+        y: point.y * dimensions.height,
+      }
+    }
+  }, [imageBounds, dimensions])
 
   const toNormalizedCoords = (point: { x: number; y: number }) => ({
     x: Math.max(0, Math.min(1, point.x / dimensions.width)),
@@ -383,12 +420,16 @@ export function ZoneCanvas({
               vectorData={vectorData}
               width={dimensions.width}
               height={dimensions.height}
+              showWalls={showWalls}
+              showAnnotations={showAnnotations}
+              showText={showText}
             />
           ) : mapImageUrl ? (
             <FloorPlanImage 
               url={mapImageUrl} 
               width={dimensions.width} 
               height={dimensions.height}
+              onImageBoundsChange={setImageBounds}
             />
           ) : null}
         </Layer>
@@ -396,7 +437,7 @@ export function ZoneCanvas({
         {/* Zones Layer */}
         <Layer>
           {/* Render non-selected zones first */}
-          {zones
+          {showZones && zones
             .filter(zone => selectedZoneId !== zone.id)
             .map((zone) => {
               const points = zone.polygon.map(toCanvasCoords).flatMap(p => [p.x, p.y])
@@ -438,7 +479,7 @@ export function ZoneCanvas({
             })}
           
           {/* Render selected zone last (on top) */}
-          {zones
+          {showZones && zones
             .filter(zone => selectedZoneId === zone.id)
             .map((zone) => {
               // Use editing polygon if in edit mode, otherwise use zone polygon

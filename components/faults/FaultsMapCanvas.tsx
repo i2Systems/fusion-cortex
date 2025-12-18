@@ -6,9 +6,10 @@
 
 'use client'
 
-import { Stage, Layer, Circle, Image as KonvaImage, Group, Text, Rect, Line } from 'react-konva'
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { Stage, Layer, Circle, Group, Text, Line } from 'react-konva'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { FaultCategory, faultCategories } from '@/lib/faultDefinitions'
+import { FloorPlanImage, type ImageBounds } from '@/components/map/FloorPlanImage'
 
 interface DevicePoint {
   id: string
@@ -48,27 +49,6 @@ interface FaultsMapCanvasProps {
   devicesData?: any[]
 }
 
-function FloorPlanImage({ url, width, height }: { url: string; width: number; height: number }) {
-  const [image, setImage] = useState<HTMLImageElement | null>(null)
-
-  useEffect(() => {
-    const img = new window.Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => setImage(img)
-    img.src = url
-  }, [url])
-
-  return image ? (
-    <KonvaImage
-      image={image}
-      x={0}
-      y={0}
-      width={width}
-      height={height}
-      opacity={0.8}
-    />
-  ) : null
-}
 
 export function FaultsMapCanvas({
   zones,
@@ -83,6 +63,7 @@ export function FaultsMapCanvas({
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 })
   const [scale, setScale] = useState(1)
   const [hoveredDevice, setHoveredDevice] = useState<DevicePoint | null>(null)
+  const [imageBounds, setImageBounds] = useState<ImageBounds | null>(null)
   const [colors, setColors] = useState({
     primary: '#4c7dff',
     accent: '#f97316',
@@ -201,6 +182,23 @@ export function FaultsMapCanvas({
     }
   }
 
+  // Convert normalized coordinates to canvas coordinates using actual image bounds
+  const toCanvasCoords = useCallback((point: { x: number; y: number }) => {
+    if (imageBounds) {
+      // Use actual image bounds for coordinate conversion
+      return {
+        x: imageBounds.x + point.x * imageBounds.width,
+        y: imageBounds.y + point.y * imageBounds.height,
+      }
+    } else {
+      // Fallback to canvas dimensions if image bounds not available
+      return {
+        x: point.x * dimensions.width,
+        y: point.y * dimensions.height,
+      }
+    }
+  }, [imageBounds, dimensions])
+
   return (
     <div className="w-full h-full overflow-hidden">
       <Stage 
@@ -251,6 +249,7 @@ export function FaultsMapCanvas({
               url={mapImageUrl} 
               width={dimensions.width} 
               height={dimensions.height}
+              onImageBoundsChange={setImageBounds}
             />
           )}
         </Layer>
@@ -281,8 +280,9 @@ export function FaultsMapCanvas({
         {/* Devices Layer - Always on top */}
         <Layer>
           {devices.map((device) => {
-            const deviceX = device.x * dimensions.width
-            const deviceY = device.y * dimensions.height
+            const deviceCoords = toCanvasCoords({ x: device.x, y: device.y })
+            const deviceX = deviceCoords.x
+            const deviceY = deviceCoords.y
             const isSelected = selectedDeviceId === device.id
             const isHovered = hoveredDevice?.id === device.id
             const faultColor = device.hasFault ? getFaultColor(device.faultType) : getDeviceColor(device.type)

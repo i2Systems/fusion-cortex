@@ -6,8 +6,9 @@
 
 'use client'
 
-import { Stage, Layer, Circle, Image as KonvaImage, Group, Text, Rect, Line } from 'react-konva'
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { Stage, Layer, Circle, Group, Text, Rect, Line } from 'react-konva'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
+import { FloorPlanImage, type ImageBounds } from '@/components/map/FloorPlanImage'
 import { Rule } from '@/lib/mockRules'
 
 interface DevicePoint {
@@ -38,28 +39,6 @@ interface RulesZoneCanvasProps {
   devicesData?: any[]
 }
 
-function FloorPlanImage({ url, width, height }: { url: string; width: number; height: number }) {
-  const [image, setImage] = useState<HTMLImageElement | null>(null)
-
-  useEffect(() => {
-    const img = new window.Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => setImage(img)
-    img.src = url
-  }, [url])
-
-  return image ? (
-    <KonvaImage
-      image={image}
-      x={0}
-      y={0}
-      width={width}
-      height={height}
-      opacity={0.8}
-    />
-  ) : null
-}
-
 export function RulesZoneCanvas({
   zones,
   devices,
@@ -73,6 +52,22 @@ export function RulesZoneCanvas({
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 })
   const [scale, setScale] = useState(1)
   const [hoveredZone, setHoveredZone] = useState<Zone | null>(null)
+  const [imageBounds, setImageBounds] = useState<ImageBounds | null>(null)
+  
+  // Convert normalized coordinates to canvas coordinates using actual image bounds
+  const toCanvasCoords = useCallback((point: { x: number; y: number }) => {
+    if (imageBounds) {
+      return {
+        x: imageBounds.x + point.x * imageBounds.width,
+        y: imageBounds.y + point.y * imageBounds.height,
+      }
+    } else {
+      return {
+        x: point.x * dimensions.width,
+        y: point.y * dimensions.height,
+      }
+    }
+  }, [imageBounds, dimensions])
   const [colors, setColors] = useState({
     primary: '#4c7dff',
     accent: '#f97316',
@@ -143,10 +138,6 @@ export function RulesZoneCanvas({
     )
   }
 
-  const toCanvasCoords = (point: { x: number; y: number }) => ({
-    x: point.x * dimensions.width,
-    y: point.y * dimensions.height,
-  })
 
   return (
     <div className="w-full h-full overflow-hidden">
@@ -198,6 +189,7 @@ export function RulesZoneCanvas({
               url={mapImageUrl} 
               width={dimensions.width} 
               height={dimensions.height}
+              onImageBoundsChange={setImageBounds}
             />
           )}
         </Layer>

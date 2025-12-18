@@ -94,6 +94,9 @@ model Zone {
   color       String   @default("#4c7dff") // Hex color for visualization
   description String?
   
+  // Zone shape/geometry (normalized coordinates 0-1)
+  polygon     Json?    // Array of {x: number, y: number} points
+  
   // Daylight settings
   daylightEnabled Boolean @default(false)
   minDaylight     Int?     // Minimum fc level

@@ -4,8 +4,7 @@
  * Extracts vector data (paths, lines, text) from PDFs for vector-first rendering
  * This preserves crisp geometry and enables structured scene graph reconstruction
  * 
- * IMPROVED: Uses canvas rendering + path extraction to capture Form XObject content
- * This approach renders the PDF to canvas, then extracts paths from the rendered output
+ * Uses server-side PyMuPDF (fitz) for accurate extraction, falls back to browser-based extraction
  */
 
 // Dynamic import to avoid SSR issues
@@ -26,6 +25,7 @@ export interface ExtractedPath {
   stroke?: string
   fill?: string
   strokeWidth?: number
+  layer?: string // Layer type: 'walls', 'annotations', 'dimensions', 'structure', 'text'
 }
 
 export interface ExtractedVectorData {
@@ -42,12 +42,24 @@ async function getPdfJs() {
   }
   
   if (!pdfjsLib) {
-    pdfjsLib = await import('pdfjs-dist')
-    
-    if (!workerInitialized && pdfjsLib.GlobalWorkerOptions) {
-      // Use local worker file from public directory (most reliable)
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs'
-      workerInitialized = true
+    try {
+      // Dynamic import with better error handling
+      const pdfjsModule = await import('pdfjs-dist')
+      pdfjsLib = pdfjsModule.default || pdfjsModule
+      
+      if (!pdfjsLib) {
+        throw new Error('pdfjs-dist module is empty or invalid')
+      }
+      
+      if (!workerInitialized && pdfjsLib.GlobalWorkerOptions) {
+        // Use local worker file from public directory
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs'
+        workerInitialized = true
+      }
+    } catch (importError) {
+      console.error('Failed to import pdfjs-dist:', importError)
+      const errorMsg = importError instanceof Error ? importError.message : String(importError)
+      throw new Error(`Failed to initialize PDF processing library: ${errorMsg}`)
     }
   }
   
@@ -297,10 +309,101 @@ function extractPathsFromCanvas(
 
 /**
  * Extracts vector data from PDF first page
- * NEW APPROACH: Render to canvas at high resolution, then extract paths from rendered output
- * This captures ALL content including Form XObjects
+ * Tries server-side PyMuPDF first (most accurate), falls back to browser-based extraction
  */
-export async function extractVectorData(file: File): Promise<ExtractedVectorData> {
+export async function extractVectorData(
+  file: File,
+  onProgress?: (status: string) => void
+): Promise<ExtractedVectorData> {
+  // Try server-side extraction first (PyMuPDF - most accurate, handles Form XObjects)
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    onProgress?.('Connecting to server for vector extraction...')
+    console.log('Attempting server-side PDF extraction with PyMuPDF...')
+    const response = await fetch('/api/pdf/extract-vectors', {
+      method: 'POST',
+      body: formData,
+    })
+    
+    if (response.ok) {
+      onProgress?.('Processing extracted vector data...')
+      const serverData = await response.json()
+      
+      if (serverData.error) {
+        // If server extraction has an error, don't fall back to browser - throw error instead
+        throw new Error(`Server-side extraction failed: ${serverData.error}. Please check server logs and ensure PyMuPDF is installed.`)
+      } else if (serverData.paths && serverData.paths.length > 0) {
+        onProgress?.(`Extracted ${serverData.paths.length.toLocaleString()} paths, ${serverData.texts.length} texts`)
+        console.log(`✅ Server-side extraction successful: ${serverData.paths.length} paths, ${serverData.texts.length} texts`)
+        return {
+          texts: serverData.texts || [],
+          paths: serverData.paths || [],
+          bounds: serverData.bounds || { width: 0, height: 0 },
+          isVector: serverData.isVector || false,
+        }
+      } else if (serverData.paths && serverData.paths.length === 0) {
+        // Even if 0 paths, if we have texts, the extraction worked - return it
+        if (serverData.texts && serverData.texts.length > 0) {
+          console.warn('Server-side extraction returned 0 paths but has texts - using server data')
+          return {
+            texts: serverData.texts || [],
+            paths: serverData.paths || [],
+            bounds: serverData.bounds || { width: 0, height: 0 },
+            isVector: serverData.isVector || false,
+          }
+        }
+        // If truly empty, don't fall back - server extraction worked, just no data
+        console.warn('Server-side extraction returned empty data')
+        return {
+          texts: serverData.texts || [],
+          paths: serverData.paths || [],
+          bounds: serverData.bounds || { width: 0, height: 0 },
+          isVector: false,
+        }
+      }
+    } else {
+      const errorText = await response.text()
+      let errorMessage = `Server-side extraction failed with status ${response.status}`
+      try {
+        const errorJson = JSON.parse(errorText)
+        errorMessage = errorJson.error || errorMessage
+      } catch {
+        errorMessage = errorText || errorMessage
+      }
+      throw new Error(`${errorMessage}. Please check server logs and ensure PyMuPDF is installed.`)
+    }
+  } catch (error) {
+    // If server extraction fails completely, only try browser as last resort
+    if (error instanceof Error && error.message.includes('Server-side extraction failed')) {
+      throw error // Re-throw server errors
+    }
+    console.warn('Server-side extraction not available, trying browser extraction as last resort:', error)
+    onProgress?.('Server unavailable, trying browser extraction...')
+    // Only fall through to browser if it's a network/connection error, not a server processing error
+  }
+  
+  // Fallback to browser-based extraction (only if server completely fails)
+  // Note: Browser extraction requires PDF.js which may not be available
+  try {
+    onProgress?.('Extracting vectors in browser...')
+    console.log('Using browser-based PDF extraction (fallback)')
+    return await extractVectorDataBrowser(file)
+  } catch (browserError) {
+    console.error('Browser extraction also failed:', browserError)
+    // If both server and browser extraction fail, return empty data with error info
+    throw new Error(
+      `PDF extraction failed. Server-side extraction unavailable and browser extraction failed: ${browserError instanceof Error ? browserError.message : 'Unknown error'}. Please ensure the server is running and PyMuPDF is installed.`
+    )
+  }
+}
+
+/**
+ * Browser-based vector extraction (fallback)
+ * Uses canvas rendering + path extraction
+ */
+async function extractVectorDataBrowser(file: File): Promise<ExtractedVectorData> {
   try {
     const pdfjs = await getPdfJs()
     const arrayBuffer = await file.arrayBuffer()
@@ -397,10 +500,7 @@ export async function extractVectorData(file: File): Promise<ExtractedVectorData
  * Detects if a PDF is likely vector-based (CAD/architectural drawing)
  */
 export async function isVectorPDF(file: File): Promise<boolean> {
-  try {
-    const data = await extractVectorData(file)
-    return data.isVector && (data.texts.length > 5 || data.paths.length > 0)
-  } catch {
-    return false
-  }
+  // Assume all PDFs are vector-based - server-side extraction will handle it properly
+  // This avoids needing to load PDF.js just to check, which can fail
+  return true
 }

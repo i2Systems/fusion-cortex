@@ -9,8 +9,9 @@
  */
 
 const DB_NAME = 'fusion_storage'
-const DB_VERSION = 1
+const DB_VERSION = 2 // Increment for new object store
 const STORE_NAME = 'images'
+const VECTOR_STORE_NAME = 'vectorData'
 
 export interface StoredImage {
   id: string
@@ -47,13 +48,20 @@ export async function initIndexedDB(): Promise<IDBDatabase> {
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result
 
-      // Create object store if it doesn't exist
+      // Create images object store if it doesn't exist
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' })
         
         // Create indexes for efficient querying
         objectStore.createIndex('storeId', 'storeId', { unique: false })
         objectStore.createIndex('uploadedAt', 'uploadedAt', { unique: false })
+      }
+      
+      // Create vector data object store if it doesn't exist
+      if (!db.objectStoreNames.contains(VECTOR_STORE_NAME)) {
+        const vectorStore = db.createObjectStore(VECTOR_STORE_NAME, { keyPath: 'id' })
+        vectorStore.createIndex('storeId', 'storeId', { unique: false })
+        vectorStore.createIndex('uploadedAt', 'uploadedAt', { unique: false })
       }
     }
   })
@@ -194,5 +202,108 @@ export async function deleteStoreImages(storeId: string): Promise<void> {
 export async function getStoreImageSize(storeId: string): Promise<number> {
   const images = await getStoreImages(storeId)
   return images.reduce((total, image) => total + image.size, 0)
+}
+
+/**
+ * Store vector data for a specific store
+ * Uses IndexedDB to handle large datasets that exceed localStorage limits
+ */
+export async function storeVectorData(
+  storeId: string,
+  vectorData: any,
+  key: string
+): Promise<void> {
+  const db = await initIndexedDB()
+  const id = `${storeId}-${key}`
+  
+  // Convert to JSON string and then to Blob for efficient storage
+  const jsonString = JSON.stringify(vectorData)
+  const blob = new Blob([jsonString], { type: 'application/json' })
+  
+  const data = {
+    id,
+    storeId,
+    key,
+    vectorData: blob,
+    uploadedAt: new Date(),
+    size: blob.size,
+  }
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([VECTOR_STORE_NAME], 'readwrite')
+    const store = transaction.objectStore(VECTOR_STORE_NAME)
+    const request = store.put(data) // Use put to overwrite if exists
+
+    request.onsuccess = () => {
+      resolve()
+    }
+
+    request.onerror = () => {
+      reject(new Error('Failed to store vector data'))
+    }
+  })
+}
+
+/**
+ * Get vector data by store ID and key
+ */
+export async function getVectorData(
+  storeId: string,
+  key: string
+): Promise<any | null> {
+  const db = await initIndexedDB()
+  const id = `${storeId}-${key}`
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([VECTOR_STORE_NAME], 'readonly')
+    const store = transaction.objectStore(VECTOR_STORE_NAME)
+    const request = store.get(id)
+
+    request.onsuccess = async () => {
+      const result = request.result
+      if (!result) {
+        resolve(null)
+        return
+      }
+      
+      // Convert Blob back to JSON
+      try {
+        const text = await result.vectorData.text()
+        const vectorData = JSON.parse(text)
+        resolve(vectorData)
+      } catch (error) {
+        reject(new Error('Failed to parse vector data'))
+      }
+    }
+
+    request.onerror = () => {
+      reject(new Error('Failed to get vector data'))
+    }
+  })
+}
+
+/**
+ * Delete vector data for a specific store and key
+ */
+export async function deleteVectorData(
+  storeId: string,
+  key: string
+): Promise<void> {
+  const db = await initIndexedDB()
+  const id = `${storeId}-${key}`
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([VECTOR_STORE_NAME], 'readwrite')
+    const store = transaction.objectStore(VECTOR_STORE_NAME)
+    const request = store.delete(id)
+
+    request.onsuccess = () => {
+      resolve()
+    }
+
+    request.onerror = () => {
+      reject(new Error('Failed to delete vector data'))
+    }
+  })
 }
 

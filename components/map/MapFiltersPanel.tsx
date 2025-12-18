@@ -18,6 +18,10 @@ export interface MapFilters {
   showFixtures: boolean
   showMotion: boolean
   showLightSensors: boolean
+  showZones: boolean // Zones layer visibility
+  showWalls: boolean // Vector walls/structure
+  showAnnotations: boolean // Vector annotations/dimensions
+  showText: boolean // Vector text labels
   // Zone filter
   selectedZones: string[]
 }
@@ -37,7 +41,7 @@ export function MapFiltersPanel({
   isOpen,
   onClose
 }: MapFiltersPanelProps) {
-  const handleToggleLayer = (layer: keyof Pick<MapFilters, 'showMap' | 'showFixtures' | 'showMotion' | 'showLightSensors'>) => {
+  const handleToggleLayer = (layer: keyof Pick<MapFilters, 'showMap' | 'showFixtures' | 'showMotion' | 'showLightSensors' | 'showZones' | 'showWalls' | 'showAnnotations' | 'showText'>) => {
     onFiltersChange({
       ...filters,
       [layer]: !filters[layer]
@@ -130,6 +134,56 @@ export function MapFiltersPanel({
               />
               <Eye size={18} className="text-[var(--color-success)]" />
               <span className="text-sm text-[var(--color-text)]">Light Sensors</span>
+            </label>
+            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
+              <input
+                type="checkbox"
+                checked={filters.showZones}
+                onChange={() => handleToggleLayer('showZones')}
+                className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] focus:ring-offset-0"
+              />
+              <Map size={18} className="text-[var(--color-accent)]" />
+              <span className="text-sm text-[var(--color-text)]">Zones</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Vector Layers Section */}
+        <div>
+          <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3 flex items-center gap-2">
+            <Eye size={16} />
+            Vector Layers
+          </h4>
+          <div className="space-y-2">
+            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
+              <input
+                type="checkbox"
+                checked={filters.showWalls}
+                onChange={() => handleToggleLayer('showWalls')}
+                className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] focus:ring-offset-0"
+              />
+              <div className="w-4 h-4 border-2 border-[var(--color-text)]" />
+              <span className="text-sm text-[var(--color-text)]">Base Building</span>
+            </label>
+            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
+              <input
+                type="checkbox"
+                checked={filters.showAnnotations}
+                onChange={() => handleToggleLayer('showAnnotations')}
+                className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] focus:ring-offset-0"
+              />
+              <div className="w-4 h-4 border-2 border-[var(--color-text-muted)]" />
+              <span className="text-sm text-[var(--color-text)]">Annotations (Greys)</span>
+            </label>
+            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
+              <input
+                type="checkbox"
+                checked={filters.showText}
+                onChange={() => handleToggleLayer('showText')}
+                className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] focus:ring-offset-0"
+              />
+              <span className="text-xs text-[var(--color-text-muted)]">Aa</span>
+              <span className="text-sm text-[var(--color-text)]">Text Labels</span>
             </label>
           </div>
         </div>

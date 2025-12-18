@@ -1,13 +1,14 @@
 /**
- * Map & Devices Section
+ * Locations & Devices Section
  * 
- * Main area: Map (point cloud over blueprint) using react-konva
+ * Main area: Location view (point cloud over blueprint) using react-konva
  * Right panel: Selected device details
  * Bottom drawer: Filters, layer toggles
+ * Lower left: Location menu for managing multiple locations and zoom views
  * 
  * AI Note: This section uses react-konva for canvas-based rendering.
  * Device points should be color-coded by type (fixtures, motion, light sensors).
- * Search island is positioned at the bottom.
+ * Supports multiple locations per store and zoomed views for precise placement.
  */
 
 'use client'
@@ -39,6 +40,17 @@ import { useZones } from '@/lib/ZoneContext'
 import { useStore } from '@/lib/StoreContext'
 import { useRole } from '@/lib/role'
 import { detectAllLights, createDevicesFromLights } from '@/lib/lightDetection'
+import { 
+  loadLocations, 
+  addLocation, 
+  updateLocation, 
+  deleteLocation,
+  saveLocations,
+  convertZoomToParent,
+  type Location 
+} from '@/lib/locationStorage'
+import { LocationsMenu } from '@/components/map/LocationsMenu'
+import { ZoomViewCreator } from '@/components/map/ZoomViewCreator'
 
 // Helper function to check if a point is inside a polygon
 function pointInPolygon(point: { x: number; y: number }, polygon: Array<{ x: number; y: number }>): boolean {
@@ -85,10 +97,13 @@ export default function MapPage() {
   const { activeStoreId } = useStore()
   const { zones, syncZoneDeviceIds, getDevicesInZone } = useZones()
 
-  // Helper to get store-scoped localStorage key
-  const getMapImageKey = () => {
-    return activeStoreId ? `fusion_map-image-url_${activeStoreId}` : 'map-image-url'
-  }
+  // Location management
+  const [locations, setLocations] = useState<Location[]>([])
+  const [currentLocationId, setCurrentLocationId] = useState<string | null>(null)
+  const [showZoomCreator, setShowZoomCreator] = useState(false)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [imageBounds, setImageBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
+  
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([])
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null) // Zone to arrange devices into
@@ -195,9 +210,83 @@ export default function MapPage() {
         }, 0)
     }
   }
-  const [mapUploaded, setMapUploaded] = useState(false)
+  // Current location data (derived from currentLocationId)
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(null)
   const [vectorData, setVectorData] = useState<any>(null)
+  
+  const currentLocation = useMemo(() => {
+    return locations.find(loc => loc.id === currentLocationId) || null
+  }, [locations, currentLocationId])
+  
+  const mapUploaded = currentLocation !== null
+  
+  // Load location data (image/vector) from storage when location changes
+  useEffect(() => {
+    const loadLocationData = async () => {
+      if (!currentLocation) {
+        setMapImageUrl(null)
+        setVectorData(null)
+        return
+      }
+      
+      // If location has storageKey, load from IndexedDB
+      if (currentLocation.storageKey) {
+        try {
+          const { getVectorData } = await import('@/lib/indexedDB')
+          const stored = await getVectorData(activeStoreId, currentLocation.storageKey)
+          if (stored) {
+            // Check if it's vector data or image data
+            if (stored.paths || stored.texts) {
+              setVectorData(stored)
+              setMapImageUrl(null)
+            } else if (stored.data) {
+              // Image data stored as { data: base64String }
+              setMapImageUrl(stored.data)
+              setVectorData(null)
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to load location data from IndexedDB:', e)
+        }
+      } else {
+        // Use direct imageUrl/vectorData from location
+        setMapImageUrl(currentLocation.imageUrl || null)
+        setVectorData(currentLocation.vectorData || null)
+      }
+      
+      // For zoom views, inherit from parent if no data
+      if (currentLocation.type === 'zoom' && currentLocation.parentLocationId) {
+        const parentLocation = locations.find(loc => loc.id === currentLocation.parentLocationId)
+        if (parentLocation) {
+          // Use parent's data if zoom view doesn't have its own
+          if (!currentLocation.storageKey && !currentLocation.imageUrl && !currentLocation.vectorData) {
+            if (parentLocation.storageKey) {
+              try {
+                const { getVectorData } = await import('@/lib/indexedDB')
+                const stored = await getVectorData(activeStoreId, parentLocation.storageKey)
+                if (stored) {
+                  if (stored.paths || stored.texts) {
+                    setVectorData(stored)
+                    setMapImageUrl(null)
+                  } else if (stored.data) {
+                    setMapImageUrl(stored.data)
+                    setVectorData(null)
+                  }
+                }
+              } catch (e) {
+                console.warn('Failed to load parent location data:', e)
+              }
+            } else {
+              setMapImageUrl(parentLocation.imageUrl || null)
+              setVectorData(parentLocation.vectorData || null)
+            }
+          }
+        }
+      }
+    }
+    
+    loadLocationData()
+  }, [currentLocation, locations, activeStoreId])
   const [toolMode, setToolMode] = useState<MapToolMode>('select')
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -206,46 +295,166 @@ export default function MapPage() {
     showFixtures: true,
     showMotion: true,
     showLightSensors: true,
+    showZones: true,
+    showWalls: true,
+    showAnnotations: true,
+    showText: true,
     selectedZones: [],
   })
   const uploadInputRef = useRef<HTMLInputElement>(null)
 
-  // Load saved map image/vector data on mount or when store changes
+  // Load locations on mount or when store changes
   useEffect(() => {
-    if (typeof window !== 'undefined' && activeStoreId) {
-      const imageKey = getMapImageKey()
-      const vectorKey = `${imageKey}_vector`
+    const loadLocationsData = async () => {
+      const loadedLocations = await loadLocations(activeStoreId)
+      setLocations(loadedLocations)
       
-      // Try to load vector data first (preferred)
-      const savedVectorData = localStorage.getItem(vectorKey)
-      if (savedVectorData) {
+      // Set current location to first one, or migrate old single map if exists
+      if (loadedLocations.length > 0) {
+        setCurrentLocationId(loadedLocations[0].id)
+      } else {
+        // Try to migrate old single map format
+        const imageKey = activeStoreId ? `fusion_map-image-url_${activeStoreId}` : 'map-image-url'
+        const vectorKey = `${imageKey}_vector`
+        
         try {
-          const parsed = JSON.parse(savedVectorData)
-          setVectorData(parsed)
-          setMapUploaded(true)
-          return
+          let imageUrl: string | null = null
+          let vectorData: any = null
+          
+          // Try IndexedDB first
+          try {
+            const { getVectorData } = await import('@/lib/indexedDB')
+            vectorData = await getVectorData(activeStoreId, vectorKey)
+          } catch (e) {
+            // Fallback to localStorage
+            const savedVectorData = localStorage.getItem(vectorKey)
+            if (savedVectorData) {
+              vectorData = JSON.parse(savedVectorData)
+            }
+          }
+          
+          // Try image
+          const savedImageUrl = localStorage.getItem(imageKey)
+          if (savedImageUrl) {
+            imageUrl = savedImageUrl
+          }
+          
+          // If we have old data, migrate it to location system
+          if (imageUrl || vectorData) {
+            const migratedLocation = await addLocation(activeStoreId, {
+              name: 'Main Floor Plan',
+              type: 'base',
+              imageUrl,
+              vectorData,
+            })
+            setLocations([migratedLocation])
+            setCurrentLocationId(migratedLocation.id)
+            
+            // Clean up old storage
+            localStorage.removeItem(imageKey)
+            localStorage.removeItem(vectorKey)
+          }
         } catch (e) {
-          console.warn('Failed to parse saved vector data:', e)
+          console.warn('Failed to migrate old map data:', e)
         }
       }
-      
-      // Fallback to image
-      const savedImageUrl = localStorage.getItem(imageKey)
-      if (savedImageUrl) {
-        setMapImageUrl(savedImageUrl)
-        setMapUploaded(true)
-      }
     }
+    
+    loadLocationsData()
   }, [activeStoreId])
 
-  const handleMapUpload = (imageUrl: string) => {
-    setMapImageUrl(imageUrl)
-    setMapUploaded(true)
+  const handleMapUpload = async (imageUrl: string) => {
+    const locationName = prompt('Enter a name for this location:', 'Main Floor Plan')
+    if (!locationName) return
+    
+    // Store large images in IndexedDB if they're too big for localStorage
+    let storageKey: string | undefined = undefined
+    if (imageUrl.length > 100000) {
+      try {
+        const { storeVectorData } = await import('@/lib/indexedDB')
+        const vectorKey = `location_image_${Date.now()}`
+        // Store as vector data (it's just a blob of data)
+        await storeVectorData(activeStoreId, { data: imageUrl } as any, vectorKey)
+        storageKey = vectorKey
+        imageUrl = undefined // Don't store in location object
+      } catch (e) {
+        console.warn('Failed to store large image in IndexedDB, using localStorage:', e)
+      }
+    }
+    
+    const newLocation = await addLocation(activeStoreId, {
+      name: locationName,
+      type: 'base',
+      imageUrl: imageUrl && imageUrl.length <= 100000 ? imageUrl : undefined,
+      storageKey,
+    })
+    
+    setLocations(prev => [...prev, newLocation])
+    setCurrentLocationId(newLocation.id)
+    setShowUploadModal(false)
   }
 
-  const handleVectorDataUpload = (data: any) => {
-    setVectorData(data)
-    setMapUploaded(true)
+  const handleVectorDataUpload = async (data: any) => {
+    const locationName = prompt('Enter a name for this location:', 'Main Floor Plan')
+    if (!locationName) return
+    
+    // Always store vector data in IndexedDB (it's usually large)
+    let storageKey: string | undefined = undefined
+    try {
+      const { storeVectorData } = await import('@/lib/indexedDB')
+      const vectorKey = `location_vector_${Date.now()}`
+      await storeVectorData(activeStoreId, data, vectorKey)
+      storageKey = vectorKey
+    } catch (e) {
+      console.error('Failed to store vector data in IndexedDB:', e)
+      alert('Failed to save location. Storage may be full. Please try clearing browser storage.')
+      return
+    }
+    
+    const newLocation = await addLocation(activeStoreId, {
+      name: locationName,
+      type: 'base',
+      storageKey, // Store reference only
+    })
+    
+    setLocations(prev => [...prev, newLocation])
+    setCurrentLocationId(newLocation.id)
+    setShowUploadModal(false)
+  }
+  
+  const handleLocationSelect = (locationId: string) => {
+    setCurrentLocationId(locationId)
+  }
+  
+  const handleCreateZoomView = async (name: string, bounds: { minX: number; minY: number; maxX: number; maxY: number }) => {
+    if (!currentLocationId) return
+    
+    const newZoomView = await addLocation(activeStoreId, {
+      name,
+      type: 'zoom',
+      parentLocationId: currentLocationId,
+      imageUrl: currentLocation?.imageUrl,
+      vectorData: currentLocation?.vectorData,
+      zoomBounds: bounds,
+    })
+    
+    setLocations(prev => [...prev, newZoomView])
+    setCurrentLocationId(newZoomView.id)
+  }
+  
+  const handleDeleteLocation = async (locationId: string) => {
+    await deleteLocation(activeStoreId, locationId)
+    const updatedLocations = await loadLocations(activeStoreId)
+    setLocations(updatedLocations)
+    
+    // If we deleted the current location, switch to first available
+    if (locationId === currentLocationId) {
+      if (updatedLocations.length > 0) {
+        setCurrentLocationId(updatedLocations[0].id)
+      } else {
+        setCurrentLocationId(null)
+      }
+    }
   }
 
   // Auto-detect lights from uploaded map
@@ -339,16 +548,20 @@ export default function MapPage() {
     }
   }
 
-  const handleClearMap = () => {
-    setMapImageUrl(null)
-    setVectorData(null)
-    setMapUploaded(false)
-    setSelectedDevice(null)
-    if (typeof window !== 'undefined' && activeStoreId) {
-      const imageKey = getMapImageKey()
-      localStorage.removeItem(imageKey)
-      localStorage.removeItem(`${imageKey}_vector`)
+  const handleClearMap = async () => {
+    if (!confirm('Are you sure you want to clear all locations and zoom views? This cannot be undone.')) {
+      return
     }
+    
+    // Clear all locations (this will also clear all zoom views since they're stored together)
+    await saveLocations(activeStoreId, [])
+    
+    // Reset state
+    setLocations([])
+    setCurrentLocationId(null)
+    setSelectedDevice(null)
+    setSelectedDeviceIds([])
+    
     // Reset file input if it exists
     if (uploadInputRef.current) {
       uploadInputRef.current.value = ''
@@ -363,10 +576,20 @@ export default function MapPage() {
   const handleDeviceMoveEnd = (deviceId: string, x: number, y: number) => {
     // Only allow moving in 'move' mode
     if (toolMode !== 'move') return
+    
+    // If we're in a zoom view, convert coordinates back to parent location
+    let finalX = x
+    let finalY = y
+    if (currentLocation?.type === 'zoom' && currentLocation.zoomBounds) {
+      const parentCoords = convertZoomToParent(currentLocation, x, y)
+      finalX = parentCoords.x
+      finalY = parentCoords.y
+    }
+    
     // Save final position to history when drag ends
     updateMultipleDevices([{
       deviceId,
-      updates: { x, y }
+      updates: { x: finalX, y: finalY }
     }])
     
     // Sync device zone assignment after move
@@ -374,10 +597,10 @@ export default function MapPage() {
     setTimeout(() => {
       const movedDevice = devices.find(d => d.id === deviceId)
       if (movedDevice) {
-        // Find which zone contains this device now
+        // Find which zone contains this device now (using parent coordinates)
         let newZoneName: string | undefined = undefined
         for (const zone of zones) {
-          const devicesInZone = getDevicesInZone(zone.id, [{ ...movedDevice, x, y }])
+          const devicesInZone = getDevicesInZone(zone.id, [{ ...movedDevice, x: finalX, y: finalY }])
           if (devicesInZone.length > 0) {
             newZoneName = zone.name
             break
@@ -393,7 +616,7 @@ export default function MapPage() {
         }
         
         // Sync all zone deviceIds arrays
-        syncZoneDeviceIds(devices.map(d => d.id === deviceId ? { ...d, x, y } : d))
+        syncZoneDeviceIds(devices.map(d => d.id === deviceId ? { ...d, x: finalX, y: finalY } : d))
       }
     }, 0)
   }
@@ -597,6 +820,42 @@ export default function MapPage() {
     return count
   }, [filters])
 
+  // Convert device coordinates for zoom views
+  const { convertParentToZoom } = require('@/lib/locationStorage')
+  const devicesForCanvas = useMemo(() => {
+    return filteredDevices.map(d => {
+      // Convert device coordinates for zoom views
+      let deviceX = d.x || 0
+      let deviceY = d.y || 0
+      
+      if (currentLocation?.type === 'zoom' && currentLocation.zoomBounds) {
+        // Convert parent coordinates to zoom view coordinates
+        const zoomCoords = convertParentToZoom(currentLocation, deviceX, deviceY)
+        if (zoomCoords) {
+          deviceX = zoomCoords.x
+          deviceY = zoomCoords.y
+        } else {
+          // Device is outside zoom view bounds, hide it
+          return null
+        }
+      }
+      
+      return {
+        id: d.id,
+        x: deviceX,
+        y: deviceY,
+        type: d.type,
+        deviceId: d.deviceId,
+        status: d.status,
+        signal: d.signal,
+        location: d.location,
+        locked: d.locked || false,
+        orientation: d.orientation,
+        components: d.components,
+      }
+    }).filter(Boolean)
+  }, [filteredDevices, currentLocation])
+
   const handleComponentExpand = (deviceId: string, expanded: boolean) => {
     setExpandedComponents(prev => {
       const next = new Set(prev)
@@ -627,8 +886,8 @@ export default function MapPage() {
           position="top" 
           fullWidth={true}
           showActions={mapUploaded}
-          title="Map & Devices"
-          subtitle="Visualize and manage device locations"
+          title="Locations & Devices"
+          subtitle="Visualize and manage device locations across multiple floor plans"
           placeholder={mapUploaded ? "Search devices, zones, or locations..." : "Upload a map to search devices..."}
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
@@ -704,16 +963,36 @@ export default function MapPage() {
               </div>
             </div>
           )}
-          {/* Hidden file input for upload button in menu - handled by MapUpload component */}
+          {/* Upload modal or map view */}
           {!mapUploaded ? (
             <div className="w-full h-full">
-              <MapUpload 
-                onMapUpload={handleMapUpload} 
-                onVectorDataUpload={handleVectorDataUpload}
-              />
+              {showUploadModal ? (
+                <MapUpload 
+                  onMapUpload={handleMapUpload} 
+                  onVectorDataUpload={handleVectorDataUpload}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <button
+                    onClick={() => setShowUploadModal(true)}
+                    className="fusion-button fusion-button-primary"
+                  >
+                    Upload First Location
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="w-full h-full rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] relative" style={{ minHeight: 0 }}>
+              {/* Locations Menu - Inside map region, lower left */}
+              <LocationsMenu
+                locations={locations}
+                currentLocationId={currentLocationId}
+                onLocationSelect={handleLocationSelect}
+                onAddLocation={() => setShowUploadModal(true)}
+                onCreateZoomView={() => setShowZoomCreator(true)}
+                onDeleteLocation={handleDeleteLocation}
+              />
               <div className="w-full h-full rounded-2xl overflow-hidden">
                 <MapCanvas 
                   onDeviceSelect={handleDeviceSelect}
@@ -733,19 +1012,13 @@ export default function MapPage() {
                   onComponentClick={handleComponentClick as any}
                   devicesData={filteredDevices}
                   onZoneClick={handleZoneClick}
-                  devices={filteredDevices.map(d => ({
-                    id: d.id,
-                    x: d.x || 0,
-                    y: d.y || 0,
-                    type: d.type,
-                    deviceId: d.deviceId,
-                    status: d.status,
-                    signal: d.signal,
-                    location: d.location,
-                    locked: d.locked || false,
-                    orientation: d.orientation,
-                    components: d.components,
-                  }))}
+                  devices={devicesForCanvas}
+                  currentLocation={currentLocation}
+                  onImageBoundsChange={setImageBounds}
+                  showWalls={filters.showWalls}
+                  showAnnotations={filters.showAnnotations}
+                  showText={filters.showText}
+                  showZones={filters.showZones}
                 />
               </div>
             </div>
@@ -765,6 +1038,19 @@ export default function MapPage() {
           </div>
         )}
       </div>
+
+      {/* Zoom View Creator Modal */}
+      {showZoomCreator && mapUploaded && (
+        <ZoomViewCreator
+          isOpen={showZoomCreator}
+          onClose={() => setShowZoomCreator(false)}
+          onSave={handleCreateZoomView}
+          mapWidth={imageBounds?.width || 800}
+          mapHeight={imageBounds?.height || 600}
+          imageBounds={imageBounds}
+          mapImageUrl={mapImageUrl}
+        />
+      )}
 
       {/* Component Modal */}
       <ComponentModal

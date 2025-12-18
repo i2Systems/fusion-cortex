@@ -17,6 +17,9 @@ import '@/lib/exportData'
 export const metadata: Metadata = {
   title: 'Fusion / Cortex — Commissioning & Configuration',
   description: 'Setup, mapping, and rules platform for large-scale retail lighting deployments',
+  icons: {
+    icon: '/icon.svg',
+  },
 }
 
 export default function RootLayout({

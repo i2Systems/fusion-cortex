@@ -18,17 +18,24 @@ async function getPdfJs() {
   
   if (!pdfjsLib) {
     try {
-      pdfjsLib = await import('pdfjs-dist')
+      // Dynamic import with better error handling
+      const pdfjsModule = await import('pdfjs-dist')
+      pdfjsLib = pdfjsModule.default || pdfjsModule
+      
+      if (!pdfjsLib) {
+        throw new Error('pdfjs-dist module is empty or invalid')
+      }
       
       // Set up the worker for pdfjs - initialize only once
       if (!workerInitialized && pdfjsLib.GlobalWorkerOptions) {
-        // Use local worker file from public directory (most reliable)
+        // Use local worker file from public directory
         pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs'
         workerInitialized = true
       }
     } catch (importError) {
       console.error('Failed to import pdfjs-dist:', importError)
-      throw new Error('Failed to load PDF processing library')
+      const errorMsg = importError instanceof Error ? importError.message : String(importError)
+      throw new Error(`Failed to initialize PDF processing library: ${errorMsg}`)
     }
   }
   

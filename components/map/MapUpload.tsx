@@ -15,6 +15,7 @@ import { useState, useRef } from 'react'
 import { useStore } from '@/lib/StoreContext'
 import { pdfToImage, isPdfFile } from '@/lib/pdfUtils'
 import { extractVectorData, isVectorPDF, type ExtractedVectorData } from '@/lib/pdfVectorExtractor'
+import { storeVectorData } from '@/lib/indexedDB'
 
 interface MapUploadProps {
   onMapUpload: (imageUrl: string) => void
@@ -25,6 +26,7 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
   const { activeStoreId } = useStore()
   const [isDragging, setIsDragging] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [processingStatus, setProcessingStatus] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -61,6 +63,7 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
     }
 
     setIsProcessing(true)
+    setProcessingStatus('Analyzing PDF structure...')
 
     try {
       let base64String: string | undefined = undefined
@@ -69,11 +72,17 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
       if (isPdfFile(file)) {
         try {
           // Vector-first pipeline: Extract vector data if PDF is vector-based
+          setProcessingStatus('Checking if PDF contains vector graphics...')
           const isVector = await isVectorPDF(file)
           
           if (isVector && onVectorDataUpload) {
-            // Extract and store vector data
-            const vectorData = await extractVectorData(file)
+            // Extract and store vector data with progress updates
+            setProcessingStatus('Extracting vector paths and lines from PDF...')
+            const vectorData = await extractVectorData(file, (status) => {
+              setProcessingStatus(status)
+            })
+            
+            setProcessingStatus(`Found ${vectorData.paths.length.toLocaleString()} paths, processing...`)
             
             // Check if extraction seems complete enough
             // Architectural drawings should have many paths relative to text
@@ -85,12 +94,37 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
               const storageKey = getStorageKey()
               const vectorKey = `${storageKey}_vector`
               
-              // Store vector data as JSON
-              localStorage.setItem(vectorKey, JSON.stringify(vectorData))
+              // Store vector data in IndexedDB (handles large datasets that exceed localStorage limits)
+              setProcessingStatus('Saving vector data (this may take a moment for large files)...')
+              try {
+                if (activeStoreId) {
+                  await storeVectorData(activeStoreId, vectorData, vectorKey)
+                } else {
+                  // Fallback to localStorage for small datasets if no store ID
+                  const jsonString = JSON.stringify(vectorData)
+                  if (jsonString.length < 4 * 1024 * 1024) { // 4MB limit
+                    localStorage.setItem(vectorKey, jsonString)
+                  } else {
+                    throw new Error('Vector data too large for localStorage. Please select a store.')
+                  }
+                }
+              } catch (storageError: any) {
+                // If IndexedDB fails, try localStorage as fallback (might fail for large data)
+                console.warn('IndexedDB storage failed, trying localStorage:', storageError)
+                try {
+                  localStorage.setItem(vectorKey, JSON.stringify(vectorData))
+                } catch (localError: any) {
+                  // If both fail, still use the data but warn user
+                  console.error('Both IndexedDB and localStorage failed:', localError)
+                  throw new Error('Failed to save vector data. The file may be too large. Try clearing browser storage and try again.')
+                }
+              }
+              
               onVectorDataUpload(vectorData)
               
               // Also create a fallback image for compatibility
               try {
+                setProcessingStatus('Creating preview image...')
                 base64String = await pdfToImage(file, 2)
                 localStorage.setItem(storageKey, base64String)
                 onMapUpload(base64String)
@@ -98,6 +132,8 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
                 console.warn('Could not create fallback image, using vector data only:', imgError)
                 // Continue with vector data only
               }
+              
+              setProcessingStatus('Complete!')
               
               if (fileInputRef.current) {
                 fileInputRef.current.value = ''
@@ -109,6 +145,7 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
               console.warn(`Vector extraction incomplete (${vectorData.paths.length} paths, ${vectorData.texts.length} texts).`)
               console.warn('This PDF likely uses Form XObjects (nested content) which PDF.js operator list cannot access.')
               console.warn('Falling back to high-resolution image rendering (scale 4) for maximum accuracy...')
+              setProcessingStatus('Vector extraction incomplete, rendering high-resolution image...')
               // Fall through to image conversion
             }
           }
@@ -116,7 +153,7 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
           // Convert PDF to high-res image (for non-vector PDFs or incomplete vector extraction)
           // Use scale 4 for architectural drawings to ensure all lines are crisp
           if (!base64String) {
-            console.log('Rendering PDF to high-resolution image (scale 4) for maximum accuracy...')
+            setProcessingStatus('Rendering PDF to high-resolution image (this may take a moment)...')
             base64String = await pdfToImage(file, 4)
           }
         } catch (pdfError) {
@@ -129,6 +166,7 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
         }
       } else {
         // Handle regular image files
+        setProcessingStatus('Reading image file...')
         base64String = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader()
           reader.onloadend = () => {
@@ -147,9 +185,12 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
       }
 
       // Store in localStorage with store-scoped key
+      setProcessingStatus('Saving map data...')
       const storageKey = getStorageKey()
       localStorage.setItem(storageKey, base64String)
       onMapUpload(base64String)
+      
+      setProcessingStatus('Complete!')
       
       // Reset input after successful upload
       if (fileInputRef.current) {
@@ -162,11 +203,16 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
           ? err.message 
           : 'An error occurred while processing the file. Please try again.'
       )
+      setProcessingStatus('')
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
     } finally {
-      setIsProcessing(false)
+      // Small delay to show "Complete!" message
+      setTimeout(() => {
+        setIsProcessing(false)
+        setProcessingStatus('')
+      }, 500)
     }
   }
 
@@ -188,6 +234,7 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
   const handleLoadDefault = async () => {
     setIsProcessing(true)
     setError(null)
+    setProcessingStatus('Loading sample floor plan...')
     
     try {
       // Load one of the sample PDF floor plans
@@ -298,9 +345,14 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
           {isProcessing ? (
             <div className="flex flex-col items-center gap-3">
               <Loader2 size={32} className="text-[var(--color-primary)] animate-spin" />
-              <p className="text-sm text-[var(--color-text-muted)]">
-                Processing file...
-              </p>
+              <div className="flex flex-col items-center gap-1">
+                <p className="text-sm font-medium text-[var(--color-text)]">
+                  {processingStatus || 'Processing file...'}
+                </p>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  This may take a moment for large files
+                </p>
+              </div>
             </div>
           ) : (
             <>

@@ -38,7 +38,7 @@ const navGroups = [
   ],
   // Group 2: Mapping & Organization
   [
-    { href: '/map', label: 'Map & Devices', icon: Map },
+    { href: '/map', label: 'Locations & Devices', icon: Map },
     { href: '/zones', label: 'Zones', icon: Layers },
     { href: '/lookup', label: 'Device Lookup', icon: Search },
   ],
