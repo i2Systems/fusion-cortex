@@ -10,17 +10,22 @@
 
 'use client'
 
-import { Upload, Map as MapIcon } from 'lucide-react'
+import { Upload, Map as MapIcon, Loader2, AlertCircle } from 'lucide-react'
 import { useState, useRef } from 'react'
 import { useStore } from '@/lib/StoreContext'
+import { pdfToImage, isPdfFile } from '@/lib/pdfUtils'
+import { extractVectorData, isVectorPDF, type ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 
 interface MapUploadProps {
   onMapUpload: (imageUrl: string) => void
+  onVectorDataUpload?: (vectorData: ExtractedVectorData) => void
 }
 
-export function MapUpload({ onMapUpload }: MapUploadProps) {
+export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
   const { activeStoreId } = useStore()
   const [isDragging, setIsDragging] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Helper to get store-scoped localStorage key
@@ -29,38 +34,140 @@ export function MapUpload({ onMapUpload }: MapUploadProps) {
   }
 
   const handleFileSelect = async (file: File) => {
+    // Reset error state
+    setError(null)
+    
     // Validate file type
     const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'application/pdf']
-    if (!validTypes.includes(file.type)) {
-      alert('Please upload a valid image file (PNG, JPG, SVG) or PDF')
-      // Reset input even on error
+    const validExtensions = ['.png', '.jpg', '.jpeg', '.svg', '.pdf']
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
+    
+    if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
+      setError('Please upload a valid image file (PNG, JPG, SVG) or PDF')
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
       return
     }
 
-    // Convert file to base64 for localStorage persistence
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      const base64String = reader.result as string
+    // Validate file size (max 50MB)
+    const maxSize = 50 * 1024 * 1024 // 50MB
+    if (file.size > maxSize) {
+      setError('File size must be less than 50MB. Please choose a smaller file.')
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      return
+    }
+
+    setIsProcessing(true)
+
+    try {
+      let base64String: string | undefined = undefined
+
+      // Handle PDF files - try vector extraction first
+      if (isPdfFile(file)) {
+        try {
+          // Vector-first pipeline: Extract vector data if PDF is vector-based
+          const isVector = await isVectorPDF(file)
+          
+          if (isVector && onVectorDataUpload) {
+            // Extract and store vector data
+            const vectorData = await extractVectorData(file)
+            
+            // Check if extraction seems complete enough
+            // Architectural drawings should have many paths relative to text
+            const hasEnoughPaths = vectorData.paths.length >= 100 || 
+                                   (vectorData.paths.length >= 50 && vectorData.texts.length < 100) ||
+                                   (vectorData.paths.length > 0 && vectorData.texts.length < 10)
+            
+            if (hasEnoughPaths) {
+              const storageKey = getStorageKey()
+              const vectorKey = `${storageKey}_vector`
+              
+              // Store vector data as JSON
+              localStorage.setItem(vectorKey, JSON.stringify(vectorData))
+              onVectorDataUpload(vectorData)
+              
+              // Also create a fallback image for compatibility
+              try {
+                base64String = await pdfToImage(file, 2)
+                localStorage.setItem(storageKey, base64String)
+                onMapUpload(base64String)
+              } catch (imgError) {
+                console.warn('Could not create fallback image, using vector data only:', imgError)
+                // Continue with vector data only
+              }
+              
+              if (fileInputRef.current) {
+                fileInputRef.current.value = ''
+              }
+              setIsProcessing(false)
+              return
+            } else {
+              // Vector extraction seems incomplete - use high-res image instead
+              console.warn(`Vector extraction incomplete (${vectorData.paths.length} paths, ${vectorData.texts.length} texts).`)
+              console.warn('This PDF likely uses Form XObjects (nested content) which PDF.js operator list cannot access.')
+              console.warn('Falling back to high-resolution image rendering (scale 4) for maximum accuracy...')
+              // Fall through to image conversion
+            }
+          }
+          
+          // Convert PDF to high-res image (for non-vector PDFs or incomplete vector extraction)
+          // Use scale 4 for architectural drawings to ensure all lines are crisp
+          if (!base64String) {
+            console.log('Rendering PDF to high-resolution image (scale 4) for maximum accuracy...')
+            base64String = await pdfToImage(file, 4)
+          }
+        } catch (pdfError) {
+          console.error('PDF processing error:', pdfError)
+          throw new Error(
+            pdfError instanceof Error 
+              ? `Failed to process PDF: ${pdfError.message}` 
+              : 'Failed to process PDF. Please ensure the file is a valid PDF.'
+          )
+        }
+      } else {
+        // Handle regular image files
+        base64String = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            const result = reader.result as string
+            if (result) {
+              resolve(result)
+            } else {
+              reject(new Error('Failed to read file'))
+            }
+          }
+          reader.onerror = () => {
+            reject(new Error('Error reading file'))
+          }
+          reader.readAsDataURL(file)
+        })
+      }
+
       // Store in localStorage with store-scoped key
       const storageKey = getStorageKey()
       localStorage.setItem(storageKey, base64String)
       onMapUpload(base64String)
+      
       // Reset input after successful upload
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
-    }
-    reader.onerror = () => {
-      alert('Error reading file. Please try again.')
-      // Reset input on error
+    } catch (err) {
+      console.error('File processing error:', err)
+      setError(
+        err instanceof Error 
+          ? err.message 
+          : 'An error occurred while processing the file. Please try again.'
+      )
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
+    } finally {
+      setIsProcessing(false)
     }
-    reader.readAsDataURL(file)
   }
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,13 +185,34 @@ export function MapUpload({ onMapUpload }: MapUploadProps) {
     fileInputRef.current?.click()
   }
 
-  const handleLoadDefault = () => {
-    // Load the default Walmart floorplan
-    const defaultUrl = '/floorplans/walmart-default.svg'
-    // Store default in localStorage too (store-scoped)
-    const storageKey = getStorageKey()
-    localStorage.setItem(storageKey, defaultUrl)
-    onMapUpload(defaultUrl)
+  const handleLoadDefault = async () => {
+    setIsProcessing(true)
+    setError(null)
+    
+    try {
+      // Load one of the sample PDF floor plans
+      const samplePdfPath = '/floorplans/WMT 157 STORE PLAN (1).pdf'
+      
+      // Fetch the PDF file
+      const response = await fetch(samplePdfPath)
+      if (!response.ok) {
+        throw new Error('Failed to load sample floor plan')
+      }
+      
+      const blob = await response.blob()
+      const file = new File([blob], 'WMT 157 STORE PLAN (1).pdf', { type: 'application/pdf' })
+      
+      // Process it like a regular PDF upload
+      await handleFileSelect(file)
+    } catch (err) {
+      console.error('Error loading sample floor plan:', err)
+      setError(
+        err instanceof Error 
+          ? err.message 
+          : 'Failed to load sample floor plan. Please try uploading manually.'
+      )
+      setIsProcessing(false)
+    }
   }
 
   const handleDrop = (e: React.DragEvent) => {
@@ -136,27 +264,59 @@ export function MapUpload({ onMapUpload }: MapUploadProps) {
           className="hidden"
         />
 
+        {/* Error message */}
+        {error && (
+          <div className="mb-4 p-4 rounded-xl bg-[var(--color-danger-soft)] border border-[var(--color-danger)] flex items-start gap-3">
+            <AlertCircle size={20} className="text-[var(--color-danger)] flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-[var(--color-danger)] mb-1">Upload Error</p>
+              <p className="text-sm text-[var(--color-text-muted)]">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+              aria-label="Dismiss error"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {/* Drop zone */}
         <div
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           className={`mb-4 p-8 border-2 border-dashed rounded-xl transition-all ${
-            isDragging
+            isProcessing
+              ? 'border-[var(--color-primary)]/50 bg-[var(--color-primary-soft)]/30 opacity-60 cursor-wait'
+              : isDragging
               ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)]'
               : 'border-[var(--color-border-subtle)] hover:border-[var(--color-primary)]/50'
           }`}
         >
-          <p className="text-sm text-[var(--color-text-muted)] mb-4">
-            {isDragging ? 'Drop file here' : 'Drag and drop a file here, or'}
-          </p>
-          <button
-            onClick={handleUpload}
-            className="fusion-button fusion-button-primary"
-          >
-            <Upload size={20} />
-            Choose File
-          </button>
+          {isProcessing ? (
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 size={32} className="text-[var(--color-primary)] animate-spin" />
+              <p className="text-sm text-[var(--color-text-muted)]">
+                Processing file...
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-[var(--color-text-muted)] mb-4">
+                {isDragging ? 'Drop file here' : 'Drag and drop a file here, or'}
+              </p>
+              <button
+                onClick={handleUpload}
+                disabled={isProcessing}
+                className="fusion-button fusion-button-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Upload size={20} />
+                Choose File
+              </button>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-4 mb-4">
@@ -167,15 +327,17 @@ export function MapUpload({ onMapUpload }: MapUploadProps) {
 
         <button
           onClick={handleLoadDefault}
-          className="fusion-button w-full mb-4"
+          disabled={isProcessing}
+          className="fusion-button w-full mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text)' }}
         >
           Load Sample Walmart Floor Plan
         </button>
 
-        <p className="text-sm text-[var(--color-text-soft)]">
-          Supported formats: PNG, JPG, SVG, PDF
-        </p>
+        <div className="text-sm text-[var(--color-text-soft)] space-y-1">
+          <p>Supported formats: PNG, JPG, SVG, PDF</p>
+          <p className="text-xs opacity-75">Max file size: 50MB • PDFs will be converted to images</p>
+        </div>
       </div>
     </div>
   )

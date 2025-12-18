@@ -50,6 +50,7 @@ export default function ZonesPage() {
   const [selectedZone, setSelectedZone] = useState<string | null>(null)
   const [mapUploaded, setMapUploaded] = useState(false)
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(null)
+  const [vectorData, setVectorData] = useState<any>(null)
   const [toolMode, setToolMode] = useState<ZoneToolMode>('select')
   const [viewMode, setViewMode] = useState<MapViewMode>('map')
   const [searchQuery, setSearchQuery] = useState('')
@@ -64,10 +65,26 @@ export default function ZonesPage() {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  // Load saved map image on mount or when store changes
+  // Load saved map image/vector data on mount or when store changes
   useEffect(() => {
     if (typeof window !== 'undefined' && activeStoreId) {
       const imageKey = getMapImageKey()
+      const vectorKey = `${imageKey}_vector`
+      
+      // Try to load vector data first (preferred)
+      const savedVectorData = localStorage.getItem(vectorKey)
+      if (savedVectorData) {
+        try {
+          const parsed = JSON.parse(savedVectorData)
+          setVectorData(parsed)
+          setMapUploaded(true)
+          return
+        } catch (e) {
+          console.warn('Failed to parse saved vector data:', e)
+        }
+      }
+      
+      // Fallback to image
       const savedImageUrl = localStorage.getItem(imageKey)
       if (savedImageUrl) {
         setMapImageUrl(savedImageUrl)
@@ -81,13 +98,20 @@ export default function ZonesPage() {
     setMapUploaded(true)
   }
 
+  const handleVectorDataUpload = (data: any) => {
+    setVectorData(data)
+    setMapUploaded(true)
+  }
+
   const handleClearMap = () => {
     setMapImageUrl(null)
+    setVectorData(null)
     setMapUploaded(false)
     setSelectedZone(null)
     if (typeof window !== 'undefined' && activeStoreId) {
       const imageKey = getMapImageKey()
       localStorage.removeItem(imageKey)
+      localStorage.removeItem(`${imageKey}_vector`)
     }
   }
 
@@ -460,7 +484,10 @@ export default function ZonesPage() {
           )}
           {!mapUploaded ? (
             <div className="w-full h-full">
-              <MapUpload onMapUpload={handleMapUpload} />
+              <MapUpload 
+                onMapUpload={handleMapUpload} 
+                onVectorDataUpload={handleVectorDataUpload}
+              />
             </div>
           ) : (
             <div className="w-full h-full rounded-2xl overflow-hidden" style={{ minHeight: 0 }}>
@@ -468,6 +495,7 @@ export default function ZonesPage() {
                 onDeviceSelect={setSelectedZone}
                 selectedDeviceId={selectedZone}
                 mapImageUrl={filters.showMap ? mapImageUrl : null}
+                vectorData={filters.showMap ? vectorData : null}
                 devices={zoneDevices}
                 zones={zones.map(z => ({
                   id: z.id,

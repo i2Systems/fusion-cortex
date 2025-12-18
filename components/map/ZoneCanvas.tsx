@@ -11,6 +11,8 @@
 
 import { Stage, Layer, Circle, Image as KonvaImage, Group, Text, Rect, Line } from 'react-konva'
 import { useEffect, useState, useRef, useMemo } from 'react'
+import { VectorFloorPlan } from './VectorFloorPlan'
+import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 
 interface DevicePoint {
   id: string
@@ -34,6 +36,7 @@ interface ZoneCanvasProps {
   onDeviceSelect?: (deviceId: string | null) => void
   selectedDeviceId?: string | null
   mapImageUrl?: string | null
+  vectorData?: ExtractedVectorData | null
   devices?: DevicePoint[]
   zones?: Zone[]
   selectedZoneId?: string | null
@@ -70,7 +73,8 @@ function FloorPlanImage({ url, width, height }: { url: string; width: number; he
 export function ZoneCanvas({ 
   onDeviceSelect, 
   selectedDeviceId, 
-  mapImageUrl, 
+  mapImageUrl,
+  vectorData,
   devices = [], 
   zones = [],
   selectedZoneId,
@@ -373,14 +377,20 @@ export function ZoneCanvas({
       >
         {/* Background Layer */}
         <Layer>
-          {/* Floor Plan Background */}
-          {mapImageUrl && (
+          {/* Floor Plan Background - Vector-first, fallback to image */}
+          {vectorData ? (
+            <VectorFloorPlan
+              vectorData={vectorData}
+              width={dimensions.width}
+              height={dimensions.height}
+            />
+          ) : mapImageUrl ? (
             <FloorPlanImage 
               url={mapImageUrl} 
               width={dimensions.width} 
               height={dimensions.height}
             />
-          )}
+          ) : null}
         </Layer>
 
         {/* Zones Layer */}

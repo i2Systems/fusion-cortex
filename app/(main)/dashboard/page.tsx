@@ -530,7 +530,7 @@ export default function DashboardPage() {
 
           {/* Quick Stats Summary - Pushed to Bottom */}
           {storeSummaries.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-auto pt-6 flex-shrink-0">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-x-4 gap-y-2 mt-auto pt-6 flex-shrink-0">
             <div className="fusion-card">
               <div className="text-xs text-[var(--color-text-muted)] mb-1">Total Stores</div>
               <div className="text-2xl font-bold text-[var(--color-text)]">

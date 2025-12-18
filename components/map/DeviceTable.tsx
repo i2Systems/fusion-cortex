@@ -11,7 +11,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Signal, Battery, Wifi, WifiOff, Image, Radio, Thermometer, MapPin, Edit2, Plus, ChevronRight, ChevronDown, Package, Shield, Calendar, CheckCircle2, AlertCircle, XCircle } from 'lucide-react'
+import { Signal, Battery, Wifi, WifiOff, Image, Radio, Thermometer, MapPin, Edit2, Plus, ChevronRight, ChevronDown, Package, Shield, Calendar, CheckCircle2, AlertCircle, XCircle, Trash2, CheckSquare, Square } from 'lucide-react'
 import type { Component, Device as DeviceType } from '@/lib/mockData'
 import { ComponentTree } from '@/components/shared/ComponentTree'
 
@@ -22,12 +22,14 @@ interface DeviceTableProps {
   selectedDeviceId?: string | null
   onDeviceSelect?: (deviceId: string | null) => void
   onComponentClick?: (component: Component, parentDevice: DeviceType) => void
+  onDevicesDelete?: (deviceIds: string[]) => void
 }
 
-export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onComponentClick }: DeviceTableProps) {
+export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onComponentClick, onDevicesDelete }: DeviceTableProps) {
   const [sortField, setSortField] = useState<keyof Device>('deviceId')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [expandedDevices, setExpandedDevices] = useState<Set<string>>(new Set())
+  const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<string>>(new Set())
   const tableRef = useRef<HTMLDivElement>(null)
   const selectedRowRef = useRef<HTMLTableRowElement>(null)
 
@@ -157,14 +159,79 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
     })
   }
 
+  const handleToggleSelect = (deviceId: string) => {
+    setSelectedDeviceIds(prev => {
+      const next = new Set(prev)
+      if (next.has(deviceId)) {
+        next.delete(deviceId)
+      } else {
+        next.add(deviceId)
+      }
+      return next
+    })
+  }
+
+  const handleSelectAll = () => {
+    if (selectedDeviceIds.size === sortedDevices.length) {
+      setSelectedDeviceIds(new Set())
+    } else {
+      setSelectedDeviceIds(new Set(sortedDevices.map(d => d.id)))
+    }
+  }
+
+  const handleDeleteSelected = () => {
+    if (selectedDeviceIds.size === 0) return
+    
+    const confirmMessage = `Delete ${selectedDeviceIds.size} device${selectedDeviceIds.size > 1 ? 's' : ''}?`
+    if (confirm(confirmMessage)) {
+      onDevicesDelete?.(Array.from(selectedDeviceIds))
+      setSelectedDeviceIds(new Set())
+    }
+  }
+
+  const allSelected = sortedDevices.length > 0 && selectedDeviceIds.size === sortedDevices.length
+  const someSelected = selectedDeviceIds.size > 0 && selectedDeviceIds.size < sortedDevices.length
+
   return (
     <div className="h-full flex flex-col">
       {/* Panel Header - Always visible */}
       <div className="p-4 border-b border-[var(--color-border-subtle)]">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-semibold text-[var(--color-text)]">
             Devices
           </h3>
+          {selectedDeviceIds.size > 0 && (
+            <span className="text-sm text-[var(--color-text-muted)]">
+              {selectedDeviceIds.size} selected
+            </span>
+          )}
+        </div>
+        {/* Selection controls */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSelectAll}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-[var(--color-surface-subtle)] hover:bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors border border-[var(--color-border-subtle)]"
+            title={allSelected ? 'Deselect all' : 'Select all'}
+          >
+            {allSelected ? (
+              <CheckSquare size={16} />
+            ) : someSelected ? (
+              <Square size={16} className="border-2 border-current" />
+            ) : (
+              <Square size={16} />
+            )}
+            <span>{allSelected ? 'Deselect All' : 'Select All'}</span>
+          </button>
+          {selectedDeviceIds.size > 0 && (
+            <button
+              onClick={handleDeleteSelected}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-[var(--color-danger-soft)] hover:bg-[var(--color-danger)] text-[var(--color-danger)] hover:text-white transition-colors border border-[var(--color-danger)]"
+              title={`Delete ${selectedDeviceIds.size} selected device${selectedDeviceIds.size > 1 ? 's' : ''}`}
+            >
+              <Trash2 size={16} />
+              <span>Delete ({selectedDeviceIds.size})</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -279,6 +346,17 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
           <table className="w-full">
             <thead className="sticky top-0 bg-[var(--color-surface)] backdrop-blur-sm border-b border-[var(--color-border-subtle)] z-10">
               <tr>
+                <th className="w-12 py-3.5 px-3 text-center">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someSelected
+                    }}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                  />
+                </th>
                 <th 
                   className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
                   onClick={() => handleSort('deviceId')}
@@ -327,10 +405,24 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
                         border-b border-[var(--color-border-subtle)]/50 cursor-pointer transition-all duration-150
                         ${selectedDeviceId === device.id
                           ? 'bg-[var(--color-primary-soft)] hover:bg-[var(--color-primary-soft)] shadow-[var(--shadow-glow-primary)]'
+                          : selectedDeviceIds.has(device.id)
+                          ? 'bg-[var(--color-primary-soft)]/30 hover:bg-[var(--color-primary-soft)]/40'
                           : 'hover:bg-[var(--color-surface-subtle)]/50'
                         }
                       `}
                     >
+                      <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedDeviceIds.has(device.id)}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            handleToggleSelect(device.id)
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
+                        />
+                      </td>
                       <td className="py-3.5 px-5 text-sm text-[var(--color-text)] font-semibold">
                         <div className="flex items-center gap-2">
                           {hasComponents && (
@@ -395,7 +487,7 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
                     }
                   `}
                 >
-                  <td colSpan={6} className="py-3 px-5">
+                  <td colSpan={7} className="py-3 px-5">
                     <ComponentTree 
                       components={device.components || []} 
                       expanded={true}

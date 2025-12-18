@@ -14,7 +14,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import dynamic from 'next/dynamic'
-import { X } from 'lucide-react'
+import { X, Lightbulb, Loader2 } from 'lucide-react'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { DeviceTable } from '@/components/map/DeviceTable'
 import { MapUpload } from '@/components/map/MapUpload'
@@ -38,6 +38,7 @@ import { useDevices } from '@/lib/DeviceContext'
 import { useZones } from '@/lib/ZoneContext'
 import { useStore } from '@/lib/StoreContext'
 import { useRole } from '@/lib/role'
+import { detectAllLights, createDevicesFromLights } from '@/lib/lightDetection'
 
 // Helper function to check if a point is inside a polygon
 function pointInPolygon(point: { x: number; y: number }, polygon: Array<{ x: number; y: number }>): boolean {
@@ -72,6 +73,9 @@ export default function MapPage() {
     devices, 
     updateDevicePosition, 
     updateMultipleDevices,
+    addDevice,
+    setDevices,
+    removeDevice,
     undo,
     redo,
     canUndo,
@@ -106,6 +110,17 @@ export default function MapPage() {
     if (deviceIds.length === 1) {
       setSelectedDevice(deviceIds[0])
     } else {
+      setSelectedDevice(null)
+    }
+  }
+
+  const handleDevicesDelete = (deviceIds: string[]) => {
+    deviceIds.forEach(id => {
+      removeDevice(id)
+    })
+    // Clear selections
+    setSelectedDeviceIds([])
+    if (selectedDevice && deviceIds.includes(selectedDevice)) {
       setSelectedDevice(null)
     }
   }
@@ -182,6 +197,7 @@ export default function MapPage() {
   }
   const [mapUploaded, setMapUploaded] = useState(false)
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(null)
+  const [vectorData, setVectorData] = useState<any>(null)
   const [toolMode, setToolMode] = useState<MapToolMode>('select')
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -194,10 +210,26 @@ export default function MapPage() {
   })
   const uploadInputRef = useRef<HTMLInputElement>(null)
 
-  // Load saved map image on mount or when store changes
+  // Load saved map image/vector data on mount or when store changes
   useEffect(() => {
     if (typeof window !== 'undefined' && activeStoreId) {
       const imageKey = getMapImageKey()
+      const vectorKey = `${imageKey}_vector`
+      
+      // Try to load vector data first (preferred)
+      const savedVectorData = localStorage.getItem(vectorKey)
+      if (savedVectorData) {
+        try {
+          const parsed = JSON.parse(savedVectorData)
+          setVectorData(parsed)
+          setMapUploaded(true)
+          return
+        } catch (e) {
+          console.warn('Failed to parse saved vector data:', e)
+        }
+      }
+      
+      // Fallback to image
       const savedImageUrl = localStorage.getItem(imageKey)
       if (savedImageUrl) {
         setMapImageUrl(savedImageUrl)
@@ -211,13 +243,111 @@ export default function MapPage() {
     setMapUploaded(true)
   }
 
+  const handleVectorDataUpload = (data: any) => {
+    setVectorData(data)
+    setMapUploaded(true)
+  }
+
+  // Auto-detect lights from uploaded map
+  const [isDetectingLights, setIsDetectingLights] = useState(false)
+  const [detectedLightsCount, setDetectedLightsCount] = useState<number | null>(null)
+  
+  const handleDetectLights = async () => {
+    if (!mapImageUrl && !vectorData) {
+      alert('Please upload a map first')
+      return
+    }
+    
+    // First, analyze the PDF to see what we have
+    const { analyzePDFForLights } = await import('@/lib/lightDetection')
+    const analysis = analyzePDFForLights(vectorData)
+    
+    console.log('PDF Analysis Report:')
+    console.log(analysis.report)
+    
+    // Show analysis to user
+    if (!analysis.hasLights && vectorData && vectorData.paths.length === 0) {
+      const proceed = confirm(
+        `PDF Analysis:\n\n${analysis.report}\n\n` +
+        `This PDF uses Form XObjects (nested content) which cannot be analyzed directly.\n` +
+        `We'll use image-based detection instead, which may be less accurate.\n\n` +
+        `Continue with detection?`
+      )
+      if (!proceed) {
+        return
+      }
+    } else if (!analysis.hasLights) {
+      const proceed = confirm(
+        `PDF Analysis:\n\n${analysis.report}\n\n` +
+        `No obvious light symbols found in vector data.\n` +
+        `We'll try image-based detection, but results may vary.\n\n` +
+        `Continue with detection?`
+      )
+      if (!proceed) {
+        return
+      }
+    }
+    
+    setIsDetectingLights(true)
+    setDetectedLightsCount(null)
+    
+    try {
+      // Get canvas dimensions (use a standard size for detection)
+      const detectionWidth = 2000
+      const detectionHeight = 2000
+      
+      const lights = await detectAllLights(
+        vectorData,
+        mapImageUrl || null,
+        detectionWidth,
+        detectionHeight
+      )
+      
+      if (lights.length === 0) {
+        alert(
+          `No lights detected.\n\n` +
+          `Analysis: ${analysis.report}\n\n` +
+          `Possible reasons:\n` +
+          `- Lights are in Form XObjects (nested content)\n` +
+          `- Light symbols use patterns we don't recognize\n` +
+          `- Image quality may be insufficient\n\n` +
+          `Check the console for detailed analysis.`
+        )
+        setIsDetectingLights(false)
+        return
+      }
+      
+      // Create devices from detected lights
+      const maxDeviceId = devices.length > 0 
+        ? Math.max(...devices.map(d => parseInt(d.deviceId) || 0))
+        : 0
+      
+      const newDevices = createDevicesFromLights(lights, maxDeviceId + 1)
+      
+      // Add devices to the system
+      newDevices.forEach(device => {
+        addDevice(device)
+      })
+      
+      setDetectedLightsCount(lights.length)
+      alert(`✅ Detected and placed ${lights.length} light fixtures on the map!\n\nCheck the console for detailed analysis.`)
+    } catch (error) {
+      console.error('Error detecting lights:', error)
+      alert('Failed to detect lights. Please check the console for details.')
+    } finally {
+      setIsDetectingLights(false)
+    }
+  }
+
   const handleClearMap = () => {
     setMapImageUrl(null)
+    setVectorData(null)
     setMapUploaded(false)
     setSelectedDevice(null)
     if (typeof window !== 'undefined' && activeStoreId) {
       const imageKey = getMapImageKey()
       localStorage.removeItem(imageKey)
+      localStorage.removeItem(`${imageKey}_vector`)
     }
     // Reset file input if it exists
     if (uploadInputRef.current) {
@@ -439,11 +569,13 @@ export default function MapPage() {
       })
     }
 
-    // Zone filter
+    // Zone filter - check if device zone matches any selected zone name
     if (filters.selectedZones.length > 0) {
-      filtered = filtered.filter(device => 
-        device.zone && filters.selectedZones.includes(device.zone)
-      )
+      filtered = filtered.filter(device => {
+        if (!device.zone) return false
+        // Direct match: device.zone is a string, filters.selectedZones is string[]
+        return filters.selectedZones.includes(device.zone)
+      })
     }
 
     // Layer visibility filters (device types)
@@ -535,9 +667,31 @@ export default function MapPage() {
             </div>
           )}
           
-          {/* Clear button - Top right (hidden for Manager and Technician) */}
+          {/* Action buttons - Top right (hidden for Manager and Technician) */}
           {mapUploaded && role !== 'Manager' && role !== 'Technician' && (
-            <div className="absolute top-0 right-4 z-30 pointer-events-none" style={{ transform: 'translateY(-50%)' }}>
+            <div className="absolute top-0 right-4 z-30 pointer-events-none flex gap-2" style={{ transform: 'translateY(-50%)' }}>
+              <div className="pointer-events-auto">
+                <button
+                  onClick={handleDetectLights}
+                  disabled={isDetectingLights}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-[var(--shadow-soft)]"
+                  title="Auto-detect light fixtures from the map"
+                >
+                  {isDetectingLights ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      <span className="text-sm font-medium">Detecting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lightbulb size={18} />
+                      <span className="text-sm font-medium">
+                        {detectedLightsCount !== null ? `Detect Lights (${detectedLightsCount} found)` : 'Detect Lights'}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
               <div className="pointer-events-auto">
                 <button
                   onClick={handleClearMap}
@@ -550,43 +704,13 @@ export default function MapPage() {
               </div>
             </div>
           )}
-          {/* Hidden file input for upload button in menu */}
-          {!mapUploaded && (
-            <input
-              ref={uploadInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/jpg,image/svg+xml,application/pdf"
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) {
-                  const reader = new FileReader()
-                  reader.onloadend = () => {
-                    const base64String = reader.result as string
-                    if (activeStoreId) {
-                      const imageKey = getMapImageKey()
-                      localStorage.setItem(imageKey, base64String)
-                    }
-                    handleMapUpload(base64String)
-                    // Reset input after upload
-                    if (uploadInputRef.current) {
-                      uploadInputRef.current.value = ''
-                    }
-                  }
-                  reader.onerror = () => {
-                    alert('Error reading file. Please try again.')
-                    if (uploadInputRef.current) {
-                      uploadInputRef.current.value = ''
-                    }
-                  }
-                  reader.readAsDataURL(file)
-                }
-              }}
-              className="hidden"
-            />
-          )}
+          {/* Hidden file input for upload button in menu - handled by MapUpload component */}
           {!mapUploaded ? (
             <div className="w-full h-full">
-              <MapUpload onMapUpload={handleMapUpload} />
+              <MapUpload 
+                onMapUpload={handleMapUpload} 
+                onVectorDataUpload={handleVectorDataUpload}
+              />
             </div>
           ) : (
             <div className="w-full h-full rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] relative" style={{ minHeight: 0 }}>
@@ -597,6 +721,7 @@ export default function MapPage() {
                   selectedDeviceId={selectedDevice}
                   selectedDeviceIds={selectedDeviceIds}
                   mapImageUrl={filters.showMap ? mapImageUrl : null}
+                  vectorData={filters.showMap ? vectorData : null}
                   zones={mapZones}
                   highlightDeviceId={selectedDevice}
                   mode={toolMode === 'move' ? 'move' : toolMode === 'rotate' ? 'rotate' : 'select'}
@@ -635,6 +760,7 @@ export default function MapPage() {
               selectedDeviceId={selectedDevice}
               onDeviceSelect={handleDeviceSelect}
               onComponentClick={handleComponentClick}
+              onDevicesDelete={handleDevicesDelete}
             />
           </div>
         )}

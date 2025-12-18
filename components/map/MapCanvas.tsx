@@ -18,6 +18,8 @@
 import { Stage, Layer, Circle, Image as KonvaImage, Group, Text, Rect, Line } from 'react-konva'
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { Component, Device as DeviceType } from '@/lib/mockData'
+import { VectorFloorPlan } from './VectorFloorPlan'
+import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 
 interface DevicePoint {
   id: string
@@ -46,6 +48,7 @@ interface MapCanvasProps {
   selectedDeviceId?: string | null
   selectedDeviceIds?: string[]
   mapImageUrl?: string | null
+  vectorData?: ExtractedVectorData | null
   devices?: DevicePoint[]
   zones?: Zone[]
   highlightDeviceId?: string | null
@@ -88,6 +91,7 @@ export function MapCanvas({
   selectedDeviceId, 
   selectedDeviceIds = [],
   mapImageUrl, 
+  vectorData,
   devices = [], 
   zones = [],
   highlightDeviceId,
@@ -526,11 +530,30 @@ export function MapCanvas({
         }}
       >
         <Layer>
-          {/* Floor Plan Background */}
-          {mapImageUrl && (
+          {/* Floor Plan Background - Vector-first, fallback to image */}
+          {vectorData ? (
             <Group
               onDblClick={(e) => {
-                // Double-click on map image to deselect
+                if (mode === 'select') {
+                  e.cancelBubble = true
+                  onDevicesSelect?.([])
+                  onDeviceSelect?.(null)
+                  setDraggedDevice(null)
+                  setIsSelecting(false)
+                  setSelectionStart(null)
+                  setSelectionEnd(null)
+                }
+              }}
+            >
+              <VectorFloorPlan
+                vectorData={vectorData}
+                width={dimensions.width}
+                height={dimensions.height}
+              />
+            </Group>
+          ) : mapImageUrl ? (
+            <Group
+              onDblClick={(e) => {
                 if (mode === 'select') {
                   e.cancelBubble = true
                   onDevicesSelect?.([])
@@ -548,7 +571,7 @@ export function MapCanvas({
                 height={dimensions.height}
               />
             </Group>
-          )}
+          ) : null}
           
           {/* Zones Background - rendered before devices so they appear behind */}
           {zones.map((zone) => {
