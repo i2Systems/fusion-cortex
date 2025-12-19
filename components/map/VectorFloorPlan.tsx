@@ -53,6 +53,21 @@ export const VectorFloorPlan = memo(function VectorFloorPlan({
   const scaleY = height / boundsHeight
   const scale = Math.min(scaleX, scaleY)
   
+  // Debug: Log actual values once
+  if (typeof window !== 'undefined' && !(window as any).__vectorDebugLogged) {
+    console.log('[VectorFloorPlan DEBUG]', {
+      canvasWidth: width,
+      canvasHeight: height,
+      pdfWidth: boundsWidth,
+      pdfHeight: boundsHeight,
+      scale,
+      sampleFontSize: 3,
+      renderedFontSize: (3 * scale) / 3, // What a 3pt font renders as
+      devicePixelRatio: window.devicePixelRatio
+    });
+    (window as any).__vectorDebugLogged = true;
+  }
+  
   // Center the drawing
   const offsetX = (width - boundsWidth * scale) / 2
   const offsetY = (height - boundsHeight * scale) / 2
@@ -137,7 +152,7 @@ export const VectorFloorPlan = memo(function VectorFloorPlan({
               height={Math.abs(h * finalScale)}
               stroke={path.stroke || '#000000'}
               fill={path.fill || 'transparent'}
-              strokeWidth={(path.strokeWidth || 1) * finalScale}
+              strokeWidth={(path.strokeWidth || 0.25) * finalScale}
               listening={false}
               perfectDrawEnabled={false}
             />
@@ -161,7 +176,7 @@ export const VectorFloorPlan = memo(function VectorFloorPlan({
               points={points}
               stroke={path.stroke || '#000000'}
               fill={path.fill}
-              strokeWidth={(path.strokeWidth || 1) * finalScale}
+              strokeWidth={(path.strokeWidth || 0.25) * finalScale}
               closed={isClosed}
               listening={false}
               perfectDrawEnabled={false}
@@ -177,7 +192,7 @@ export const VectorFloorPlan = memo(function VectorFloorPlan({
               key={pathKey}
               points={points}
               stroke={path.stroke || '#000000'}
-              strokeWidth={(path.strokeWidth || 1) * finalScale}
+              strokeWidth={(path.strokeWidth || 0.25) * finalScale}
               listening={false}
               perfectDrawEnabled={false}
             />
@@ -188,23 +203,42 @@ export const VectorFloorPlan = memo(function VectorFloorPlan({
   }, [filteredPaths, finalOffsetX, finalOffsetY, finalScale])
   
   // Render texts - scale font size exactly like coordinates (1:1)
+  // Handle rotated text (vertical text in title blocks, etc.)
   const renderTexts = useMemo(() => {
     return filteredTexts.map((textItem, idx) => {
-      // Font sizes from PDF are in points (same coordinate system as x, y positions)
-      // Scale font size by the same factor as coordinates to maintain exact proportions
-      // Don't modify the font size - use it as-is from extraction
-      const baseFontSize = textItem.fontSize || 12
-      const fontSize = baseFontSize * finalScale
+      // Font sizes from PDF in points, scaled to match canvas
+      // Divide by additional factor to match original PDF visual appearance
+      // The browser/Konva may be applying additional scaling we can't see
+      const baseFontSize = textItem.fontSize || 1
+      const fontSize = (baseFontSize * finalScale) / 3
+      
+      // Get rotation angle (default 0 = horizontal)
+      const rotation = textItem.rotation || 0
+      
+      // Base position from bbox
+      let x = finalOffsetX + textItem.x * finalScale
+      let y = finalOffsetY + textItem.y * finalScale
+      
+      // For rotated text, we need to adjust position since Konva rotates around
+      // the text's origin (top-left of unrotated text)
+      // For -90° (reading bottom-to-top): adjust y to account for rotation pivot
+      // For +90° (reading top-to-bottom): adjust differently
+      // The bbox x,y is the top-left of the visual bounding box
       
       return (
         <KonvaText
           key={`text-${textItem.x}-${textItem.y}-${textItem.text.substring(0, 10)}-${idx}`}
-          x={finalOffsetX + textItem.x * finalScale}
-          y={finalOffsetY + textItem.y * finalScale}
+          x={x}
+          y={y}
           text={textItem.text}
           fontSize={fontSize}
           fontFamily={textItem.fontName || 'Arial'}
           fill="#000000"
+          rotation={rotation}
+          // Set offset for proper rotation pivot
+          // For vertical text, pivot around center of bbox width (which is visual height)
+          offsetX={Math.abs(rotation) > 45 ? fontSize / 2 : 0}
+          offsetY={Math.abs(rotation) > 45 ? 0 : 0}
           listening={false}
           perfectDrawEnabled={false}
           hitStrokeWidth={0}

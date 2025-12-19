@@ -73,12 +73,23 @@ def extract_pdf_vectors(pdf_path: str) -> dict:
         
         # ========== TEXT EXTRACTION ==========
         # Use get_text("dict") to extract text with proper font information
+        # NOTE: PyMuPDF uses top-left origin (like canvas/images), NOT PDF's bottom-left origin
+        # So bbox coordinates are already in the correct orientation - no flipping needed!
         texts = []
         try:
+            import math
             text_dict = page.get_text("dict")
             for block in text_dict.get("blocks", []):
                 if "lines" in block:
                     for line in block["lines"]:
+                        # Get text direction from line - dir is (dx, dy) unit vector
+                        # (1, 0) = horizontal left-to-right, (0, 1) = vertical top-to-bottom
+                        line_dir = line.get("dir", (1, 0))
+                        
+                        # Calculate rotation angle in degrees from direction vector
+                        # atan2(dy, dx) gives angle from positive x-axis
+                        rotation = math.degrees(math.atan2(line_dir[1], line_dir[0]))
+                        
                         for span in line.get("spans", []):
                             bbox = span.get("bbox", [0, 0, 0, 0])
                             text_content = span.get("text", "").strip()
@@ -86,24 +97,20 @@ def extract_pdf_vectors(pdf_path: str) -> dict:
                             if not text_content:
                                 continue
                             
-                            # PyMuPDF font size extraction
-                            # Use raw font size EXACTLY as-is - 1:1, no modifications whatsoever
-                            # Small fonts (like tracking lights/system fonts) must stay small
-                            raw_font_size = span.get("size", 0)
+                            # Use the EXACT font size from the PDF - no modification
+                            # This ensures 1:1 match with original PDF rendering
+                            fontSize = span.get("size", 1.0)
                             
-                            # Use raw font size directly - trust the PDF completely
-                            # If raw size is 0 or missing, use a minimal default (don't use bbox_height as it changes sizes)
-                            if raw_font_size > 0:
-                                fontSize = raw_font_size  # Use exactly as-is, no modifications
-                            else:
-                                fontSize = 1  # Minimal default only if truly missing (preserves small fonts)
-                            
+                            # PyMuPDF bbox is in top-left origin coordinates (same as canvas)
+                            # bbox = [x0, y0, x1, y1] where (x0, y0) is top-left of text box
+                            # Use bbox for positioning - Konva positions text from top-left
                             texts.append({
                                 "x": bbox[0],
-                                "y": height - bbox[3],  # Flip Y for canvas coordinates (PDF uses bottom-left, canvas uses top-left)
+                                "y": bbox[1],  # Top of text box - works directly with Konva
                                 "text": text_content,
                                 "fontSize": fontSize,
-                                "fontName": span.get("font", "Arial")
+                                "fontName": span.get("font", "Arial"),
+                                "rotation": rotation  # Rotation angle in degrees
                             })
         except Exception as e:
             print(f"Text extraction failed: {e}", file=sys.stderr)
@@ -279,12 +286,27 @@ def detect_stroke_width(pix, x, y, gray, threshold, is_horizontal=True):
     return max(1, width)
 
 def extract_lines_from_pixmap(pix, zoom, height, add_path_if_new):
-    """Extract lines from rendered pixmap - comprehensive method"""
+    """Extract lines from rendered pixmap - comprehensive method
+    
+    COORDINATE SYSTEM NOTE:
+    - PyMuPDF pixmaps use top-left origin (like images/canvas)
+    - Pixel (0, 0) = top-left of rendered page
+    - No Y-flip needed! Just scale pixmap coords to PDF coords.
+    
+    STROKE WIDTH NOTE:
+    - We detect stroke width from pixels, but anti-aliasing inflates this
+    - Apply a correction factor to get closer to original PDF stroke widths
+    - Most architectural drawings use 0.1-0.5 point strokes
+    """
     count = 0
     scale_factor = 1.0 / zoom
     threshold = 240  # Capture both dark and grey lines (higher threshold)
     # Minimum line length in PDF coordinates (not pixmap coordinates)
     min_line_length_pdf = 0.5  # Minimum 0.5 PDF units to avoid noise
+    # Stroke width correction factor (anti-aliasing makes lines appear ~2x wider)
+    stroke_correction = 0.5
+    # Minimum stroke width - use a very small value to preserve hairlines
+    min_stroke_width = 0.1
     
     try:
         if HAS_NUMPY:
@@ -329,18 +351,19 @@ def extract_lines_from_pixmap(pix, zoom, height, add_path_if_new):
                                 line_length_pdf = (x - line_start - gap_count) * scale_factor
                                 if line_length_pdf > min_line_length_pdf:
                                     x1 = line_start * scale_factor
-                                    y1 = (pix.height - y) * scale_factor
+                                    y1 = y * scale_factor  # No flip - pixmap already uses top-left origin
                                     x2 = (x - gap_count) * scale_factor
-                                    y2 = (pix.height - y) * scale_factor
+                                    y2 = y * scale_factor
                                     color = line_color or "#000000"
-                                    # Use detected stroke width from the line start
-                                    detected_width = detect_stroke_width(pix, x, line_start, gray, threshold, is_horizontal=False)
-                                    stroke_width_pdf = detected_width * scale_factor
+                                    # Detect stroke width - for horizontal lines, scan vertically at line_start
+                                    detected_width = detect_stroke_width(pix, line_start, y, gray, threshold, is_horizontal=True)
+                                    # Apply correction for anti-aliasing and scale to PDF units
+                                    stroke_width_pdf = detected_width * scale_factor * stroke_correction
                                     if add_path_if_new({
                                         "type": "line",
                                         "points": [x1, y1, x2, y2],
                                         "stroke": color,
-                                        "strokeWidth": max(0.5, stroke_width_pdf),
+                                        "strokeWidth": max(min_stroke_width, stroke_width_pdf),
                                         "layer": line_layer or "base_building",
                                     }):
                                         count += 1
@@ -361,15 +384,18 @@ def extract_lines_from_pixmap(pix, zoom, height, add_path_if_new):
                             line_length_pdf = (x - line_start - gap_count) * scale_factor
                             if line_length_pdf > min_line_length_pdf:
                                 x1 = line_start * scale_factor
-                                y1 = (pix.height - y) * scale_factor
+                                y1 = y * scale_factor  # No flip - pixmap already uses top-left origin
                                 x2 = (x - gap_count) * scale_factor
-                                y2 = (pix.height - y) * scale_factor
+                                y2 = y * scale_factor
                                 color = line_color or "#000000"
+                                # Detect stroke width - for horizontal lines, scan vertically at line_start
+                                detected_width = detect_stroke_width(pix, line_start, y, gray, threshold, is_horizontal=True)
+                                stroke_width_pdf = detected_width * scale_factor * stroke_correction
                                 if add_path_if_new({
                                     "type": "line",
                                     "points": [x1, y1, x2, y2],
                                     "stroke": color,
-                                    "strokeWidth": max(0.5, stroke_width_pdf),
+                                    "strokeWidth": max(min_stroke_width, stroke_width_pdf),
                                     "layer": line_layer or "base_building",
                                 }):
                                     count += 1
@@ -382,18 +408,18 @@ def extract_lines_from_pixmap(pix, zoom, height, add_path_if_new):
                     line_length_pdf = (gray.shape[1] - line_start) * scale_factor
                     if line_length_pdf > min_line_length_pdf:
                         x1 = line_start * scale_factor
-                        y1 = (pix.height - y) * scale_factor
+                        y1 = y * scale_factor  # No flip - pixmap already uses top-left origin
                         x2 = gray.shape[1] * scale_factor
-                        y2 = (pix.height - y) * scale_factor
+                        y2 = y * scale_factor
                         color = line_color or "#000000"
                         # Use detected stroke width from the line start
                         detected_width = detect_stroke_width(pix, line_start, y, gray, threshold, is_horizontal=True)
-                        stroke_width_pdf = detected_width * scale_factor
+                        stroke_width_pdf = detected_width * scale_factor * stroke_correction
                         if add_path_if_new({
                             "type": "line",
                             "points": [x1, y1, x2, y2],
                             "stroke": color,
-                            "strokeWidth": max(0.5, stroke_width_pdf),
+                            "strokeWidth": max(min_stroke_width, stroke_width_pdf),
                             "layer": line_layer or "base_building",
                         }):
                             count += 1
@@ -422,18 +448,18 @@ def extract_lines_from_pixmap(pix, zoom, height, add_path_if_new):
                                 line_length_pdf = (y - line_start - gap_count) * scale_factor
                                 if line_length_pdf > min_line_length_pdf:
                                     x1 = x * scale_factor
-                                    y1 = (pix.height - line_start) * scale_factor
+                                    y1 = line_start * scale_factor  # No flip - pixmap uses top-left origin
                                     x2 = x * scale_factor
-                                    y2 = (pix.height - (y - gap_count)) * scale_factor
+                                    y2 = (y - gap_count) * scale_factor
                                     color = line_color or "#000000"
-                                    # Use detected stroke width from the line start
+                                    # Detect stroke width - for vertical lines, scan horizontally at line_start
                                     detected_width = detect_stroke_width(pix, x, line_start, gray, threshold, is_horizontal=False)
-                                    stroke_width_pdf = detected_width * scale_factor
+                                    stroke_width_pdf = detected_width * scale_factor * stroke_correction
                                     if add_path_if_new({
                                         "type": "line",
                                         "points": [x1, y1, x2, y2],
                                         "stroke": color,
-                                        "strokeWidth": max(0.5, stroke_width_pdf),
+                                        "strokeWidth": max(min_stroke_width, stroke_width_pdf),
                                         "layer": line_layer or "base_building",
                                     }):
                                         count += 1
@@ -454,15 +480,18 @@ def extract_lines_from_pixmap(pix, zoom, height, add_path_if_new):
                             line_length_pdf = (y - line_start - gap_count) * scale_factor
                             if line_length_pdf > min_line_length_pdf:
                                 x1 = x * scale_factor
-                                y1 = (pix.height - line_start) * scale_factor
+                                y1 = line_start * scale_factor  # No flip - pixmap uses top-left origin
                                 x2 = x * scale_factor
-                                y2 = (pix.height - (y - gap_count)) * scale_factor
+                                y2 = (y - gap_count) * scale_factor
                                 color = line_color or "#000000"
+                                # Detect stroke width - for vertical lines, scan horizontally at line_start
+                                detected_width = detect_stroke_width(pix, x, line_start, gray, threshold, is_horizontal=False)
+                                stroke_width_pdf = detected_width * scale_factor * stroke_correction
                                 if add_path_if_new({
                                     "type": "line",
                                     "points": [x1, y1, x2, y2],
                                     "stroke": color,
-                                    "strokeWidth": max(0.5, stroke_width_pdf),
+                                    "strokeWidth": max(min_stroke_width, stroke_width_pdf),
                                     "layer": line_layer or "base_building",
                                 }):
                                     count += 1
@@ -472,21 +501,21 @@ def extract_lines_from_pixmap(pix, zoom, height, add_path_if_new):
                 
                 # Handle line extending to edge
                 if line_start is not None:
-                    line_length_pdf = (pix.height - line_start) * scale_factor
+                    line_length_pdf = (gray.shape[0] - line_start) * scale_factor
                     if line_length_pdf > min_line_length_pdf:
                         x1 = x * scale_factor
-                        y1 = (pix.height - line_start) * scale_factor
+                        y1 = line_start * scale_factor  # No flip - pixmap uses top-left origin
                         x2 = x * scale_factor
-                        y2 = 0
+                        y2 = gray.shape[0] * scale_factor  # End at bottom of image
                         color = line_color or "#000000"
                         # Use detected stroke width from the line start
                         detected_width = detect_stroke_width(pix, x, line_start, gray, threshold, is_horizontal=False)
-                        stroke_width_pdf = detected_width * scale_factor
+                        stroke_width_pdf = detected_width * scale_factor * stroke_correction
                         if add_path_if_new({
                             "type": "line",
                             "points": [x1, y1, x2, y2],
                             "stroke": color,
-                            "strokeWidth": max(0.5, stroke_width_pdf),
+                            "strokeWidth": max(min_stroke_width, stroke_width_pdf),
                             "layer": line_layer or "base_building",
                         }):
                             count += 1
@@ -512,11 +541,17 @@ def extract_lines_from_pixmap(pix, zoom, height, add_path_if_new):
     return count
 
 def extract_lines_fallback(pix, zoom, height, add_path_if_new):
-    """Fallback line extraction without numpy"""
+    """Fallback line extraction without numpy
+    
+    COORDINATE SYSTEM: Pixmap uses top-left origin (like images/canvas).
+    No Y-flip needed - just scale pixmap coords to PDF coords.
+    """
     count = 0
     scale_factor = 1.0 / zoom
     threshold = 240
     min_line_length_pdf = 0.5
+    # Use hairline stroke width for fallback (1 pixel at zoom, corrected)
+    default_stroke_width = 0.5 * scale_factor  # ~0.125 points
     
     try:
         width = pix.width
@@ -553,15 +588,15 @@ def extract_lines_fallback(pix, zoom, height, add_path_if_new):
                             line_length_pdf = (x - line_start) / zoom
                             if line_length_pdf > min_line_length_pdf:
                                 x1 = line_start / zoom
-                                y1 = (height_pix - y) / zoom
+                                y1 = y / zoom  # No flip - pixmap uses top-left origin
                                 x2 = x / zoom
-                                y2 = (height_pix - y) / zoom
+                                y2 = y / zoom
                                 color = line_color or "#000000"
                                 if add_path_if_new({
                                     "type": "line",
                                     "points": [x1, y1, x2, y2],
                                     "stroke": color,
-                                    "strokeWidth": max(0.5, 1 / zoom),
+                                    "strokeWidth": default_stroke_width,
                                     "layer": line_layer or "base_building",
                                 }):
                                     count += 1
@@ -573,15 +608,15 @@ def extract_lines_fallback(pix, zoom, height, add_path_if_new):
                 line_length_pdf = (width - line_start) / zoom
                 if line_length_pdf > min_line_length_pdf:
                     x1 = line_start / zoom
-                    y1 = (height_pix - y) / zoom
+                    y1 = y / zoom  # No flip - pixmap uses top-left origin
                     x2 = width / zoom
-                    y2 = (height_pix - y) / zoom
+                    y2 = y / zoom
                     color = line_color or "#000000"
                     if add_path_if_new({
                         "type": "line",
                         "points": [x1, y1, x2, y2],
                         "stroke": color,
-                        "strokeWidth": max(0.5, 1 / zoom),
+                        "strokeWidth": default_stroke_width,
                         "layer": line_layer or "base_building",
                     }):
                         count += 1
@@ -615,15 +650,15 @@ def extract_lines_fallback(pix, zoom, height, add_path_if_new):
                         line_length_pdf = (y - line_start) / zoom
                         if line_length_pdf > min_line_length_pdf:
                             x1 = x / zoom
-                            y1 = (height_pix - line_start) / zoom
+                            y1 = line_start / zoom  # No flip - pixmap uses top-left origin
                             x2 = x / zoom
-                            y2 = (height_pix - y) / zoom
+                            y2 = y / zoom
                             color = line_color or "#000000"
                             if add_path_if_new({
                                 "type": "line",
                                 "points": [x1, y1, x2, y2],
                                 "stroke": color,
-                                "strokeWidth": max(0.5, 1 / zoom),
+                                "strokeWidth": default_stroke_width,
                                 "layer": line_layer or "base_building",
                             }):
                                 count += 1
@@ -635,15 +670,15 @@ def extract_lines_fallback(pix, zoom, height, add_path_if_new):
                 line_length_pdf = (height_pix - line_start) / zoom
                 if line_length_pdf > min_line_length_pdf:
                     x1 = x / zoom
-                    y1 = (height_pix - line_start) / zoom
+                    y1 = line_start / zoom  # No flip - pixmap uses top-left origin
                     x2 = x / zoom
-                    y2 = 0
+                    y2 = height_pix / zoom  # End at bottom of image
                     color = line_color or "#000000"
                     if add_path_if_new({
                         "type": "line",
                         "points": [x1, y1, x2, y2],
                         "stroke": color,
-                        "strokeWidth": max(0.5, 1 / zoom),
+                        "strokeWidth": default_stroke_width,
                         "layer": line_layer or "base_building",
                     }):
                         count += 1
@@ -658,6 +693,8 @@ def parse_svg_path(d: str, height: float) -> list:
     """
     Parse SVG path data and extract coordinates
     Handles commands: M, L, H, V, C, S, Q, T, Z
+    
+    NOTE: SVG from PyMuPDF uses top-left origin (like canvas) - no Y flip needed!
     """
     import re
     points = []
@@ -682,13 +719,13 @@ def parse_svg_path(d: str, height: float) -> list:
         if cmd == 'M':  # Move to
             if len(coords) >= 2:
                 current_x = coords[0]
-                current_y = height - coords[1]  # Flip Y
+                current_y = coords[1]  # No flip - already top-left origin
                 points.extend([current_x, current_y])
         
         elif cmd == 'L':  # Line to
             if len(coords) >= 2:
                 current_x = coords[0]
-                current_y = height - coords[1]  # Flip Y
+                current_y = coords[1]  # No flip
                 points.extend([current_x, current_y])
         
         elif cmd == 'H':  # Horizontal line
@@ -698,7 +735,7 @@ def parse_svg_path(d: str, height: float) -> list:
         
         elif cmd == 'V':  # Vertical line
             if len(coords) >= 1:
-                current_y = height - coords[0]  # Flip Y
+                current_y = coords[0]  # No flip
                 points.extend([current_x, current_y])
         
         elif cmd == 'C':  # Cubic bezier
@@ -706,32 +743,32 @@ def parse_svg_path(d: str, height: float) -> list:
                 # Include control points for better accuracy
                 # For now, we'll use the end point, but could add intermediate points
                 current_x = coords[4]
-                current_y = height - coords[5]  # Flip Y
+                current_y = coords[5]  # No flip
                 points.extend([current_x, current_y])
         
         elif cmd == 'S':  # Smooth cubic bezier
             if len(coords) >= 4:
                 current_x = coords[2]
-                current_y = height - coords[3]  # Flip Y
+                current_y = coords[3]  # No flip
                 points.extend([current_x, current_y])
         
         elif cmd == 'Q':  # Quadratic bezier
             if len(coords) >= 4:
                 current_x = coords[2]
-                current_y = height - coords[3]  # Flip Y
+                current_y = coords[3]  # No flip
                 points.extend([current_x, current_y])
         
         elif cmd == 'T':  # Smooth quadratic bezier
             if len(coords) >= 2:
                 current_x = coords[0]
-                current_y = height - coords[1]  # Flip Y
+                current_y = coords[1]  # No flip
                 points.extend([current_x, current_y])
         
         elif cmd == 'A':  # Arc
             if len(coords) >= 7:
                 # Arc end point
                 current_x = coords[5]
-                current_y = height - coords[6]  # Flip Y
+                current_y = coords[6]  # No flip
                 points.extend([current_x, current_y])
         
         elif cmd == 'Z':  # Close path
@@ -742,14 +779,17 @@ def parse_svg_path(d: str, height: float) -> list:
     return points
 
 def parse_polygon_points(points_str: str, height: float) -> list:
-    """Parse polygon/polyline points attribute"""
+    """Parse polygon/polyline points attribute
+    
+    NOTE: SVG from PyMuPDF uses top-left origin - no Y flip needed!
+    """
     import re
     points = []
     numbers = re.findall(r'-?\d+\.?\d*', points_str)
     for i in range(0, len(numbers) - 1, 2):
         if i + 1 < len(numbers):
             x = float(numbers[i])
-            y = height - float(numbers[i + 1])  # Flip Y
+            y = float(numbers[i + 1])  # No flip - already top-left origin
             points.extend([x, y])
     return points
 

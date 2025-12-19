@@ -17,6 +17,7 @@ export interface ExtractedText {
   text: string
   fontSize: number
   fontName: string
+  rotation?: number // Rotation angle in degrees (0 = horizontal, 90 = vertical)
 }
 
 export interface ExtractedPath {

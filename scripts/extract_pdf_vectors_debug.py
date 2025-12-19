@@ -102,14 +102,16 @@ def extract_pdf_vectors(pdf_path: str) -> dict:
                     item_type = item.get("type", "")
                     rect_coords = item.get("rect", [0, 0, 0, 0])
                     
+                    # NOTE: get_drawings() returns coords in PyMuPDF's top-left origin system
+                    # rect_coords = [x0, y0, x1, y1] where (x0, y0) is top-left
                     if item_type == "l":  # Line
                         if add_path_if_new({
                             "type": "line",
                             "points": [
                                 rect_coords[0],
-                                height - rect_coords[3],
+                                rect_coords[1],  # No flip - already top-left origin
                                 rect_coords[2],
-                                height - rect_coords[1],
+                                rect_coords[3],
                             ],
                             "stroke": stroke_color,
                             "strokeWidth": line_width,
@@ -122,7 +124,7 @@ def extract_pdf_vectors(pdf_path: str) -> dict:
                             "type": "rect",
                             "points": [
                                 rect_coords[0],
-                                height - rect_coords[3],
+                                rect_coords[1],  # No flip - already top-left origin
                                 rect_coords[2] - rect_coords[0],
                                 rect_coords[3] - rect_coords[1],
                             ],
@@ -136,13 +138,8 @@ def extract_pdf_vectors(pdf_path: str) -> dict:
                     elif item_type == "c":  # Curve
                         points = item.get("points", [])
                         if len(points) >= 6:
-                            path_points = []
-                            for i in range(0, len(points) - 1, 2):
-                                if i + 1 < len(points):
-                                    path_points.extend([
-                                        points[i],
-                                        height - points[i + 1]
-                                    ])
+                            # Points are already in top-left origin - no flip needed
+                            path_points = list(points)  # Use as-is
                             if len(path_points) >= 4:
                                 if add_path_if_new({
                                     "type": "path",
@@ -155,11 +152,12 @@ def extract_pdf_vectors(pdf_path: str) -> dict:
                     
                     elif item_type == "qu":  # Quadrilateral
                         if len(rect_coords) >= 4:
+                            # No flip - coords are already in top-left origin
                             path_points = [
-                                rect_coords[0], height - rect_coords[3],
-                                rect_coords[2], height - rect_coords[3],
-                                rect_coords[2], height - rect_coords[1],
-                                rect_coords[0], height - rect_coords[1],
+                                rect_coords[0], rect_coords[1],
+                                rect_coords[2], rect_coords[1],
+                                rect_coords[2], rect_coords[3],
+                                rect_coords[0], rect_coords[3],
                             ]
                             if add_path_if_new({
                                 "type": "path",
@@ -228,6 +226,7 @@ def extract_pdf_vectors(pdf_path: str) -> dict:
                     return "dimensions"
                 return "structure"
             
+            # NOTE: SVG from PyMuPDF uses top-left origin (like canvas) - no flip needed!
             def parse_svg_path(d: str, height: float) -> list:
                 import re
                 points = []
@@ -246,12 +245,12 @@ def extract_pdf_vectors(pdf_path: str) -> dict:
                     if cmd == 'M':
                         if len(coords) >= 2:
                             current_x = coords[0]
-                            current_y = height - coords[1]
+                            current_y = coords[1]  # No flip - already top-left origin
                             points.extend([current_x, current_y])
                     elif cmd == 'L':
                         if len(coords) >= 2:
                             current_x = coords[0]
-                            current_y = height - coords[1]
+                            current_y = coords[1]  # No flip
                             points.extend([current_x, current_y])
                     elif cmd == 'H':
                         if len(coords) >= 1:
@@ -259,12 +258,12 @@ def extract_pdf_vectors(pdf_path: str) -> dict:
                             points.extend([current_x, current_y])
                     elif cmd == 'V':
                         if len(coords) >= 1:
-                            current_y = height - coords[0]
+                            current_y = coords[0]  # No flip
                             points.extend([current_x, current_y])
                     elif cmd == 'C':
                         if len(coords) >= 6:
                             current_x = coords[4]
-                            current_y = height - coords[5]
+                            current_y = coords[5]  # No flip
                             points.extend([current_x, current_y])
                     elif cmd == 'Z':
                         if len(points) >= 2:
@@ -279,7 +278,7 @@ def extract_pdf_vectors(pdf_path: str) -> dict:
                 for i in range(0, len(numbers) - 1, 2):
                     if i + 1 < len(numbers):
                         x = float(numbers[i])
-                        y = height - float(numbers[i + 1])
+                        y = float(numbers[i + 1])  # No flip - already top-left origin
                         points.extend([x, y])
                 return points
             
@@ -319,10 +318,11 @@ def extract_pdf_vectors(pdf_path: str) -> dict:
                                 method2_count += 1
                 
                 elif tag == 'line':
+                    # SVG uses top-left origin - no flip needed
                     x1 = float(elem.get('x1', 0))
-                    y1 = height - float(elem.get('y1', 0))
+                    y1 = float(elem.get('y1', 0))  # No flip
                     x2 = float(elem.get('x2', 0))
-                    y2 = height - float(elem.get('y2', 0))
+                    y2 = float(elem.get('y2', 0))  # No flip
                     stroke = extract_color(elem, 'stroke', '#000000')
                     stroke_width = float(elem.get('stroke-width', '1'))
                     layer = get_layer_from_color(stroke, None, stroke_width)
@@ -336,8 +336,9 @@ def extract_pdf_vectors(pdf_path: str) -> dict:
                         method2_count += 1
                 
                 elif tag == 'rect':
+                    # SVG uses top-left origin - no flip needed
                     x = float(elem.get('x', 0))
-                    y = height - float(elem.get('y', 0)) - float(elem.get('height', 0))
+                    y = float(elem.get('y', 0))  # No flip - y is top of rect
                     w = float(elem.get('width', 0))
                     h = float(elem.get('height', 0))
                     stroke = extract_color(elem, 'stroke', '#000000')
@@ -429,22 +430,34 @@ def extract_pdf_vectors(pdf_path: str) -> dict:
             traceback.print_exc()
         
         # ========== TEXT EXTRACTION ==========
+        # NOTE: PyMuPDF uses top-left origin (like canvas/images), NOT PDF's bottom-left origin
+        # So bbox coordinates are already in the correct orientation - no flipping needed!
         log("=" * 60)
         log("TEXT EXTRACTION")
         log("=" * 60)
         try:
+            import math
             text_dict = page.get_text("dict")
             for block in text_dict.get("blocks", []):
                 if "lines" in block:
                     for line in block["lines"]:
+                        # Get text direction from line
+                        line_dir = line.get("dir", (1, 0))
+                        rotation = math.degrees(math.atan2(line_dir[1], line_dir[0]))
+                        
                         for span in line.get("spans", []):
                             bbox = span.get("bbox", [0, 0, 0, 0])
+                            # Use the EXACT font size from the PDF - no modification
+                            # This ensures 1:1 match with original PDF rendering
+                            fontSize = span.get("size", 1.0)
+                            
                             all_texts.append({
                                 "x": bbox[0],
-                                "y": height - bbox[3],
+                                "y": bbox[1],  # Top of text box
                                 "text": span.get("text", ""),
-                                "fontSize": span.get("size", 12),
-                                "fontName": span.get("font", "Arial")
+                                "fontSize": fontSize,
+                                "fontName": span.get("font", "Arial"),
+                                "rotation": rotation
                             })
             log(f"Extracted {len(all_texts)} text elements")
         except Exception as e:
@@ -485,7 +498,11 @@ def extract_pdf_vectors(pdf_path: str) -> dict:
         }
 
 def extract_from_pixmap(pix, zoom, height, add_path_if_new):
-    """Extract lines from rendered pixmap"""
+    """Extract lines from rendered pixmap
+    
+    COORDINATE SYSTEM: Pixmap uses top-left origin (like images/canvas).
+    No Y-flip needed - just scale pixmap coords to PDF coords.
+    """
     count = 0
     scale_factor = 1.0 / zoom
     threshold = 200
@@ -512,9 +529,9 @@ def extract_from_pixmap(pix, zoom, height, add_path_if_new):
                     else:
                         if line_start is not None and x - line_start > 5:
                             x1 = line_start * scale_factor
-                            y1 = (pix.height - y) * scale_factor
+                            y1 = y * scale_factor  # No flip - pixmap uses top-left origin
                             x2 = x * scale_factor
-                            y2 = (pix.height - y) * scale_factor
+                            y2 = y * scale_factor
                             if add_path_if_new({
                                 "type": "line",
                                 "points": [x1, y1, x2, y2],
@@ -526,9 +543,9 @@ def extract_from_pixmap(pix, zoom, height, add_path_if_new):
                             line_start = None
                 if line_start is not None:
                     x1 = line_start * scale_factor
-                    y1 = (pix.height - y) * scale_factor
+                    y1 = y * scale_factor  # No flip
                     x2 = gray.shape[1] * scale_factor
-                    y2 = (pix.height - y) * scale_factor
+                    y2 = y * scale_factor
                     if add_path_if_new({
                         "type": "line",
                         "points": [x1, y1, x2, y2],
@@ -548,9 +565,9 @@ def extract_from_pixmap(pix, zoom, height, add_path_if_new):
                     else:
                         if line_start is not None and y - line_start > 5:
                             x1 = x * scale_factor
-                            y1 = (pix.height - line_start) * scale_factor
+                            y1 = line_start * scale_factor  # No flip
                             x2 = x * scale_factor
-                            y2 = (pix.height - y) * scale_factor
+                            y2 = y * scale_factor
                             if add_path_if_new({
                                 "type": "line",
                                 "points": [x1, y1, x2, y2],
@@ -562,9 +579,9 @@ def extract_from_pixmap(pix, zoom, height, add_path_if_new):
                             line_start = None
                 if line_start is not None:
                     x1 = x * scale_factor
-                    y1 = (pix.height - line_start) * scale_factor
+                    y1 = line_start * scale_factor  # No flip
                     x2 = x * scale_factor
-                    y2 = 0
+                    y2 = gray.shape[0] * scale_factor  # End at bottom of image
                     if add_path_if_new({
                         "type": "line",
                         "points": [x1, y1, x2, y2],
@@ -595,9 +612,9 @@ def extract_from_pixmap(pix, zoom, height, add_path_if_new):
                     else:
                         if line_start is not None and x - line_start > 5:
                             x1 = line_start / zoom
-                            y1 = (height_pix - y) / zoom
+                            y1 = y / zoom  # No flip
                             x2 = x / zoom
-                            y2 = (height_pix - y) / zoom
+                            y2 = y / zoom
                             if add_path_if_new({
                                 "type": "line",
                                 "points": [x1, y1, x2, y2],
@@ -623,9 +640,9 @@ def extract_from_pixmap(pix, zoom, height, add_path_if_new):
                     else:
                         if line_start is not None and y - line_start > 5:
                             x1 = x / zoom
-                            y1 = (height_pix - line_start) / zoom
+                            y1 = line_start / zoom  # No flip
                             x2 = x / zoom
-                            y2 = (height_pix - y) / zoom
+                            y2 = y / zoom
                             if add_path_if_new({
                                 "type": "line",
                                 "points": [x1, y1, x2, y2],

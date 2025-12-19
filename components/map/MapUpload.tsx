@@ -227,8 +227,15 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
     }
   }
 
-  const handleUpload = () => {
-    fileInputRef.current?.click()
+  const handleUpload = (e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    } else {
+      console.error('File input ref is not available')
+      setError('File input is not ready. Please try again.')
+    }
   }
 
   const handleLoadDefault = async () => {
@@ -360,6 +367,7 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
                 {isDragging ? 'Drop file here' : 'Drag and drop a file here, or'}
               </p>
               <button
+                type="button"
                 onClick={handleUpload}
                 disabled={isProcessing}
                 className="fusion-button fusion-button-primary disabled:opacity-50 disabled:cursor-not-allowed"
@@ -378,6 +386,7 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
         </div>
 
         <button
+          type="button"
           onClick={handleLoadDefault}
           disabled={isProcessing}
           className="fusion-button w-full mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
