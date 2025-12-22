@@ -159,7 +159,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           id: site.id,
           name: site.name,
           storeNumber: site.storeNumber || defaultStore.storeNumber,
-          address: site.address || defaultStore.address,
+          address: site.address ?? defaultStore.address,
           city: defaultStore.city,
           state: defaultStore.state,
           zipCode: defaultStore.zipCode,
@@ -174,7 +174,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           id: site.id,
           name: site.name,
           storeNumber: site.storeNumber || '',
-          address: site.address,
+          address: site.address ?? undefined,
         }
       }
     })

@@ -278,7 +278,7 @@ function generateDevicesForZone(
     
     // Status distribution: 85% online, 10% offline, 5% missing
     const statusRand = Math.random()
-    let status = DeviceStatus.ONLINE
+    let status: DeviceStatus = DeviceStatus.ONLINE
     if (statusRand > 0.95) status = DeviceStatus.MISSING
     else if (statusRand > 0.85) status = DeviceStatus.OFFLINE
     
@@ -477,6 +477,7 @@ function generateBACnetMappings(zoneIds: string[]): Array<{
   zoneId: string
   bacnetObjectId: string
   status: BACnetStatus
+  lastConnected: Date | null
 }> {
   const mappings = []
   let objectIdCounter = 1000
@@ -485,7 +486,7 @@ function generateBACnetMappings(zoneIds: string[]): Array<{
     // 80% of zones have BACnet mappings
     if (Math.random() > 0.2) {
       const statusRand = Math.random()
-      let status = BACnetStatus.CONNECTED
+      let status: BACnetStatus = BACnetStatus.CONNECTED
       if (statusRand > 0.9) status = BACnetStatus.ERROR
       else if (statusRand > 0.7) status = BACnetStatus.NOT_ASSIGNED
       
@@ -674,7 +675,7 @@ export async function seedDatabase() {
       console.log(`  📍 Creating ${zonesData.length} zones...`)
       
       const allDevices: Array<{ device: any; components: any[] }> = []
-      const createdZones = []
+      const createdZones: any[] = []
       
       for (const zoneData of zonesData) {
         // Create zone
@@ -761,8 +762,8 @@ export async function seedDatabase() {
         
         // Update targetZones to use zone IDs instead of names
         const targetZoneIds = rule.targetZones
-          .map(zoneName => createdZones.find(z => z.name === zoneName)?.id)
-          .filter((id): id is string => !!id)
+          .map((zoneName: string) => createdZones.find(z => z.name === zoneName)?.id)
+          .filter((id: string | undefined): id is string => !!id)
         
         await prisma.rule.create({
           data: {
