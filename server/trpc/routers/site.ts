@@ -46,6 +46,13 @@ export const siteRouter = router({
       name: z.string(),
       storeNumber: z.string().optional(),
       address: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      zipCode: z.string().optional(),
+      phone: z.string().optional(),
+      manager: z.string().optional(),
+      squareFootage: z.number().optional(),
+      openedDate: z.date().optional(),
     }))
     .mutation(async ({ input }) => {
       const site = await prisma.site.create({
@@ -53,6 +60,13 @@ export const siteRouter = router({
           name: input.name,
           storeNumber: input.storeNumber,
           address: input.address,
+          city: input.city,
+          state: input.state,
+          zipCode: input.zipCode,
+          phone: input.phone,
+          manager: input.manager,
+          squareFootage: input.squareFootage,
+          openedDate: input.openedDate,
         },
       })
       return site
@@ -64,6 +78,13 @@ export const siteRouter = router({
       name: z.string().optional(),
       storeNumber: z.string().optional(),
       address: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      zipCode: z.string().optional(),
+      phone: z.string().optional(),
+      manager: z.string().optional(),
+      squareFootage: z.number().optional(),
+      openedDate: z.date().optional(),
     }))
     .mutation(async ({ input }) => {
       const { id, ...updates } = input
@@ -81,6 +102,13 @@ export const siteRouter = router({
       name: z.string(),
       storeNumber: z.string().optional(),
       address: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      zipCode: z.string().optional(),
+      phone: z.string().optional(),
+      manager: z.string().optional(),
+      squareFootage: z.number().optional(),
+      openedDate: z.date().optional(),
     }))
     .mutation(async ({ input }) => {
       const existing = await prisma.site.findUnique({
@@ -108,6 +136,13 @@ export const siteRouter = router({
           name: input.name,
           storeNumber: input.storeNumber,
           address: input.address,
+          city: input.city,
+          state: input.state,
+          zipCode: input.zipCode,
+          phone: input.phone,
+          manager: input.manager,
+          squareFootage: input.squareFootage,
+          openedDate: input.openedDate,
         },
       })
       return site

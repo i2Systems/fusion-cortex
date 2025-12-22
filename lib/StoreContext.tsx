@@ -154,19 +154,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return sitesData.map(site => {
       const defaultStore = DEFAULT_STORES.find(ds => ds.id === site.id)
       if (defaultStore) {
-        // Merge database data with default metadata
+        // Merge database data with default metadata (database takes precedence)
         return {
           id: site.id,
           name: site.name,
           storeNumber: site.storeNumber || defaultStore.storeNumber,
           address: site.address ?? defaultStore.address,
-          city: defaultStore.city,
-          state: defaultStore.state,
-          zipCode: defaultStore.zipCode,
-          phone: defaultStore.phone,
-          manager: defaultStore.manager,
-          squareFootage: defaultStore.squareFootage,
-          openedDate: defaultStore.openedDate,
+          city: site.city ?? defaultStore.city,
+          state: site.state ?? defaultStore.state,
+          zipCode: site.zipCode ?? defaultStore.zipCode,
+          phone: site.phone ?? defaultStore.phone,
+          manager: site.manager ?? defaultStore.manager,
+          squareFootage: site.squareFootage ?? defaultStore.squareFootage,
+          openedDate: site.openedDate ?? defaultStore.openedDate,
         }
       } else {
         // New site from database (not in defaults)
@@ -175,6 +175,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           name: site.name,
           storeNumber: site.storeNumber || '',
           address: site.address ?? undefined,
+          city: site.city ?? undefined,
+          state: site.state ?? undefined,
+          zipCode: site.zipCode ?? undefined,
+          phone: site.phone ?? undefined,
+          manager: site.manager ?? undefined,
+          squareFootage: site.squareFootage ?? undefined,
+          openedDate: site.openedDate ?? undefined,
         }
       }
     })
@@ -264,6 +271,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       name: storeData.name,
       storeNumber: storeData.storeNumber,
       address: storeData.address,
+      city: storeData.city,
+      state: storeData.state,
+      zipCode: storeData.zipCode,
+      phone: storeData.phone,
+      manager: storeData.manager,
+      squareFootage: storeData.squareFootage,
+      openedDate: storeData.openedDate,
     })
     
     return newStore
@@ -276,8 +290,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       name: updates.name,
       storeNumber: updates.storeNumber,
       address: updates.address,
+      city: updates.city,
+      state: updates.state,
+      zipCode: updates.zipCode,
+      phone: updates.phone,
+      manager: updates.manager,
+      squareFootage: updates.squareFootage,
+      openedDate: updates.openedDate,
     })
-    // UI metadata (city, state, etc.) is kept in memory, not in database
   }
 
   const removeStore = (storeId: string) => {

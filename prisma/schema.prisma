@@ -19,15 +19,22 @@ datasource db {
 }
 
 model Site {
-  id          String   @id @default(cuid())
-  name        String
-  storeNumber String?
-  address     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String    @id @default(cuid())
+  name          String
+  storeNumber   String?
+  address       String?
+  city          String?
+  state         String?
+  zipCode       String?
+  phone         String?
+  manager       String?
+  squareFootage Int?
+  openedDate    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  devices     Device[]
-  zones       Zone[]
+  devices       Device[]
+  zones         Zone[]
 }
 
 model Device {
