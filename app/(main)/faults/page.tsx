@@ -16,11 +16,13 @@ import { MapViewToggle, type MapViewMode } from '@/components/shared/MapViewTogg
 import { MapUpload } from '@/components/map/MapUpload'
 import { FaultList } from '@/components/faults/FaultList'
 import { FaultDetailsPanel } from '@/components/faults/FaultDetailsPanel'
+import { ResizablePanel } from '@/components/layout/ResizablePanel'
 import { useDevices } from '@/lib/DeviceContext'
 import { useZones } from '@/lib/ZoneContext'
 import { useStore } from '@/lib/StoreContext'
 import { Device } from '@/lib/mockData'
 import { FaultCategory, assignFaultCategory, generateFaultDescription, faultCategories } from '@/lib/faultDefinitions'
+import { loadLocations } from '@/lib/locationStorage'
 import { Droplets, Zap, Thermometer, Plug, Settings, Package, Wrench, Lightbulb, TrendingUp, TrendingDown, AlertTriangle, Clock, ArrowUp, ArrowDown, Minus } from 'lucide-react'
 
 // Dynamically import FaultsMapCanvas to avoid SSR issues with Konva
@@ -45,14 +47,11 @@ export default function FaultsPage() {
   const { zones } = useZones()
   const { activeStoreId } = useStore()
 
-  // Helper to get store-scoped localStorage key
-  const getMapImageKey = () => {
-    return activeStoreId ? `fusion_map-image-url_${activeStoreId}` : 'map-image-url'
-  }
   const [selectedFaultId, setSelectedFaultId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<MapViewMode>('list')
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(null)
+  const [vectorData, setVectorData] = useState<any>(null)
   const [mapUploaded, setMapUploaded] = useState(false)
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
   
@@ -178,20 +177,64 @@ export default function FaultsPage() {
   const listContainerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  // Load saved map image on mount or when store changes
+  // Load map from shared location storage (same as map page)
   useEffect(() => {
-    if (typeof window !== 'undefined' && activeStoreId) {
-      const imageKey = getMapImageKey()
-      const savedImageUrl = localStorage.getItem(imageKey)
-      if (savedImageUrl) {
-        setMapImageUrl(savedImageUrl)
+    const loadMapData = async () => {
+      if (typeof window === 'undefined') return
+      
+      // Load locations from shared storage
+      const locations = await loadLocations(activeStoreId)
+      if (locations.length === 0) {
+        setMapUploaded(false)
+        setMapImageUrl(null)
+        setVectorData(null)
+        return
+      }
+      
+      // Use first location
+      const location = locations[0]
+      
+      // Load data from IndexedDB if storageKey exists
+      if (location.storageKey && activeStoreId) {
+        try {
+          const { getVectorData } = await import('@/lib/indexedDB')
+          const stored = await getVectorData(activeStoreId, location.storageKey)
+          if (stored) {
+            if (stored.paths || stored.texts) {
+              setVectorData(stored)
+              setMapImageUrl(null)
+            } else if (stored.data) {
+              setMapImageUrl(stored.data)
+              setVectorData(null)
+            }
+            setMapUploaded(true)
+            return
+          }
+        } catch (e) {
+          console.warn('Failed to load location data from IndexedDB:', e)
+        }
+      }
+      
+      // Fallback to direct data
+      if (location.imageUrl) {
+        setMapImageUrl(location.imageUrl)
+        setMapUploaded(true)
+      } else if (location.vectorData) {
+        setVectorData(location.vectorData)
         setMapUploaded(true)
       }
     }
+    
+    loadMapData()
   }, [activeStoreId])
 
   const handleMapUpload = (imageUrl: string) => {
     setMapImageUrl(imageUrl)
+    setMapUploaded(true)
+  }
+  
+  const handleVectorDataUpload = (data: any) => {
+    setVectorData(data)
     setMapUploaded(true)
   }
 
@@ -559,7 +602,7 @@ export default function FaultsPage() {
               <div className="fusion-card overflow-hidden h-full flex flex-col rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] relative">
                 {!mapUploaded ? (
                   <div className="w-full h-full">
-                    <MapUpload onMapUpload={handleMapUpload} />
+                    <MapUpload onMapUpload={handleMapUpload} onVectorDataUpload={handleVectorDataUpload} />
                   </div>
                 ) : (
                   <div className="w-full h-full rounded-2xl overflow-hidden">
@@ -568,6 +611,7 @@ export default function FaultsPage() {
                       devices={mapDevices}
                       faults={faults}
                       mapImageUrl={mapImageUrl}
+                      vectorData={vectorData}
                       selectedDeviceId={selectedDeviceId}
                       onDeviceSelect={handleDeviceSelect}
                       devicesData={devices}
@@ -715,7 +759,15 @@ export default function FaultsPage() {
 
         {/* Fault Details Panel - Right Side */}
         <div ref={panelRef}>
-        <FaultDetailsPanel fault={selectedFault} onAddNewFault={handleAddNewFault} />
+          <ResizablePanel
+            defaultWidth={384}
+            minWidth={320}
+            maxWidth={512}
+            collapseThreshold={200}
+            storageKey="faults_panel"
+          >
+            <FaultDetailsPanel fault={selectedFault} onAddNewFault={handleAddNewFault} />
+          </ResizablePanel>
         </div>
       </div>
     </div>

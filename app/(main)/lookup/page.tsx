@@ -16,6 +16,7 @@ import { SearchIsland } from '@/components/layout/SearchIsland'
 import { DeviceList } from '@/components/lookup/DeviceList'
 import { DeviceProfilePanel } from '@/components/lookup/DeviceProfilePanel'
 import { ViewToggle, type ViewMode } from '@/components/lookup/ViewToggle'
+import { ResizablePanel } from '@/components/layout/ResizablePanel'
 import { MapUpload } from '@/components/map/MapUpload'
 import { useDevices } from '@/lib/DeviceContext'
 import { useZones } from '@/lib/ZoneContext'
@@ -23,6 +24,7 @@ import { useStore } from '@/lib/StoreContext'
 import { ComponentModal } from '@/components/shared/ComponentModal'
 import { ManualDeviceEntry } from '@/components/discovery/ManualDeviceEntry'
 import { Component, Device } from '@/lib/mockData'
+import { loadLocations } from '@/lib/locationStorage'
 
 // Dynamically import MapCanvas and ZoneCanvas to avoid SSR issues with Konva
 const MapCanvas = dynamic(() => import('@/components/map/MapCanvas').then(mod => ({ default: mod.MapCanvas })), {
@@ -48,16 +50,13 @@ export default function LookupPage() {
   const { zones } = useZones()
   const { activeStoreId } = useStore()
 
-  // Helper to get store-scoped localStorage key
-  const getMapImageKey = () => {
-    return activeStoreId ? `fusion_map-image-url_${activeStoreId}` : 'map-image-url'
-  }
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
   const [selectedComponent, setSelectedComponent] = useState<Component | null>(null)
   const [componentParentDevice, setComponentParentDevice] = useState<Device | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(null)
+  const [vectorData, setVectorData] = useState<any>(null)
   const [mapUploaded, setMapUploaded] = useState(false)
   const [showManualEntry, setShowManualEntry] = useState(false)
   const listContainerRef = useRef<HTMLDivElement>(null)
@@ -192,20 +191,64 @@ export default function LookupPage() {
     setShowManualEntry(false)
   }
 
-  // Load saved map image on mount or when store changes
+  // Load map from shared location storage (same as map page)
   useEffect(() => {
-    if (typeof window !== 'undefined' && activeStoreId) {
-      const imageKey = getMapImageKey()
-      const savedImageUrl = localStorage.getItem(imageKey)
-      if (savedImageUrl) {
-        setMapImageUrl(savedImageUrl)
+    const loadMapData = async () => {
+      if (typeof window === 'undefined') return
+      
+      // Load locations from shared storage
+      const locations = await loadLocations(activeStoreId)
+      if (locations.length === 0) {
+        setMapUploaded(false)
+        setMapImageUrl(null)
+        setVectorData(null)
+        return
+      }
+      
+      // Use first location
+      const location = locations[0]
+      
+      // Load data from IndexedDB if storageKey exists
+      if (location.storageKey && activeStoreId) {
+        try {
+          const { getVectorData } = await import('@/lib/indexedDB')
+          const stored = await getVectorData(activeStoreId, location.storageKey)
+          if (stored) {
+            if (stored.paths || stored.texts) {
+              setVectorData(stored)
+              setMapImageUrl(null)
+            } else if (stored.data) {
+              setMapImageUrl(stored.data)
+              setVectorData(null)
+            }
+            setMapUploaded(true)
+            return
+          }
+        } catch (e) {
+          console.warn('Failed to load location data from IndexedDB:', e)
+        }
+      }
+      
+      // Fallback to direct data
+      if (location.imageUrl) {
+        setMapImageUrl(location.imageUrl)
+        setMapUploaded(true)
+      } else if (location.vectorData) {
+        setVectorData(location.vectorData)
         setMapUploaded(true)
       }
     }
+    
+    loadMapData()
   }, [activeStoreId])
 
   const handleMapUpload = (imageUrl: string) => {
     setMapImageUrl(imageUrl)
+    setMapUploaded(true)
+  }
+  
+  const handleVectorDataUpload = (data: any) => {
+    setVectorData(data)
     setMapUploaded(true)
   }
 
@@ -304,7 +347,7 @@ export default function LookupPage() {
       if (!mapUploaded) {
         return (
           <div className="fusion-card overflow-hidden h-full flex flex-col">
-            <MapUpload onMapUpload={handleMapUpload} />
+            <MapUpload onMapUpload={handleMapUpload} onVectorDataUpload={handleVectorDataUpload} />
           </div>
         )
       }
@@ -316,6 +359,7 @@ export default function LookupPage() {
               onDeviceSelect={setSelectedDeviceId}
               selectedDeviceId={selectedDeviceId}
               mapImageUrl={mapImageUrl}
+              vectorData={vectorData}
               highlightDeviceId={selectedDeviceId}
               mode="select"
               devices={mapDevices}
@@ -330,7 +374,7 @@ export default function LookupPage() {
       if (!mapUploaded) {
         return (
           <div className="fusion-card overflow-hidden h-full flex flex-col">
-            <MapUpload onMapUpload={handleMapUpload} />
+            <MapUpload onMapUpload={handleMapUpload} onVectorDataUpload={handleVectorDataUpload} />
           </div>
         )
       }
@@ -342,6 +386,7 @@ export default function LookupPage() {
               onDeviceSelect={setSelectedDeviceId}
               selectedDeviceId={selectedDeviceId}
               mapImageUrl={mapImageUrl}
+              vectorData={vectorData}
               devices={mapDevices}
               zones={mapZones}
               selectedZoneId={null}
@@ -410,14 +455,22 @@ export default function LookupPage() {
 
         {/* Device Profile Panel - Right Side */}
         <div ref={panelRef}>
-        <DeviceProfilePanel 
-          device={selectedDevice} 
-          onComponentClick={handleComponentClick}
-          onManualEntry={handleManualEntry}
-          onQRScan={handleQRScan}
-          onImport={handleImport}
-          onExport={handleExport}
-        />
+          <ResizablePanel
+            defaultWidth={384}
+            minWidth={320}
+            maxWidth={512}
+            collapseThreshold={200}
+            storageKey="lookup_panel"
+          >
+            <DeviceProfilePanel 
+              device={selectedDevice} 
+              onComponentClick={handleComponentClick}
+              onManualEntry={handleManualEntry}
+              onQRScan={handleQRScan}
+              onImport={handleImport}
+              onExport={handleExport}
+            />
+          </ResizablePanel>
         </div>
       </div>
 

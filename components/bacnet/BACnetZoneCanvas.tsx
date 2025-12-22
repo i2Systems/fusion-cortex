@@ -10,6 +10,8 @@ import { Stage, Layer, Circle, Image as KonvaImage, Group, Text, Rect, Line } fr
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { CheckCircle2, AlertCircle, XCircle } from 'lucide-react'
 import { FloorPlanImage, type ImageBounds } from '@/components/map/FloorPlanImage'
+import { VectorFloorPlan } from '@/components/map/VectorFloorPlan'
+import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 
 interface DevicePoint {
   id: string
@@ -42,6 +44,7 @@ interface BACnetZoneCanvasProps {
   devices: DevicePoint[]
   mappings: BACnetMapping[]
   mapImageUrl?: string | null
+  vectorData?: ExtractedVectorData | null
   selectedZoneId?: string | null
   onZoneSelect?: (zoneId: string | null) => void
   devicesData?: any[]
@@ -53,10 +56,12 @@ export function BACnetZoneCanvas({
   devices,
   mappings,
   mapImageUrl,
+  vectorData,
   selectedZoneId,
   onZoneSelect,
   devicesData = []
 }: BACnetZoneCanvasProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 })
   const [scale, setScale] = useState(1)
@@ -89,12 +94,13 @@ export function BACnetZoneCanvas({
 
   useEffect(() => {
     const updateDimensions = () => {
-      const availableWidth = window.innerWidth - 80 - 384 - 32
-      const availableHeight = window.innerHeight - 48 - 80 - 32
-      setDimensions({
-        width: Math.max(availableWidth, 400),
-        height: Math.max(availableHeight, 400),
-      })
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect()
+        setDimensions({
+          width: Math.max(rect.width, 400),
+          height: Math.max(rect.height, 400),
+        })
+      }
     }
 
     const updateColors = () => {
@@ -114,17 +120,27 @@ export function BACnetZoneCanvas({
     updateDimensions()
     updateColors()
     
+    // Use ResizeObserver to respond to container size changes
+    const resizeObserver = new ResizeObserver(() => {
+      updateDimensions()
+    })
+    
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current)
+    }
+    
     window.addEventListener('resize', updateDimensions)
     
-    const observer = new MutationObserver(updateColors)
-    observer.observe(document.documentElement, {
+    const mutationObserver = new MutationObserver(updateColors)
+    mutationObserver.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['data-theme'],
     })
     
     return () => {
+      resizeObserver.disconnect()
       window.removeEventListener('resize', updateDimensions)
-      observer.disconnect()
+      mutationObserver.disconnect()
     }
   }, [])
 
@@ -154,7 +170,7 @@ export function BACnetZoneCanvas({
 
 
   return (
-    <div className="w-full h-full overflow-hidden">
+    <div ref={containerRef} className="w-full h-full overflow-hidden">
       <Stage 
         width={dimensions.width} 
         height={dimensions.height}
@@ -182,7 +198,7 @@ export function BACnetZoneCanvas({
           // Determine zoom direction (trackpad: negative deltaY = zoom in, positive = zoom out)
           // Mouse wheel: positive deltaY = scroll down = zoom out
           const zoomFactor = deltaY > 0 ? 0.9 : 1.1
-          const newScale = Math.max(0.5, Math.min(3, scale * zoomFactor))
+          const newScale = Math.max(0.1, Math.min(10, scale * zoomFactor))
           
           // Calculate mouse position relative to stage
           const mouseX = (pointerPos.x - stagePosition.x) / scale
@@ -198,7 +214,16 @@ export function BACnetZoneCanvas({
       >
         {/* Background Layer */}
         <Layer>
-          {mapImageUrl && (
+          {/* Vector floor plan (preferred) */}
+          {vectorData && (
+            <VectorFloorPlan
+              vectorData={vectorData}
+              width={dimensions.width}
+              height={dimensions.height}
+            />
+          )}
+          {/* Image floor plan (fallback) */}
+          {!vectorData && mapImageUrl && (
             <FloorPlanImage 
               url={mapImageUrl} 
               width={dimensions.width} 

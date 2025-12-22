@@ -12,12 +12,13 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, Search, Settings, User, Bell, Shield, Palette, Database, Info, Type } from 'lucide-react'
+import { X, Search, Settings, User, Bell, Shield, Palette, Database, Info, Type, Wrench } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useTheme } from '@/lib/theme'
 import { useRole } from '@/lib/role'
 import { useFont, FontFamily, FontSize } from '@/lib/FontContext'
 import { useI18n, languageNames, Language } from '@/lib/i18n'
+import { useAdvancedSettings } from '@/lib/AdvancedSettingsContext'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -30,6 +31,7 @@ const settingsSections = [
   { id: 'security', labelKey: 'security', icon: Shield },
   { id: 'appearance', labelKey: 'appearance', icon: Palette },
   { id: 'data', labelKey: 'data', icon: Database },
+  { id: 'advanced', labelKey: 'advanced', icon: Wrench },
   { id: 'about', labelKey: 'about', icon: Info },
 ]
 
@@ -39,6 +41,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { role, setRole } = useRole()
   const { fontFamily, fontSize, setFontFamily, setFontSize } = useFont()
   const { language, setLanguage, t } = useI18n()
+  const { enableSVGExtraction, setEnableSVGExtraction } = useAdvancedSettings()
   const [activeSection, setActiveSection] = useState(isAuthenticated ? 'profile' : 'appearance')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -489,6 +492,45 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     <button className="fusion-button" style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text)' }}>
                       Clear Cache
                     </button>
+                  </div>
+                )}
+
+                {activeSection === 'advanced' && (
+                  <div className="space-y-6">
+                    <div className="p-4 bg-[var(--color-surface-subtle)] rounded-lg">
+                      <p className="text-sm text-[var(--color-text-muted)] mb-2">
+                        These settings control experimental features. Change with caution.
+                      </p>
+                    </div>
+                    
+                    {/* PDF Processing Section */}
+                    <div>
+                      <h4 className="text-sm font-medium text-[var(--color-text)] mb-3">PDF Processing</h4>
+                      <div className="space-y-3">
+                        <label className="flex items-start gap-3 p-4 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={enableSVGExtraction}
+                            onChange={(e) => setEnableSVGExtraction(e.target.checked)}
+                            className="mt-1 rounded"
+                          />
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-[var(--color-text)]">
+                              Enable SVG Vector Extraction
+                            </div>
+                            <div className="text-xs text-[var(--color-text-muted)] mt-1">
+                              When uploading PDFs, attempt to extract vector graphics (lines, paths) as SVG. 
+                              This can provide higher quality floor plans but may be slow or produce incorrect results 
+                              for some PDFs. When disabled, PDFs are converted to high-resolution images instead.
+                            </div>
+                            <div className="text-xs text-[var(--color-warning)] mt-2 flex items-center gap-1">
+                              <span>⚠️</span>
+                              <span>Experimental feature - disable if you experience issues</span>
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 )}
 

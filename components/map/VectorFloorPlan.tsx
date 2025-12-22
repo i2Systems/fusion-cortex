@@ -62,7 +62,7 @@ export const VectorFloorPlan = memo(function VectorFloorPlan({
       pdfHeight: boundsHeight,
       scale,
       sampleFontSize: 3,
-      renderedFontSize: (3 * scale) / 3, // What a 3pt font renders as
+      renderedFontSize: 3 * scale, // What a 3pt visual height renders as (no more /3 hack)
       devicePixelRatio: window.devicePixelRatio
     });
     (window as any).__vectorDebugLogged = true;
@@ -204,26 +204,52 @@ export const VectorFloorPlan = memo(function VectorFloorPlan({
   
   // Render texts - scale font size exactly like coordinates (1:1)
   // Handle rotated text (vertical text in title blocks, etc.)
+  // NOTE: Python extraction now provides visual height from bbox as fontSize,
+  // so no division factor needed - just scale directly.
   const renderTexts = useMemo(() => {
+    // Debug: log first few text items once
+    if (typeof window !== 'undefined' && !(window as any).__textDebugLogged && filteredTexts.length > 0) {
+      console.log('[Text DEBUG] Sample texts from extraction:', filteredTexts.slice(0, 5).map(t => ({
+        text: t.text?.substring(0, 20),
+        fontSize: t.fontSize,
+        scaledSize: (t.fontSize || 1) * finalScale
+      })));
+      console.log('[Text DEBUG] Largest fonts:', 
+        [...filteredTexts].sort((a, b) => (b.fontSize || 0) - (a.fontSize || 0)).slice(0, 5).map(t => ({
+          text: t.text?.substring(0, 20),
+          fontSize: t.fontSize,
+          scaledSize: (t.fontSize || 1) * finalScale
+        })));
+      (window as any).__textDebugLogged = true;
+    }
+    
     return filteredTexts.map((textItem, idx) => {
-      // Font sizes from PDF in points, scaled to match canvas
-      // Divide by additional factor to match original PDF visual appearance
-      // The browser/Konva may be applying additional scaling we can't see
+      // Font size from Python is now the visual height from bbox
+      // Just scale it like we scale coordinates - 1:1 mapping
       const baseFontSize = textItem.fontSize || 1
-      const fontSize = (baseFontSize * finalScale) / 3
+      const fontSize = baseFontSize * finalScale
       
       // Get rotation angle (default 0 = horizontal)
       const rotation = textItem.rotation || 0
       
-      // Base position from bbox
+      // Base position from bbox (top-left corner)
       let x = finalOffsetX + textItem.x * finalScale
       let y = finalOffsetY + textItem.y * finalScale
       
-      // For rotated text, we need to adjust position since Konva rotates around
-      // the text's origin (top-left of unrotated text)
-      // For -90° (reading bottom-to-top): adjust y to account for rotation pivot
-      // For +90° (reading top-to-bottom): adjust differently
-      // The bbox x,y is the top-left of the visual bounding box
+      // For rotated text, Konva rotates around the text origin (top-left)
+      // We need to adjust position so the rotated text aligns with bbox
+      const isVertical = Math.abs(rotation) > 45 && Math.abs(rotation) < 135
+      
+      // For vertical text reading bottom-to-top (rotation ~ -90°):
+      // After rotation, the text extends upward from origin
+      // Need to offset to align with the visual bounding box
+      if (isVertical) {
+        if (rotation < 0) {
+          // Reading bottom-to-top (-90°): offset y by the text width (now vertical)
+          y = finalOffsetY + textItem.y * finalScale + fontSize
+        }
+        // For +90° rotation, the default pivot works reasonably well
+      }
       
       return (
         <KonvaText
@@ -235,10 +261,6 @@ export const VectorFloorPlan = memo(function VectorFloorPlan({
           fontFamily={textItem.fontName || 'Arial'}
           fill="#000000"
           rotation={rotation}
-          // Set offset for proper rotation pivot
-          // For vertical text, pivot around center of bbox width (which is visual height)
-          offsetX={Math.abs(rotation) > 45 ? fontSize / 2 : 0}
-          offsetY={Math.abs(rotation) > 45 ? 0 : 0}
           listening={false}
           perfectDrawEnabled={false}
           hitStrokeWidth={0}

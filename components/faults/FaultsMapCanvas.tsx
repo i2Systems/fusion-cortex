@@ -7,9 +7,11 @@
 'use client'
 
 import { Stage, Layer, Circle, Group, Text, Line } from 'react-konva'
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { FaultCategory, faultCategories } from '@/lib/faultDefinitions'
 import { FloorPlanImage, type ImageBounds } from '@/components/map/FloorPlanImage'
+import { VectorFloorPlan } from '@/components/map/VectorFloorPlan'
+import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 
 interface DevicePoint {
   id: string
@@ -44,6 +46,7 @@ interface FaultsMapCanvasProps {
   devices: DevicePoint[]
   faults: Fault[]
   mapImageUrl?: string | null
+  vectorData?: ExtractedVectorData | null
   selectedDeviceId?: string | null
   onDeviceSelect?: (deviceId: string | null) => void
   devicesData?: any[]
@@ -55,10 +58,12 @@ export function FaultsMapCanvas({
   devices,
   faults,
   mapImageUrl,
+  vectorData,
   selectedDeviceId,
   onDeviceSelect,
   devicesData = []
 }: FaultsMapCanvasProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 })
   const [scale, setScale] = useState(1)
@@ -84,12 +89,13 @@ export function FaultsMapCanvas({
 
   useEffect(() => {
     const updateDimensions = () => {
-      const availableWidth = window.innerWidth - 80 - 384 - 32
-      const availableHeight = window.innerHeight - 48 - 80 - 32
-      setDimensions({
-        width: Math.max(availableWidth, 400),
-        height: Math.max(availableHeight, 400),
-      })
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect()
+        setDimensions({
+          width: Math.max(rect.width, 400),
+          height: Math.max(rect.height, 400),
+        })
+      }
     }
 
     const updateColors = () => {
@@ -109,17 +115,27 @@ export function FaultsMapCanvas({
     updateDimensions()
     updateColors()
     
+    // Use ResizeObserver to respond to container size changes
+    const resizeObserver = new ResizeObserver(() => {
+      updateDimensions()
+    })
+    
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current)
+    }
+    
     window.addEventListener('resize', updateDimensions)
     
-    const observer = new MutationObserver(updateColors)
-    observer.observe(document.documentElement, {
+    const mutationObserver = new MutationObserver(updateColors)
+    mutationObserver.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['data-theme'],
     })
     
     return () => {
+      resizeObserver.disconnect()
       window.removeEventListener('resize', updateDimensions)
-      observer.disconnect()
+      mutationObserver.disconnect()
     }
   }, [])
 
@@ -200,7 +216,7 @@ export function FaultsMapCanvas({
   }, [imageBounds, dimensions])
 
   return (
-    <div className="w-full h-full overflow-hidden">
+    <div ref={containerRef} className="w-full h-full overflow-hidden">
       <Stage 
         width={dimensions.width} 
         height={dimensions.height}
@@ -228,7 +244,7 @@ export function FaultsMapCanvas({
           // Determine zoom direction (trackpad: negative deltaY = zoom in, positive = zoom out)
           // Mouse wheel: positive deltaY = scroll down = zoom out
           const zoomFactor = deltaY > 0 ? 0.9 : 1.1
-          const newScale = Math.max(0.5, Math.min(3, scale * zoomFactor))
+          const newScale = Math.max(0.1, Math.min(10, scale * zoomFactor))
           
           // Calculate mouse position relative to stage
           const mouseX = (pointerPos.x - stagePosition.x) / scale
@@ -244,7 +260,16 @@ export function FaultsMapCanvas({
       >
         {/* Background Layer */}
         <Layer>
-          {mapImageUrl && (
+          {/* Vector floor plan (preferred) */}
+          {vectorData && (
+            <VectorFloorPlan
+              vectorData={vectorData}
+              width={dimensions.width}
+              height={dimensions.height}
+            />
+          )}
+          {/* Image floor plan (fallback) */}
+          {!vectorData && mapImageUrl && (
             <FloorPlanImage 
               url={mapImageUrl} 
               width={dimensions.width} 

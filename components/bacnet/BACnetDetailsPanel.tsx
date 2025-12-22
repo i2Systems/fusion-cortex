@@ -122,7 +122,7 @@ export function BACnetDetailsPanel({
 
   if (!mapping) {
     return (
-      <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
+      <div className="flex flex-col h-full">
         {/* Header */}
         <div className="p-4 border-b border-[var(--color-border-subtle)]">
           <h3 className="text-lg font-semibold text-[var(--color-text)] mb-3">
@@ -189,7 +189,7 @@ export function BACnetDetailsPanel({
   }
 
   return (
-    <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
+    <div className="flex flex-col h-full">
       {/* Data-Dense Header */}
       <div className="p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)]">
         <div className="flex items-start gap-3 mb-3">

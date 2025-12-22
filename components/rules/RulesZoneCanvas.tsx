@@ -9,7 +9,9 @@
 import { Stage, Layer, Circle, Group, Text, Rect, Line } from 'react-konva'
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { FloorPlanImage, type ImageBounds } from '@/components/map/FloorPlanImage'
+import { VectorFloorPlan } from '@/components/map/VectorFloorPlan'
 import { Rule } from '@/lib/mockRules'
+import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 
 interface DevicePoint {
   id: string
@@ -34,6 +36,7 @@ interface RulesZoneCanvasProps {
   devices: DevicePoint[]
   rules: Rule[]
   mapImageUrl?: string | null
+  vectorData?: ExtractedVectorData | null
   selectedZoneName?: string | null
   onZoneSelect?: (zoneName: string | null) => void
   devicesData?: any[]
@@ -44,10 +47,12 @@ export function RulesZoneCanvas({
   devices,
   rules,
   mapImageUrl,
+  vectorData,
   selectedZoneName,
   onZoneSelect,
   devicesData = []
 }: RulesZoneCanvasProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 })
   const [scale, setScale] = useState(1)
@@ -78,12 +83,13 @@ export function RulesZoneCanvas({
 
   useEffect(() => {
     const updateDimensions = () => {
-      const availableWidth = window.innerWidth - 80 - 384 - 32
-      const availableHeight = window.innerHeight - 48 - 80 - 32
-      setDimensions({
-        width: Math.max(availableWidth, 400),
-        height: Math.max(availableHeight, 400),
-      })
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect()
+        setDimensions({
+          width: Math.max(rect.width, 400),
+          height: Math.max(rect.height, 400),
+        })
+      }
     }
 
     const updateColors = () => {
@@ -101,17 +107,27 @@ export function RulesZoneCanvas({
     updateDimensions()
     updateColors()
     
+    // Use ResizeObserver to respond to container size changes
+    const resizeObserver = new ResizeObserver(() => {
+      updateDimensions()
+    })
+    
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current)
+    }
+    
     window.addEventListener('resize', updateDimensions)
     
-    const observer = new MutationObserver(updateColors)
-    observer.observe(document.documentElement, {
+    const mutationObserver = new MutationObserver(updateColors)
+    mutationObserver.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['data-theme'],
     })
     
     return () => {
+      resizeObserver.disconnect()
       window.removeEventListener('resize', updateDimensions)
-      observer.disconnect()
+      mutationObserver.disconnect()
     }
   }, [])
 
@@ -140,7 +156,7 @@ export function RulesZoneCanvas({
 
 
   return (
-    <div className="w-full h-full overflow-hidden">
+    <div ref={containerRef} className="w-full h-full overflow-hidden">
       <Stage 
         width={dimensions.width} 
         height={dimensions.height}
@@ -168,7 +184,7 @@ export function RulesZoneCanvas({
           // Determine zoom direction (trackpad: negative deltaY = zoom in, positive = zoom out)
           // Mouse wheel: positive deltaY = scroll down = zoom out
           const zoomFactor = deltaY > 0 ? 0.9 : 1.1
-          const newScale = Math.max(0.5, Math.min(3, scale * zoomFactor))
+          const newScale = Math.max(0.1, Math.min(10, scale * zoomFactor))
           
           // Calculate mouse position relative to stage
           const mouseX = (pointerPos.x - stagePosition.x) / scale
@@ -184,7 +200,16 @@ export function RulesZoneCanvas({
       >
         {/* Background Layer */}
         <Layer>
-          {mapImageUrl && (
+          {/* Vector floor plan (preferred) */}
+          {vectorData && (
+            <VectorFloorPlan
+              vectorData={vectorData}
+              width={dimensions.width}
+              height={dimensions.height}
+            />
+          )}
+          {/* Image floor plan (fallback) */}
+          {!vectorData && mapImageUrl && (
             <FloorPlanImage 
               url={mapImageUrl} 
               width={dimensions.width} 

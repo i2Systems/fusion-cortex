@@ -11,6 +11,7 @@ import { RuleProvider } from '@/lib/RuleContext'
 import { NotificationProvider } from '@/lib/NotificationContext'
 import { FontProvider } from '@/lib/FontContext'
 import { I18nProvider } from '@/lib/i18n'
+import { AdvancedSettingsProvider } from '@/lib/AdvancedSettingsContext'
 // Import exportData to make exportFusionData() available in browser console
 import '@/lib/exportData'
 
@@ -42,21 +43,23 @@ export default function RootLayout({
                   <ThemeProvider>
                     <FontProvider>
                       <I18nProvider>
-                        <RoleProvider>
-                          <AuthProvider>
-                            <StoreProvider>
-                              <DeviceProvider>
-                                <ZoneProvider>
-                                  <RuleProvider>
-                                    <NotificationProvider>
-                                      {children}
-                                    </NotificationProvider>
-                                  </RuleProvider>
-                                </ZoneProvider>
-                              </DeviceProvider>
-                            </StoreProvider>
-                          </AuthProvider>
-                        </RoleProvider>
+                        <AdvancedSettingsProvider>
+                          <RoleProvider>
+                            <AuthProvider>
+                              <StoreProvider>
+                                <DeviceProvider>
+                                  <ZoneProvider>
+                                    <RuleProvider>
+                                      <NotificationProvider>
+                                        {children}
+                                      </NotificationProvider>
+                                    </RuleProvider>
+                                  </ZoneProvider>
+                                </DeviceProvider>
+                              </StoreProvider>
+                            </AuthProvider>
+                          </RoleProvider>
+                        </AdvancedSettingsProvider>
                       </I18nProvider>
                     </FontProvider>
                   </ThemeProvider>

@@ -21,11 +21,13 @@ import { MapViewToggle, type MapViewMode } from '@/components/shared/MapViewTogg
 import { MapUpload } from '@/components/map/MapUpload'
 import { RulesList } from '@/components/rules/RulesList'
 import { RulesPanel } from '@/components/rules/RulesPanel'
+import { ResizablePanel } from '@/components/layout/ResizablePanel'
 import { useRules } from '@/lib/RuleContext'
 import { useZones } from '@/lib/ZoneContext'
 import { useDevices } from '@/lib/DeviceContext'
 import { useStore } from '@/lib/StoreContext'
 import { Rule } from '@/lib/mockRules'
+import { loadLocations } from '@/lib/locationStorage'
 
 // Dynamically import RulesZoneCanvas to avoid SSR issues with Konva
 const RulesZoneCanvas = dynamic(() => import('@/components/rules/RulesZoneCanvas').then(mod => ({ default: mod.RulesZoneCanvas })), {
@@ -43,14 +45,11 @@ export default function RulesPage() {
   const { devices } = useDevices()
   const { activeStoreId } = useStore()
 
-  // Helper to get store-scoped localStorage key
-  const getMapImageKey = () => {
-    return activeStoreId ? `fusion_map-image-url_${activeStoreId}` : 'map-image-url'
-  }
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<MapViewMode>('list')
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(null)
+  const [vectorData, setVectorData] = useState<any>(null)
   const [mapUploaded, setMapUploaded] = useState(false)
   const [selectedZoneName, setSelectedZoneName] = useState<string | null>(null)
   const [showRules, setShowRules] = useState(true)
@@ -59,20 +58,64 @@ export default function RulesPage() {
   const listContainerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  // Load saved map image on mount or when store changes
+  // Load map from shared location storage (same as map page)
   useEffect(() => {
-    if (typeof window !== 'undefined' && activeStoreId) {
-      const imageKey = getMapImageKey()
-      const savedImageUrl = localStorage.getItem(imageKey)
-      if (savedImageUrl) {
-        setMapImageUrl(savedImageUrl)
+    const loadMapData = async () => {
+      if (typeof window === 'undefined') return
+      
+      // Load locations from shared storage
+      const locations = await loadLocations(activeStoreId)
+      if (locations.length === 0) {
+        setMapUploaded(false)
+        setMapImageUrl(null)
+        setVectorData(null)
+        return
+      }
+      
+      // Use first location
+      const location = locations[0]
+      
+      // Load data from IndexedDB if storageKey exists
+      if (location.storageKey && activeStoreId) {
+        try {
+          const { getVectorData } = await import('@/lib/indexedDB')
+          const stored = await getVectorData(activeStoreId, location.storageKey)
+          if (stored) {
+            if (stored.paths || stored.texts) {
+              setVectorData(stored)
+              setMapImageUrl(null)
+            } else if (stored.data) {
+              setMapImageUrl(stored.data)
+              setVectorData(null)
+            }
+            setMapUploaded(true)
+            return
+          }
+        } catch (e) {
+          console.warn('Failed to load location data from IndexedDB:', e)
+        }
+      }
+      
+      // Fallback to direct data
+      if (location.imageUrl) {
+        setMapImageUrl(location.imageUrl)
+        setMapUploaded(true)
+      } else if (location.vectorData) {
+        setVectorData(location.vectorData)
         setMapUploaded(true)
       }
     }
+    
+    loadMapData()
   }, [activeStoreId])
 
   const handleMapUpload = (imageUrl: string) => {
     setMapImageUrl(imageUrl)
+    setMapUploaded(true)
+  }
+  
+  const handleVectorDataUpload = (data: any) => {
+    setVectorData(data)
     setMapUploaded(true)
   }
 
@@ -326,7 +369,7 @@ export default function RulesPage() {
               <div className="fusion-card overflow-hidden h-full flex flex-col rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] relative">
                 {!mapUploaded ? (
                   <div className="w-full h-full">
-                    <MapUpload onMapUpload={handleMapUpload} />
+                    <MapUpload onMapUpload={handleMapUpload} onVectorDataUpload={handleVectorDataUpload} />
                   </div>
                 ) : (
                   <div className="w-full h-full rounded-2xl overflow-hidden">
@@ -335,6 +378,7 @@ export default function RulesPage() {
                       devices={mapDevices}
                       rules={rules}
                       mapImageUrl={mapImageUrl}
+                      vectorData={vectorData}
                       selectedZoneName={selectedZoneName}
                       onZoneSelect={handleZoneSelect}
                       devicesData={devices}
@@ -348,12 +392,20 @@ export default function RulesPage() {
 
         {/* Rules Panel - Right Side */}
         <div ref={panelRef}>
-        <RulesPanel
-          selectedRule={selectedRule}
-          onSave={handleSave}
-          onCancel={handleCancel}
-          onDelete={handleDelete}
-        />
+          <ResizablePanel
+            defaultWidth={384}
+            minWidth={320}
+            maxWidth={512}
+            collapseThreshold={200}
+            storageKey="rules_panel"
+          >
+            <RulesPanel
+              selectedRule={selectedRule}
+              onSave={handleSave}
+              onCancel={handleCancel}
+              onDelete={handleDelete}
+            />
+          </ResizablePanel>
         </div>
       </div>
     </div>

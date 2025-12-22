@@ -50,7 +50,7 @@ async function getPdfJs() {
  * @param scale - Scale factor for rendering (higher = better quality, larger file size). Default: 4 for maximum accuracy
  * @returns Promise resolving to a data URL string of the rendered PDF page
  */
-export async function pdfToImage(file: File, scale: number = 4): Promise<string> {
+export async function pdfToImage(file: File, scale: number = 6): Promise<string> {
   let pdfjs: typeof import('pdfjs-dist')
   let pdf: any
   let page: any

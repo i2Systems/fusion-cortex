@@ -97,8 +97,9 @@ def extract_pdf_vectors(pdf_path: str) -> dict:
                             if not text_content:
                                 continue
                             
-                            # Use the EXACT font size from the PDF - no modification
-                            # This ensures 1:1 match with original PDF rendering
+                            # Use PDF's declared font size directly
+                            # This is the most reliable - it's the actual font size used when creating the PDF
+                            # The bbox dimensions are the visual bounding box which varies by character/rotation
                             fontSize = span.get("size", 1.0)
                             
                             # PyMuPDF bbox is in top-left origin coordinates (same as canvas)

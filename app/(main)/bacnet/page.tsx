@@ -20,7 +20,9 @@ import { useDevices } from '@/lib/DeviceContext'
 import { useStore } from '@/lib/StoreContext'
 import { BACnetDetailsPanel } from '@/components/bacnet/BACnetDetailsPanel'
 import { initialBACnetMappings, type ControlCapability } from '@/lib/initialBACnetMappings'
+import { ResizablePanel } from '@/components/layout/ResizablePanel'
 import { Power, Sun, Clock, Radio, CheckCircle2, AlertCircle, XCircle, Plus } from 'lucide-react'
+import { loadLocations } from '@/lib/locationStorage'
 
 // Dynamically import BACnetZoneCanvas to avoid SSR issues with Konva
 const BACnetZoneCanvas = dynamic(() => import('@/components/bacnet/BACnetZoneCanvas').then(mod => ({ default: mod.BACnetZoneCanvas })), {
@@ -138,6 +140,7 @@ export default function BACnetPage() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [viewMode, setViewMode] = useState<MapViewMode>('list')
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(null)
+  const [vectorData, setVectorData] = useState<any>(null)
   const [mapUploaded, setMapUploaded] = useState(false)
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -377,20 +380,64 @@ export default function BACnetPage() {
     return `${Math.floor(hours / 24)}d ago`
   }
 
-  // Load saved map image on mount
+  // Load map from shared location storage (same as map page)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const imageKey = getStorageKey('map-image-url')
-      const savedImageUrl = localStorage.getItem(imageKey)
-      if (savedImageUrl) {
-        setMapImageUrl(savedImageUrl)
+    const loadMapData = async () => {
+      if (typeof window === 'undefined') return
+      
+      // Load locations from shared storage
+      const locations = await loadLocations(activeStoreId)
+      if (locations.length === 0) {
+        setMapUploaded(false)
+        setMapImageUrl(null)
+        setVectorData(null)
+        return
+      }
+      
+      // Use first location
+      const location = locations[0]
+      
+      // Load data from IndexedDB if storageKey exists
+      if (location.storageKey && activeStoreId) {
+        try {
+          const { getVectorData } = await import('@/lib/indexedDB')
+          const stored = await getVectorData(activeStoreId, location.storageKey)
+          if (stored) {
+            if (stored.paths || stored.texts) {
+              setVectorData(stored)
+              setMapImageUrl(null)
+            } else if (stored.data) {
+              setMapImageUrl(stored.data)
+              setVectorData(null)
+            }
+            setMapUploaded(true)
+            return
+          }
+        } catch (e) {
+          console.warn('Failed to load location data from IndexedDB:', e)
+        }
+      }
+      
+      // Fallback to direct data
+      if (location.imageUrl) {
+        setMapImageUrl(location.imageUrl)
+        setMapUploaded(true)
+      } else if (location.vectorData) {
+        setVectorData(location.vectorData)
         setMapUploaded(true)
       }
     }
-  }, [])
+    
+    loadMapData()
+  }, [activeStoreId])
 
   const handleMapUpload = (imageUrl: string) => {
     setMapImageUrl(imageUrl)
+    setMapUploaded(true)
+  }
+  
+  const handleVectorDataUpload = (data: any) => {
+    setVectorData(data)
     setMapUploaded(true)
   }
 
@@ -698,7 +745,7 @@ export default function BACnetPage() {
               <div className="fusion-card overflow-hidden h-full flex flex-col rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] relative">
                 {!mapUploaded ? (
                   <div className="w-full h-full">
-                    <MapUpload onMapUpload={handleMapUpload} />
+                    <MapUpload onMapUpload={handleMapUpload} onVectorDataUpload={handleVectorDataUpload} />
                   </div>
                 ) : (
                   <div className="w-full h-full rounded-2xl overflow-hidden">
@@ -707,6 +754,7 @@ export default function BACnetPage() {
                       devices={mapDevices}
                       mappings={zoneMappings}
                       mapImageUrl={mapImageUrl}
+                      vectorData={vectorData}
                       selectedZoneId={selectedZoneId || selectedMappingId}
                       onZoneSelect={handleZoneSelect}
                       devicesData={devices}
@@ -720,13 +768,21 @@ export default function BACnetPage() {
 
         {/* Details Panel - Right Side */}
         <div ref={panelRef}>
-        <BACnetDetailsPanel
-          mapping={selectedMapping}
-          onEdit={handleEditSave}
-          onDelete={handleDelete}
-          onTestConnection={handleTestConnection}
-          onAdd={handleAddNew}
-        />
+          <ResizablePanel
+            defaultWidth={384}
+            minWidth={320}
+            maxWidth={512}
+            collapseThreshold={200}
+            storageKey="bacnet_panel"
+          >
+            <BACnetDetailsPanel
+              mapping={selectedMapping}
+              onEdit={handleEditSave}
+              onDelete={handleDelete}
+              onTestConnection={handleTestConnection}
+              onAdd={handleAddNew}
+            />
+          </ResizablePanel>
         </div>
       </div>
     </div>

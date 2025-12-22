@@ -98,6 +98,7 @@ export function MapCanvas({
   currentLocation,
   onImageBoundsChange,
 }: MapCanvasProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 })
   const [scale, setScale] = useState(1)
@@ -247,16 +248,15 @@ export function MapCanvas({
   }, [selectedDeviceId, sortedDevices, onDeviceSelect, onDevicesSelect])
 
   useEffect(() => {
-    // Set initial dimensions
+    // Use ResizeObserver to measure actual container dimensions
     const updateDimensions = () => {
-      // Account for nav width (80px), right panel (448px = 28rem), padding (32px total)
-      const availableWidth = window.innerWidth - 80 - 448 - 32
-      // Account for bottom drawer, search island, and padding
-      const availableHeight = window.innerHeight - 48 - 80 - 32
-      setDimensions({
-        width: Math.max(availableWidth, 400),
-        height: Math.max(availableHeight, 400),
-      })
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect()
+        setDimensions({
+          width: Math.max(rect.width, 400),
+          height: Math.max(rect.height, 400),
+        })
+      }
     }
 
     // Get theme colors from CSS variables
@@ -280,18 +280,29 @@ export function MapCanvas({
     updateDimensions()
     updateColors()
     
+    // Use ResizeObserver to respond to container size changes (e.g., when panel is resized)
+    const resizeObserver = new ResizeObserver(() => {
+      updateDimensions()
+    })
+    
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current)
+    }
+    
+    // Also listen for window resize as fallback
     window.addEventListener('resize', updateDimensions)
     
     // Watch for theme changes
-    const observer = new MutationObserver(updateColors)
-    observer.observe(document.documentElement, {
+    const mutationObserver = new MutationObserver(updateColors)
+    mutationObserver.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['data-theme'],
     })
     
     return () => {
+      resizeObserver.disconnect()
       window.removeEventListener('resize', updateDimensions)
-      observer.disconnect()
+      mutationObserver.disconnect()
     }
   }, [])
 
@@ -331,7 +342,7 @@ export function MapCanvas({
   }
 
   return (
-    <div className="w-full h-full overflow-hidden">
+    <div ref={containerRef} className="w-full h-full overflow-hidden">
       <Stage 
         ref={stageRef}
         width={dimensions.width} 
@@ -527,7 +538,7 @@ export function MapCanvas({
           // Determine zoom direction (trackpad: negative deltaY = zoom in, positive = zoom out)
           // Mouse wheel: positive deltaY = scroll down = zoom out
           const zoomFactor = deltaY > 0 ? 0.9 : 1.1
-          const newScale = Math.max(0.5, Math.min(3, scale * zoomFactor))
+          const newScale = Math.max(0.1, Math.min(10, scale * zoomFactor))
           
           // Calculate mouse position relative to stage
           const mouseX = (pointerPos.x - stagePosition.x) / scale

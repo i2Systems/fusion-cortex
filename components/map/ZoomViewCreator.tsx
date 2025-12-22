@@ -7,11 +7,13 @@
  * 3. Creating the zoom view with proper coordinate mapping
  * 
  * AI Note: The zoom view maintains coordinate mapping back to the parent location.
+ * IMPORTANT: This component calculates its OWN image bounds based on the modal's
+ * container size, not the main map canvas bounds.
  */
 
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { X, Check, Square } from 'lucide-react'
 import type { Location } from '@/lib/locationStorage'
 
@@ -23,6 +25,14 @@ interface ZoomViewCreatorProps {
   mapHeight: number
   imageBounds?: { x: number; y: number; width: number; height: number; naturalWidth: number; naturalHeight: number } | null
   mapImageUrl?: string | null
+}
+
+// Calculated image bounds for the modal's preview image
+interface ModalImageBounds {
+  x: number      // Offset from container left
+  y: number      // Offset from container top
+  width: number  // Rendered width
+  height: number // Rendered height
 }
 
 export function ZoomViewCreator({
@@ -39,6 +49,58 @@ export function ZoomViewCreator({
   const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null)
   const [viewName, setViewName] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
+  
+  // Track the actual rendered bounds of the image in the modal
+  const [modalImageBounds, setModalImageBounds] = useState<ModalImageBounds | null>(null)
+
+  // Calculate the actual rendered bounds of the image within the modal container
+  const calculateModalImageBounds = useCallback(() => {
+    if (!containerRef.current || !imageRef.current) return
+    
+    const container = containerRef.current
+    const img = imageRef.current
+    
+    // Get container dimensions
+    const containerWidth = container.clientWidth
+    const containerHeight = container.clientHeight
+    
+    // Get image natural dimensions
+    const naturalWidth = img.naturalWidth
+    const naturalHeight = img.naturalHeight
+    
+    if (naturalWidth === 0 || naturalHeight === 0) return
+    
+    // Calculate aspect-ratio-preserving dimensions (same as object-contain)
+    const containerAspect = containerWidth / containerHeight
+    const imageAspect = naturalWidth / naturalHeight
+    
+    let renderedWidth: number
+    let renderedHeight: number
+    let offsetX: number
+    let offsetY: number
+    
+    if (imageAspect > containerAspect) {
+      // Image is wider - fit to width
+      renderedWidth = containerWidth
+      renderedHeight = containerWidth / imageAspect
+      offsetX = 0
+      offsetY = (containerHeight - renderedHeight) / 2
+    } else {
+      // Image is taller - fit to height
+      renderedHeight = containerHeight
+      renderedWidth = containerHeight * imageAspect
+      offsetX = (containerWidth - renderedWidth) / 2
+      offsetY = 0
+    }
+    
+    setModalImageBounds({
+      x: offsetX,
+      y: offsetY,
+      width: renderedWidth,
+      height: renderedHeight,
+    })
+  }, [])
 
   // Reset state when opening/closing
   useEffect(() => {
@@ -47,15 +109,43 @@ export function ZoomViewCreator({
       setSelectionStart(null)
       setSelectionEnd(null)
       setViewName('')
+      setModalImageBounds(null)
     }
   }, [isOpen])
+  
+  // Recalculate image bounds when container/image changes
+  useEffect(() => {
+    if (!isOpen) return
+    
+    // Wait a frame for the modal to render
+    const timer = setTimeout(() => {
+      calculateModalImageBounds()
+    }, 100)
+    
+    // Also listen for resize
+    window.addEventListener('resize', calculateModalImageBounds)
+    
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', calculateModalImageBounds)
+    }
+  }, [isOpen, mapImageUrl, calculateModalImageBounds])
 
   if (!isOpen) return null
 
   // Calculate normalized coordinates (0-1) from pixel coordinates
+  // Uses the MODAL's image bounds, not the main map canvas bounds
   const getNormalizedCoords = (x: number, y: number): { x: number; y: number } => {
-    if (imageBounds) {
-      // Convert pixel coordinates to normalized coordinates relative to image bounds
+    if (modalImageBounds) {
+      // Convert pixel coordinates to normalized coordinates relative to modal image bounds
+      const relativeX = (x - modalImageBounds.x) / modalImageBounds.width
+      const relativeY = (y - modalImageBounds.y) / modalImageBounds.height
+      return {
+        x: Math.max(0, Math.min(1, relativeX)),
+        y: Math.max(0, Math.min(1, relativeY)),
+      }
+    } else if (imageBounds) {
+      // Fallback to passed imageBounds if modal bounds not yet calculated
       const relativeX = (x - imageBounds.x) / imageBounds.width
       const relativeY = (y - imageBounds.y) / imageBounds.height
       return {
@@ -63,10 +153,13 @@ export function ZoomViewCreator({
         y: Math.max(0, Math.min(1, relativeY)),
       }
     } else {
-      // Fallback to canvas-relative coordinates
+      // Last fallback to container dimensions
+      const container = containerRef.current
+      const containerWidth = container?.clientWidth || mapWidth
+      const containerHeight = container?.clientHeight || mapHeight
       return {
-        x: Math.max(0, Math.min(1, x / mapWidth)),
-        y: Math.max(0, Math.min(1, y / mapHeight)),
+        x: Math.max(0, Math.min(1, x / containerWidth)),
+        y: Math.max(0, Math.min(1, y / containerHeight)),
       }
     }
   }
@@ -192,10 +285,12 @@ export function ZoomViewCreator({
             {/* Map image background */}
             {mapImageUrl && (
               <img
+                ref={imageRef}
                 src={mapImageUrl}
                 alt="Floor plan"
                 className="absolute inset-0 w-full h-full object-contain opacity-60"
                 style={{ pointerEvents: 'none' }}
+                onLoad={calculateModalImageBounds}
               />
             )}
             

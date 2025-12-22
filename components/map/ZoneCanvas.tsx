@@ -395,7 +395,7 @@ export function ZoneCanvas({
           // Determine zoom direction (trackpad: negative deltaY = zoom in, positive = zoom out)
           // Mouse wheel: positive deltaY = scroll down = zoom out
           const zoomFactor = deltaY > 0 ? 0.9 : 1.1
-          const newScale = Math.max(0.5, Math.min(3, scale * zoomFactor))
+          const newScale = Math.max(0.1, Math.min(10, scale * zoomFactor))
           
           // Calculate mouse position relative to stage
           const mouseX = (pointerPos.x - stagePosition.x) / scale

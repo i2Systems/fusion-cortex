@@ -9,7 +9,7 @@
  */
 
 const DB_NAME = 'fusion_storage'
-const DB_VERSION = 2 // Increment for new object store
+const DB_VERSION = 3 // Increment to force upgrade
 const STORE_NAME = 'images'
 const VECTOR_STORE_NAME = 'vectorData'
 
@@ -26,45 +26,100 @@ export interface StoredImage {
 let dbInstance: IDBDatabase | null = null
 
 /**
+ * Delete the IndexedDB database completely
+ */
+export async function deleteDatabase(): Promise<void> {
+  // Close existing connection first
+  if (dbInstance) {
+    dbInstance.close()
+    dbInstance = null
+  }
+  
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(DB_NAME)
+    request.onsuccess = () => resolve()
+    request.onerror = () => reject(new Error('Failed to delete database'))
+    request.onblocked = () => {
+      console.warn('Database deletion blocked - other connections open')
+      resolve() // Continue anyway
+    }
+  })
+}
+
+/**
  * Initialize IndexedDB database
  */
 export async function initIndexedDB(): Promise<IDBDatabase> {
   if (dbInstance) {
-    return dbInstance
+    // Verify the instance has the required object stores
+    if (dbInstance.objectStoreNames.contains(VECTOR_STORE_NAME)) {
+      return dbInstance
+    }
+    // Close stale connection
+    dbInstance.close()
+    dbInstance = null
   }
 
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
-    request.onerror = () => {
-      reject(new Error('Failed to open IndexedDB'))
+    request.onerror = async (event) => {
+      console.error('IndexedDB open error, attempting to recreate database')
+      try {
+        await deleteDatabase()
+        // Try again after deletion
+        const retryRequest = indexedDB.open(DB_NAME, DB_VERSION)
+        retryRequest.onerror = () => reject(new Error('Failed to open IndexedDB after recreation'))
+        retryRequest.onsuccess = () => {
+          dbInstance = retryRequest.result
+          resolve(dbInstance)
+        }
+        retryRequest.onupgradeneeded = (event) => createObjectStores(event)
+      } catch (e) {
+        reject(new Error('Failed to open IndexedDB'))
+      }
     }
 
     request.onsuccess = () => {
       dbInstance = request.result
+      
+      // Verify object stores exist - if not, we need to recreate
+      if (!dbInstance.objectStoreNames.contains(VECTOR_STORE_NAME)) {
+        console.warn('Missing object stores, will recreate database on next access')
+        dbInstance.close()
+        dbInstance = null
+        // Trigger recreation by increasing version
+        deleteDatabase().then(() => {
+          initIndexedDB().then(resolve).catch(reject)
+        }).catch(reject)
+        return
+      }
+      
       resolve(dbInstance)
     }
 
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result
-
-      // Create images object store if it doesn't exist
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' })
-        
-        // Create indexes for efficient querying
-        objectStore.createIndex('storeId', 'storeId', { unique: false })
-        objectStore.createIndex('uploadedAt', 'uploadedAt', { unique: false })
-      }
-      
-      // Create vector data object store if it doesn't exist
-      if (!db.objectStoreNames.contains(VECTOR_STORE_NAME)) {
-        const vectorStore = db.createObjectStore(VECTOR_STORE_NAME, { keyPath: 'id' })
-        vectorStore.createIndex('storeId', 'storeId', { unique: false })
-        vectorStore.createIndex('uploadedAt', 'uploadedAt', { unique: false })
-      }
-    }
+    request.onupgradeneeded = (event) => createObjectStores(event)
   })
+}
+
+function createObjectStores(event: IDBVersionChangeEvent) {
+  const db = (event.target as IDBOpenDBRequest).result
+
+  // Create images object store if it doesn't exist
+  if (!db.objectStoreNames.contains(STORE_NAME)) {
+    const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+    
+    // Create indexes for efficient querying
+    objectStore.createIndex('storeId', 'storeId', { unique: false })
+    objectStore.createIndex('uploadedAt', 'uploadedAt', { unique: false })
+  }
+  
+  // Create vector data object store if it doesn't exist
+  if (!db.objectStoreNames.contains(VECTOR_STORE_NAME)) {
+    const vectorStore = db.createObjectStore(VECTOR_STORE_NAME, { keyPath: 'id' })
+    vectorStore.createIndex('storeId', 'storeId', { unique: false })
+    vectorStore.createIndex('uploadedAt', 'uploadedAt', { unique: false })
+  }
 }
 
 /**

@@ -51,6 +51,7 @@ import {
 } from '@/lib/locationStorage'
 import { LocationsMenu } from '@/components/map/LocationsMenu'
 import { ZoomViewCreator } from '@/components/map/ZoomViewCreator'
+import { ResizablePanel } from '@/components/layout/ResizablePanel'
 
 // Helper function to check if a point is inside a polygon
 function pointInPolygon(point: { x: number; y: number }, polygon: Array<{ x: number; y: number }>): boolean {
@@ -1033,7 +1034,13 @@ export default function MapPage() {
 
         {/* Device Table Panel - Right Side (only show when map is uploaded) */}
         {mapUploaded && (
-          <div className="w-[28rem] min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0" style={{ minHeight: 0 }}>
+          <ResizablePanel
+            defaultWidth={448}
+            minWidth={320}
+            maxWidth={512}
+            collapseThreshold={200}
+            storageKey="map_device_panel"
+          >
             <DeviceTable
               devices={filteredDevices}
               selectedDeviceId={selectedDevice}
@@ -1041,7 +1048,7 @@ export default function MapPage() {
               onComponentClick={handleComponentClick}
               onDevicesDelete={handleDevicesDelete}
             />
-          </div>
+          </ResizablePanel>
         )}
       </div>
 

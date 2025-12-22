@@ -32,7 +32,7 @@ export function DeviceProfilePanel({ device, onComponentClick, onManualEntry, on
   
   if (!device) {
     return (
-      <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
+      <div className="flex flex-col h-full">
         <div className="flex-1 flex flex-col">
           {/* Empty State Content */}
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
@@ -168,7 +168,7 @@ export function DeviceProfilePanel({ device, onComponentClick, onManualEntry, on
   })()
 
   return (
-    <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
+    <div className="flex flex-col h-full">
       {/* Data-Dense Header */}
       <div className="p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)]">
         <div className="flex items-start gap-3 mb-3">

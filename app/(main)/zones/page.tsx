@@ -25,6 +25,8 @@ import { useZones } from '@/lib/ZoneContext'
 import { useStore } from '@/lib/StoreContext'
 import { useRole } from '@/lib/role'
 import { trpc } from '@/lib/trpc/client'
+import { ResizablePanel } from '@/components/layout/ResizablePanel'
+import { loadLocations } from '@/lib/locationStorage'
 
 // Dynamically import ZoneCanvas to avoid SSR issues with Konva
 const ZoneCanvas = dynamic(() => import('@/components/map/ZoneCanvas').then(mod => ({ default: mod.ZoneCanvas })), {
@@ -47,10 +49,6 @@ export default function ZonesPage() {
   // tRPC mutations for database persistence
   const saveZonesMutation = trpc.zone.saveAll.useMutation()
 
-  // Helper to get store-scoped localStorage key
-  const getMapImageKey = () => {
-    return activeStoreId ? `fusion_map-image-url_${activeStoreId}` : 'map-image-url'
-  }
   const [selectedZone, setSelectedZone] = useState<string | null>(null)
   const [mapUploaded, setMapUploaded] = useState(false)
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(null)
@@ -73,50 +71,55 @@ export default function ZonesPage() {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  // Load saved map image/vector data on mount or when store changes
+  // Load map from shared location storage (same as map page)
   useEffect(() => {
-    if (typeof window !== 'undefined' && activeStoreId) {
-      const imageKey = getMapImageKey()
-      const vectorKey = `${imageKey}_vector`
+    const loadMapData = async () => {
+      if (typeof window === 'undefined') return
       
-      // Try to load vector data first (preferred)
-      // Check IndexedDB first (for large datasets), then localStorage
-      const loadVectorData = async () => {
+      // Load locations from shared storage
+      const locations = await loadLocations(activeStoreId)
+      if (locations.length === 0) {
+        setMapUploaded(false)
+        setMapImageUrl(null)
+        setVectorData(null)
+        return
+      }
+      
+      // Use first location
+      const location = locations[0]
+      
+      // Load data from IndexedDB if storageKey exists
+      if (location.storageKey && activeStoreId) {
         try {
           const { getVectorData } = await import('@/lib/indexedDB')
-          const vectorData = await getVectorData(activeStoreId, vectorKey)
-          if (vectorData) {
-            setVectorData(vectorData)
+          const stored = await getVectorData(activeStoreId, location.storageKey)
+          if (stored) {
+            if (stored.paths || stored.texts) {
+              setVectorData(stored)
+              setMapImageUrl(null)
+            } else if (stored.data) {
+              setMapImageUrl(stored.data)
+              setVectorData(null)
+            }
             setMapUploaded(true)
             return
           }
         } catch (e) {
-          console.warn('Failed to load vector data from IndexedDB:', e)
-        }
-        
-        // Fallback to localStorage
-        try {
-          const savedVectorData = localStorage.getItem(vectorKey)
-          if (savedVectorData) {
-            const parsed = JSON.parse(savedVectorData)
-            setVectorData(parsed)
-            setMapUploaded(true)
-            return
-          }
-        } catch (e) {
-          console.warn('Failed to parse saved vector data from localStorage:', e)
-        }
-        
-        // Fallback to image
-        const savedImageUrl = localStorage.getItem(imageKey)
-        if (savedImageUrl) {
-          setMapImageUrl(savedImageUrl)
-          setMapUploaded(true)
+          console.warn('Failed to load location data from IndexedDB:', e)
         }
       }
       
-      loadVectorData()
+      // Fallback to direct data
+      if (location.imageUrl) {
+        setMapImageUrl(location.imageUrl)
+        setMapUploaded(true)
+      } else if (location.vectorData) {
+        setVectorData(location.vectorData)
+        setMapUploaded(true)
+      }
     }
+    
+    loadMapData()
   }, [activeStoreId])
 
   const handleMapUpload = (imageUrl: string) => {
@@ -626,36 +629,40 @@ export default function ZonesPage() {
         </div>
 
         {/* Zones Panel - Right Side (always show, even without map) */}
-        <div 
-          ref={panelRef}
-          className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0" 
-          style={{ minHeight: 0 }}
-        >
-          <ZonesPanel
-            zones={zonesForPanel}
-            selectedZoneId={selectedZone}
-            onZoneSelect={setSelectedZone}
-            onCreateZone={() => {
-              if (!mapUploaded && viewMode === 'map') {
-                // Prompt to upload map first
-                alert('Please upload a map first to create zones by drawing on it.')
-                return
-              }
-              setSelectedZone(null)
-              if (viewMode === 'map') {
-                setToolMode('draw-polygon')
-              }
-            }}
-            onDeleteZone={handleDeleteZone}
-            onDeleteZones={handleDeleteZones}
-            onEditZone={(zoneId, updates) => {
-              const zone = zones.find(z => z.id === zoneId)
-              if (zone) {
-                updateZone(zoneId, updates)
-              }
-            }}
-            selectionMode={viewMode === 'list'}
-          />
+        <div ref={panelRef}>
+          <ResizablePanel
+            defaultWidth={384}
+            minWidth={320}
+            maxWidth={512}
+            collapseThreshold={200}
+            storageKey="zones_panel"
+          >
+            <ZonesPanel
+              zones={zonesForPanel}
+              selectedZoneId={selectedZone}
+              onZoneSelect={setSelectedZone}
+              onCreateZone={() => {
+                if (!mapUploaded && viewMode === 'map') {
+                  // Prompt to upload map first
+                  alert('Please upload a map first to create zones by drawing on it.')
+                  return
+                }
+                setSelectedZone(null)
+                if (viewMode === 'map') {
+                  setToolMode('draw-polygon')
+                }
+              }}
+              onDeleteZone={handleDeleteZone}
+              onDeleteZones={handleDeleteZones}
+              onEditZone={(zoneId, updates) => {
+                const zone = zones.find(z => z.id === zoneId)
+                if (zone) {
+                  updateZone(zoneId, updates)
+                }
+              }}
+              selectionMode={viewMode === 'list'}
+            />
+          </ResizablePanel>
         </div>
       </div>
     </div>
