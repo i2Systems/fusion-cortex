@@ -119,26 +119,36 @@ export const deviceRouter = router({
         return []
       }
 
-      const devices = await prisma.device.findMany({
-        where: {
-          siteId: input.siteId,
-          parentId: null, // Only get top-level devices (not components)
-        },
-        include: input.includeComponents
-          ? {
-              components: {
-                orderBy: {
-                  createdAt: 'asc',
+      try {
+        const devices = await prisma.device.findMany({
+          where: {
+            siteId: input.siteId,
+            parentId: null, // Only get top-level devices (not components)
+          },
+          include: input.includeComponents
+            ? {
+                components: {
+                  orderBy: {
+                    createdAt: 'asc',
+                  },
                 },
-              },
-            }
-          : undefined,
-        orderBy: {
-          createdAt: 'asc',
-        },
-      })
+              }
+            : undefined,
+          orderBy: {
+            createdAt: 'asc',
+          },
+        })
 
-      return devices.map(transformDevice)
+        return devices.map(transformDevice)
+      } catch (error: any) {
+        console.error('Error in device.list:', {
+          message: error.message,
+          code: error.code,
+          siteId: input.siteId,
+        })
+        // Return empty array on error to prevent UI crashes
+        return []
+      }
     }),
 
   search: publicProcedure

@@ -23,34 +23,44 @@ export const zoneRouter = router({
         return []
       }
       
-      const zones = await prisma.zone.findMany({
-        where: {
-          siteId: input.siteId,
-        },
-        include: {
-          devices: {
-            include: {
-              device: true,
+      try {
+        const zones = await prisma.zone.findMany({
+          where: {
+            siteId: input.siteId,
+          },
+          include: {
+            devices: {
+              include: {
+                device: true,
+              },
             },
           },
-        },
-        orderBy: {
-          createdAt: 'asc',
-        },
-      })
-      
-      return zones.map(zone => ({
-        id: zone.id,
-        name: zone.name,
-        color: zone.color,
-        description: zone.description,
-        polygon: zone.polygon as Array<{ x: number; y: number }> | null,
-        deviceIds: zone.devices.map(zd => zd.deviceId),
-        daylightEnabled: zone.daylightEnabled,
-        minDaylight: zone.minDaylight,
-        createdAt: zone.createdAt,
-        updatedAt: zone.updatedAt,
-      }))
+          orderBy: {
+            createdAt: 'asc',
+          },
+        })
+        
+        return zones.map(zone => ({
+          id: zone.id,
+          name: zone.name,
+          color: zone.color,
+          description: zone.description,
+          polygon: zone.polygon as Array<{ x: number; y: number }> | null,
+          deviceIds: zone.devices.map(zd => zd.deviceId),
+          daylightEnabled: zone.daylightEnabled,
+          minDaylight: zone.minDaylight,
+          createdAt: zone.createdAt,
+          updatedAt: zone.updatedAt,
+        }))
+      } catch (error: any) {
+        console.error('Error in zone.list:', {
+          message: error.message,
+          code: error.code,
+          siteId: input.siteId,
+        })
+        // Return empty array on error to prevent UI crashes
+        return []
+      }
     }),
 
   create: publicProcedure

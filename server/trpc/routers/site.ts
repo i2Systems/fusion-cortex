@@ -130,50 +130,70 @@ export const siteRouter = router({
           }
         }
 
-        // Create new site
+        // Create new site - filter out undefined values
+        const siteData: any = {
+          id: input.id,
+          name: input.name,
+        }
+        
+        if (input.storeNumber !== undefined) siteData.storeNumber = input.storeNumber
+        if (input.address !== undefined) siteData.address = input.address
+        if (input.city !== undefined) siteData.city = input.city
+        if (input.state !== undefined) siteData.state = input.state
+        if (input.zipCode !== undefined) siteData.zipCode = input.zipCode
+        if (input.phone !== undefined) siteData.phone = input.phone
+        if (input.manager !== undefined) siteData.manager = input.manager
+        if (input.squareFootage !== undefined) siteData.squareFootage = input.squareFootage
+        if (input.openedDate !== undefined) siteData.openedDate = input.openedDate
+
         const site = await prisma.site.create({
-          data: {
-            id: input.id,
-            name: input.name,
-            storeNumber: input.storeNumber,
-            address: input.address,
-            city: input.city,
-            state: input.state,
-            zipCode: input.zipCode,
-            phone: input.phone,
-            manager: input.manager,
-            squareFootage: input.squareFootage,
-            openedDate: input.openedDate,
-          },
+          data: siteData,
         })
         return site
       } catch (error: any) {
-        // Log error for debugging
-        console.error('Error in ensureExists:', error)
+        // Log error for debugging with full details
+        console.error('Error in ensureExists:', {
+          message: error.message,
+          code: error.code,
+          meta: error.meta,
+          stack: error.stack,
+          input: input,
+        })
         
         // If it's a unique constraint violation, try to find the existing site
         if (error.code === 'P2002') {
-          // Unique constraint violation - site might exist with different ID
-          // Try to find by store number or name
-          const orConditions: Array<{ storeNumber?: string } | { name: string }> = [
-            { name: input.name },
-          ]
-          if (input.storeNumber) {
-            orConditions.push({ storeNumber: input.storeNumber })
-          }
-          
-          const found = await prisma.site.findFirst({
-            where: {
-              OR: orConditions,
-            },
-          })
-          if (found) {
-            return found
+          try {
+            // Unique constraint violation - site might exist with different ID
+            // Try to find by store number or name
+            const orConditions: Array<{ storeNumber?: string } | { name: string }> = [
+              { name: input.name },
+            ]
+            if (input.storeNumber) {
+              orConditions.push({ storeNumber: input.storeNumber })
+            }
+            
+            const found = await prisma.site.findFirst({
+              where: {
+                OR: orConditions,
+              },
+            })
+            if (found) {
+              return found
+            }
+          } catch (findError) {
+            console.error('Error finding existing site:', findError)
           }
         }
         
+        // Check for database connection errors
+        if (error.message?.includes('Can\'t reach database') || 
+            error.message?.includes('P1001') ||
+            error.code === 'P1001') {
+          throw new Error('Database connection failed. Please check your DATABASE_URL environment variable.')
+        }
+        
         // Re-throw the error so tRPC can handle it
-        throw error
+        throw new Error(`Failed to ensure site exists: ${error.message || 'Unknown error'}`)
       }
     }),
 
