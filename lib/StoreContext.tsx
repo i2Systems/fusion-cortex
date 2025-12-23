@@ -48,6 +48,7 @@ const globalEnsurePromises = new Map<string, Promise<any>>()
 /**
  * Global utility to ensure a site exists, with deduplication
  * This prevents multiple contexts from making duplicate calls
+ * Uses synchronous checks to prevent race conditions
  */
 export function useEnsureSite() {
   const ensureSiteMutation = trpc.site.ensureExists.useMutation()
@@ -65,34 +66,40 @@ export function useEnsureSite() {
     squareFootage?: number
     openedDate?: Date
   }) => {
-    // If already ensuring this site, return the existing promise
-    if (globalEnsuringSites.has(siteData.id)) {
-      const existingPromise = globalEnsurePromises.get(siteData.id)
+    const siteId = siteData.id
+    
+    // Synchronous check - if already ensuring, return existing promise immediately
+    if (globalEnsuringSites.has(siteId)) {
+      const existingPromise = globalEnsurePromises.get(siteId)
       if (existingPromise) {
         return existingPromise
       }
     }
     
-    // Mark as being ensured
-    globalEnsuringSites.add(siteData.id)
+    // Synchronously mark as being ensured BEFORE creating the promise
+    // This prevents race conditions where multiple contexts check at the same time
+    globalEnsuringSites.add(siteId)
     
     // Create the promise
     const promise = new Promise((resolve, reject) => {
-      ensureSiteMutation.mutate(siteData, {
-        onSuccess: (result) => {
-          globalEnsuringSites.delete(siteData.id)
-          globalEnsurePromises.delete(siteData.id)
-          resolve(result)
-        },
-        onError: (error) => {
-          globalEnsuringSites.delete(siteData.id)
-          globalEnsurePromises.delete(siteData.id)
-          reject(error)
-        },
-      })
+      // Use a small delay to allow any other contexts to see the site is being ensured
+      setTimeout(() => {
+        ensureSiteMutation.mutate(siteData, {
+          onSuccess: (result) => {
+            globalEnsuringSites.delete(siteId)
+            globalEnsurePromises.delete(siteId)
+            resolve(result)
+          },
+          onError: (error) => {
+            globalEnsuringSites.delete(siteId)
+            globalEnsurePromises.delete(siteId)
+            reject(error)
+          },
+        })
+      }, 0) // Use setTimeout(0) to defer to next tick, allowing other contexts to see the flag
     })
     
-    globalEnsurePromises.set(siteData.id, promise)
+    globalEnsurePromises.set(siteId, promise)
     return promise
   }, [ensureSiteMutation])
 }

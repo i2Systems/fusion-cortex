@@ -104,16 +104,16 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
   // Ensure site exists when store changes (only once per store)
   useEffect(() => {
     if (!activeStoreId) return
-    if (ensuredStoreIdRef.current === activeStoreId) return // Already ensured
+    if (ensuredStoreIdRef.current === activeStoreId) return // Already ensured in this context
 
-    // Mark as being ensured
+    // Mark as being ensured in this context
     ensuredStoreIdRef.current = activeStoreId
 
     // Use store name from context if available, otherwise generate
     const storeName = activeStore?.name || `Store ${activeStoreId}`
     const storeNumber = activeStore?.storeNumber || activeStoreId.replace('store-', '')
 
-    // Use shared deduplication to prevent multiple contexts from calling simultaneously
+    // The useEnsureSite hook handles global deduplication across all contexts
     ensureSite({
       id: activeStoreId,
       name: storeName,
@@ -127,6 +127,10 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
       squareFootage: activeStore?.squareFootage,
       openedDate: activeStore?.openedDate,
     }).catch(error => {
+      // If it failed, reset the ref so we can try again
+      if (ensuredStoreIdRef.current === activeStoreId) {
+        ensuredStoreIdRef.current = null
+      }
       console.error('Failed to ensure site:', error)
     })
   }, [activeStoreId, activeStore, ensureSite])
