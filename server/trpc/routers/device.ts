@@ -492,7 +492,15 @@ export const deviceRouter = router({
         const updateData: any = {}
         if (updates.deviceId !== undefined) updateData.deviceId = updates.deviceId
         if (updates.serialNumber !== undefined) updateData.serialNumber = updates.serialNumber
-        if (updates.type !== undefined) updateData.type = toPrismaDeviceType(updates.type)
+        if (updates.type !== undefined) {
+          // Convert simplified type to full FrontendDeviceType, then to Prisma type
+          const fullType: FrontendDeviceType = updates.type === 'fixture' 
+            ? 'fixture-16ft-power-entry' 
+            : updates.type === 'motion'
+            ? 'motion'
+            : 'light-sensor'
+          updateData.type = toPrismaDeviceType(fullType)
+        }
         if (updates.status !== undefined) updateData.status = toPrismaDeviceStatus(updates.status)
         if (updates.signal !== undefined) updateData.signal = updates.signal
         if (updates.battery !== undefined) updateData.battery = updates.battery
@@ -543,7 +551,15 @@ export const deviceRouter = router({
             const updateData: any = {}
             if (updates.deviceId !== undefined) updateData.deviceId = updates.deviceId
             if (updates.serialNumber !== undefined) updateData.serialNumber = updates.serialNumber
-            if (updates.type !== undefined) updateData.type = toPrismaDeviceType(updates.type)
+            if (updates.type !== undefined) {
+              // Convert simplified type to full FrontendDeviceType, then to Prisma type
+              const fullType: FrontendDeviceType = updates.type === 'fixture' 
+                ? 'fixture-16ft-power-entry' 
+                : updates.type === 'motion'
+                ? 'motion'
+                : 'light-sensor'
+              updateData.type = toPrismaDeviceType(fullType)
+            }
             if (updates.status !== undefined) updateData.status = toPrismaDeviceStatus(updates.status)
             if (updates.signal !== undefined) updateData.signal = updates.signal
             if (updates.battery !== undefined) updateData.battery = updates.battery

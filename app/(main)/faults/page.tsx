@@ -232,14 +232,18 @@ export default function FaultsPage() {
 
   // Map data is now loaded from MapContext - no need to load it here
 
-  const handleMapUpload = (imageUrl: string) => {
-    setMapImageUrl(imageUrl)
-    setMapUploaded(true)
+  const { refreshMapData } = useMap()
+  
+  const handleMapUpload = async (imageUrl: string) => {
+    // Map upload is handled in the map page, which updates shared storage
+    // Just refresh the map data to pick up the new upload
+    await refreshMapData()
   }
   
-  const handleVectorDataUpload = (data: any) => {
-    setVectorData(data)
-    setMapUploaded(true)
+  const handleVectorDataUpload = async (data: any) => {
+    // Vector data upload is handled in the map page
+    // Just refresh the map data to pick up the new upload
+    await refreshMapData()
   }
 
   const handleAddNewFault = async (faultData: { device: Device; faultType: FaultCategory; description: string }) => {
@@ -365,11 +369,23 @@ export default function FaultsPage() {
   const mapDevices = useMemo(() => {
     return devices.map(d => {
       const deviceFaults = faults.filter(f => f.device.id === d.id)
+      
+      // Convert DeviceType enum to simplified type for canvas
+      let simplifiedType: 'fixture' | 'motion' | 'light-sensor' = 'fixture'
+      if (d.type === 'motion' || d.type?.includes('motion')) {
+        simplifiedType = 'motion'
+      } else if (d.type === 'light-sensor' || d.type?.includes('light-sensor')) {
+        simplifiedType = 'light-sensor'
+      } else {
+        // All fixture types map to 'fixture'
+        simplifiedType = 'fixture'
+      }
+      
       return {
         id: d.id,
         x: d.x || 0,
         y: d.y || 0,
-        type: d.type,
+        type: simplifiedType,
         deviceId: d.deviceId,
         status: d.status,
         signal: d.signal,

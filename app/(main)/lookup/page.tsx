@@ -142,7 +142,7 @@ export default function LookupPage() {
                 x: Math.random(),
                 y: Math.random(),
                 // Generate components for fixtures
-                components: isFixtureType(deviceType) 
+                components: deviceType.startsWith('fixture-')
                   ? generateComponentsForFixture(deviceId, serialNumber, warrantyExpiry)
                   : undefined,
                 warrantyStatus: 'Active',
@@ -247,15 +247,18 @@ export default function LookupPage() {
   }
 
   // Map data is now loaded from MapContext - no need to load it here
-
-  const handleMapUpload = (imageUrl: string) => {
-    setMapImageUrl(imageUrl)
-    setMapUploaded(true)
+  const { refreshMapData } = useMap()
+  
+  const handleMapUpload = async (imageUrl: string) => {
+    // Map upload is handled in the map page, which updates shared storage
+    // Just refresh the map data to pick up the new upload
+    await refreshMapData()
   }
   
-  const handleVectorDataUpload = (data: any) => {
-    setVectorData(data)
-    setMapUploaded(true)
+  const handleVectorDataUpload = async (data: any) => {
+    // Vector data upload is handled in the map page
+    // Just refresh the map data to pick up the new upload
+    await refreshMapData()
   }
 
   // Check if we should select a device from sessionStorage (e.g., from faults page)

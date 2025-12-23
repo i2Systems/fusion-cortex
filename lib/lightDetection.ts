@@ -172,7 +172,7 @@ export function detectLightsFromVectorData(
           x: normalizeX(x + w / 2),
           y: normalizeY(y + h / 2),
           confidence: 0.6,
-          type: 'fixture',
+          type: 'fixture-16ft-power-entry',
           size: size,
         })
       }
@@ -190,7 +190,7 @@ export function detectLightsFromVectorData(
         x: normalizeX(text.x),
         y: normalizeY(text.y),
         confidence: 0.5,
-        type: 'fixture',
+        type: 'fixture-16ft-power-entry',
       })
     }
     
@@ -211,7 +211,7 @@ export function detectLightsFromVectorData(
           x: normalizeX(text.x),
           y: normalizeY(text.y),
           confidence: 0.4,
-          type: 'fixture',
+          type: 'fixture-16ft-power-entry',
         })
       }
     }

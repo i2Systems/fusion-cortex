@@ -95,7 +95,7 @@ function generateStoreDevices(storeId: string, baseCount: number = 120): Device[
           id: `${storeId}-${fixtureId}`,
           deviceId: `FLX-${String(serialCounter - 1).padStart(4, '0')}`,
           serialNumber: fixtureSerial,
-          type: 'fixture',
+          type: 'fixture-16ft-power-entry',
           signal,
           status,
           location: room.name,

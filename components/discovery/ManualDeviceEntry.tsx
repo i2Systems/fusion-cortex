@@ -11,6 +11,7 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 
+// Frontend device type (matches the string format used in the app)
 type DeviceType = 
   | 'fixture-16ft-power-entry'
   | 'fixture-12ft-power-entry'
@@ -20,6 +21,11 @@ type DeviceType =
   | 'fixture-8ft-follower'
   | 'motion'
   | 'light-sensor'
+
+// Helper to check if a device type is a fixture
+function isFixtureType(type: DeviceType): boolean {
+  return type.startsWith('fixture-')
+}
 
 interface ManualDeviceEntryProps {
   isOpen: boolean

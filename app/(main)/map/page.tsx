@@ -714,7 +714,7 @@ export default function MapPage() {
         const targetOrientation = horizontalCount >= verticalCount ? 90 : 0
         
         const updates = devicesToProcess
-          .filter(d => d.type === 'fixture') // Only fixtures
+          .filter(d => isFixtureType(d.type)) // Only fixtures
           .map(d => ({
             deviceId: d.id,
             updates: { orientation: targetOrientation }

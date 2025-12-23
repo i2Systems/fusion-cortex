@@ -77,20 +77,23 @@ export default function ZonesPage() {
 
   // Map data is now loaded from MapContext - no need to load it here
 
-  const handleMapUpload = (imageUrl: string) => {
-    setMapImageUrl(imageUrl)
-    setMapUploaded(true)
+  const { refreshMapData } = useMap()
+  
+  const handleMapUpload = async (imageUrl: string) => {
+    // Map upload is handled in the map page, which updates shared storage
+    // Just refresh the map data to pick up the new upload
+    await refreshMapData()
   }
 
-  const handleVectorDataUpload = (data: any) => {
-    setVectorData(data)
-    setMapUploaded(true)
+  const handleVectorDataUpload = async (data: any) => {
+    // Vector data upload is handled in the map page
+    // Just refresh the map data to pick up the new upload
+    await refreshMapData()
   }
 
   const handleClearMap = async () => {
-    setMapImageUrl(null)
-    setVectorData(null)
-    setMapUploaded(false)
+    // Map clearing is handled in the map page
+    await refreshMapData()
     setSelectedZone(null)
     if (typeof window !== 'undefined' && activeStoreId) {
       const imageKey = activeStoreId ? `fusion_map-image-url_${activeStoreId}` : 'map-image-url'

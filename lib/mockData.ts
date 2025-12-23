@@ -428,7 +428,7 @@ function generateDevices(): Device[] {
       id: 'device-fault-grocery-001',
       deviceId: 'FLX-3158',
       serialNumber: 'SN-2024-3158-F3',
-      type: 'fixture',
+      type: 'fixture-16ft-power-entry',
       signal: 12, // Low signal due to water damage
       status: 'missing',
       location: 'Grocery - Aisle 5',
@@ -444,7 +444,7 @@ function generateDevices(): Device[] {
       id: 'device-fault-electronics-001',
       deviceId: 'FLX-2041',
       serialNumber: 'SN-2024-2041-F2',
-      type: 'fixture',
+      type: 'fixture-16ft-power-entry',
       signal: 8, // Very low signal - driver burnout
       status: 'offline',
       location: 'Electronics Center',
@@ -460,7 +460,7 @@ function generateDevices(): Device[] {
       id: 'device-fault-apparel-001',
       deviceId: 'FLX-2125',
       serialNumber: 'SN-2024-2125-F5',
-      type: 'fixture',
+      type: 'fixture-16ft-power-entry',
       signal: 15, // Low signal due to thermal stress
       status: 'offline',
       location: 'Apparel Center',
@@ -476,7 +476,7 @@ function generateDevices(): Device[] {
       id: 'device-fault-home-001',
       deviceId: 'FLX-2063',
       serialNumber: 'SN-2024-2063-F1',
-      type: 'fixture',
+      type: 'fixture-16ft-power-entry',
       signal: 22, // Moderate signal but miswired
       status: 'offline',
       location: 'Home Center',
@@ -492,7 +492,7 @@ function generateDevices(): Device[] {
       id: 'device-fault-electronics-002',
       deviceId: 'FLX-2088',
       serialNumber: 'SN-2024-2088-F4',
-      type: 'fixture',
+      type: 'fixture-16ft-power-entry',
       signal: 35, // Good signal but control issue
       status: 'offline',
       location: 'Electronics Top',
@@ -508,7 +508,7 @@ function generateDevices(): Device[] {
       id: 'device-fault-toys-001',
       deviceId: 'FLX-2078',
       serialNumber: 'SN-2024-2078-F6',
-      type: 'fixture',
+      type: 'fixture-16ft-power-entry',
       signal: 0, // No signal - out of box defect
       status: 'missing',
       location: 'Toys Center',
@@ -524,7 +524,7 @@ function generateDevices(): Device[] {
       id: 'device-fault-apparel-002',
       deviceId: 'FLX-2092',
       serialNumber: 'SN-2024-2092-F7',
-      type: 'fixture',
+      type: 'fixture-16ft-power-entry',
       signal: 28, // Signal OK but structural issue
       status: 'offline',
       location: 'Apparel Top',
@@ -540,7 +540,7 @@ function generateDevices(): Device[] {
       id: 'device-fault-grocery-002',
       deviceId: 'FLX-2105',
       serialNumber: 'SN-2024-2105-F8',
-      type: 'fixture',
+      type: 'fixture-16ft-power-entry',
       signal: 42, // Good signal but optical issue
       status: 'online', // Online but with optical fault
       location: 'Grocery - Aisle 3',

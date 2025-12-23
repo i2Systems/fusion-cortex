@@ -161,7 +161,11 @@ export default function DashboardPage() {
             const zones = await trpcUtils.zone.list.fetch({
               siteId: store.id,
             })
-            zonesMap[store.id] = zones || []
+            zonesMap[store.id] = (zones || []).map(zone => ({
+              ...zone,
+              description: zone.description ?? undefined,
+              polygon: zone.polygon ?? [],
+            }))
             
             // Fetch faults
             const faults = await trpcUtils.fault.list.fetch({
@@ -451,7 +455,15 @@ export default function DashboardPage() {
         setSelectedStoreData({
           devices,
           zones,
-          rules: rules || [],
+          rules: (rules || []).map(rule => ({
+            ...rule,
+            description: rule.description ?? undefined,
+            ruleType: 'rule' as const,
+            targetType: 'zone' as const,
+            targetId: rule.zoneId ?? undefined,
+            targetName: rule.zoneName,
+            trigger: rule.trigger as any, // Database stores as string, frontend expects TriggerType
+          })),
         })
       } catch (error) {
         console.error(`Failed to fetch rules for store ${selectedStoreId}:`, error)

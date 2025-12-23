@@ -218,7 +218,7 @@ export default function NotificationsPage() {
       <div className="px-[20px] pb-4">
         <div className="flex items-center justify-between">
           <div className="flex-1">
-          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
             {/* Layout Toggle */}
             <div className="flex items-center gap-1 bg-[var(--color-surface-subtle)] rounded-lg p-1">
               <button
@@ -315,6 +315,7 @@ export default function NotificationsPage() {
                 Mark all read
               </button>
             )}
+            </div>
           </div>
         </div>
       </div>
