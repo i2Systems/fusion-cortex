@@ -76,30 +76,37 @@ export function useEnsureSite() {
       }
     }
     
-    // Synchronously mark as being ensured BEFORE creating the promise
+    // Atomically mark as being ensured and create promise
     // This prevents race conditions where multiple contexts check at the same time
     globalEnsuringSites.add(siteId)
     
-    // Create the promise
+    // Create the promise and store it BEFORE calling mutate
+    // This ensures other contexts see the promise immediately
+    let resolvePromise: (value: any) => void
+    let rejectPromise: (error: any) => void
+    
     const promise = new Promise((resolve, reject) => {
-      // Use a small delay to allow any other contexts to see the site is being ensured
-      setTimeout(() => {
-        ensureSiteMutation.mutate(siteData, {
-          onSuccess: (result) => {
-            globalEnsuringSites.delete(siteId)
-            globalEnsurePromises.delete(siteId)
-            resolve(result)
-          },
-          onError: (error) => {
-            globalEnsuringSites.delete(siteId)
-            globalEnsurePromises.delete(siteId)
-            reject(error)
-          },
-        })
-      }, 0) // Use setTimeout(0) to defer to next tick, allowing other contexts to see the flag
+      resolvePromise = resolve
+      rejectPromise = reject
     })
     
+    // Store promise immediately so other contexts can find it
     globalEnsurePromises.set(siteId, promise)
+    
+    // Now call mutate - if another context checks now, they'll get this promise
+    ensureSiteMutation.mutate(siteData, {
+      onSuccess: (result) => {
+        globalEnsuringSites.delete(siteId)
+        globalEnsurePromises.delete(siteId)
+        resolvePromise!(result)
+      },
+      onError: (error) => {
+        globalEnsuringSites.delete(siteId)
+        globalEnsurePromises.delete(siteId)
+        rejectPromise!(error)
+      },
+    })
+    
     return promise
   }, [ensureSiteMutation])
 }
