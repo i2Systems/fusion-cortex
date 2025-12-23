@@ -73,27 +73,133 @@ export const zoneRouter = router({
       deviceIds: z.array(z.string()).optional().default([]),
     }))
     .mutation(async ({ input }) => {
-      const zone = await prisma.zone.create({
-        data: {
-          name: input.name,
-          siteId: input.siteId,
-          color: input.color || '#4c7dff',
-          description: input.description,
-          polygon: input.polygon ? (input.polygon as any) : null,
-          devices: {
-            create: input.deviceIds.map(deviceId => ({
-              deviceId,
-            })),
+      try {
+        // Validate that all deviceIds exist in the database
+        if (input.deviceIds.length > 0) {
+          const existingDevices = await prisma.device.findMany({
+            where: {
+              id: { in: input.deviceIds },
+              siteId: input.siteId,
+            },
+            select: { id: true },
+          })
+          
+          const existingDeviceIds = new Set(existingDevices.map(d => d.id))
+          const invalidDeviceIds = input.deviceIds.filter(id => !existingDeviceIds.has(id))
+          
+          if (invalidDeviceIds.length > 0) {
+            throw new Error(`The following device IDs do not exist: ${invalidDeviceIds.join(', ')}`)
+          }
+        }
+
+        const zone = await prisma.zone.create({
+          data: {
+            name: input.name,
+            siteId: input.siteId,
+            color: input.color || '#4c7dff',
+            description: input.description,
+            polygon: input.polygon ? (input.polygon as any) : null,
+            devices: input.deviceIds.length > 0 ? {
+              create: input.deviceIds.map(deviceId => ({
+                deviceId,
+              })),
+            } : undefined,
           },
-        },
-      })
-      
-      return {
-        id: zone.id,
-        name: zone.name,
-        color: zone.color,
-        description: zone.description,
-        polygon: zone.polygon as Array<{ x: number; y: number }> | null,
+          include: {
+            devices: {
+              include: {
+                device: true,
+              },
+            },
+          },
+        })
+        
+        return {
+          id: zone.id,
+          name: zone.name,
+          color: zone.color,
+          description: zone.description,
+          polygon: zone.polygon as Array<{ x: number; y: number }> | null,
+          deviceIds: zone.devices.map(zd => zd.deviceId),
+          createdAt: zone.createdAt,
+          updatedAt: zone.updatedAt,
+        }
+      } catch (error: any) {
+        console.error('Error in zone.create:', {
+          message: error.message,
+          code: error.code,
+          meta: error.meta,
+          input: input,
+        })
+        
+        // Handle foreign key constraint violations
+        if (error.code === 'P2003' || error.message?.includes('Foreign key constraint')) {
+          throw new Error(`Cannot create zone: One or more device IDs do not exist in the database.`)
+        }
+        
+        // Handle prepared statement errors with retry
+        if (error.code === '26000' || error.message?.includes('prepared statement')) {
+          console.log('Retrying zone.create after prepared statement error...')
+          await new Promise(resolve => setTimeout(resolve, 200))
+          
+          try {
+            // Retry the same operation
+            if (input.deviceIds.length > 0) {
+              const existingDevices = await prisma.device.findMany({
+                where: {
+                  id: { in: input.deviceIds },
+                  siteId: input.siteId,
+                },
+                select: { id: true },
+              })
+              
+              const existingDeviceIds = new Set(existingDevices.map(d => d.id))
+              const invalidDeviceIds = input.deviceIds.filter(id => !existingDeviceIds.has(id))
+              
+              if (invalidDeviceIds.length > 0) {
+                throw new Error(`The following device IDs do not exist: ${invalidDeviceIds.join(', ')}`)
+              }
+            }
+
+            const zone = await prisma.zone.create({
+              data: {
+                name: input.name,
+                siteId: input.siteId,
+                color: input.color || '#4c7dff',
+                description: input.description,
+                polygon: input.polygon ? (input.polygon as any) : null,
+                devices: input.deviceIds.length > 0 ? {
+                  create: input.deviceIds.map(deviceId => ({
+                    deviceId,
+                  })),
+                } : undefined,
+              },
+              include: {
+                devices: {
+                  include: {
+                    device: true,
+                  },
+                },
+              },
+            })
+            
+            return {
+              id: zone.id,
+              name: zone.name,
+              color: zone.color,
+              description: zone.description,
+              polygon: zone.polygon as Array<{ x: number; y: number }> | null,
+              deviceIds: zone.devices.map(zd => zd.deviceId),
+              createdAt: zone.createdAt,
+              updatedAt: zone.updatedAt,
+            }
+          } catch (retryError: any) {
+            console.error('Retry also failed:', retryError)
+            throw new Error(`Failed to create zone: ${retryError.message || 'Unknown error'}`)
+          }
+        }
+        
+        throw new Error(`Failed to create zone: ${error.message || 'Unknown error'}`)
       }
     }),
 
@@ -107,40 +213,177 @@ export const zoneRouter = router({
       deviceIds: z.array(z.string()).optional(),
     }))
     .mutation(async ({ input }) => {
-      const { id, deviceIds, ...updates } = input
-      
-      // If deviceIds is provided, update the zone-device relationships
-      if (deviceIds !== undefined) {
-        // Delete existing relationships
-        await prisma.zoneDevice.deleteMany({
-          where: { zoneId: id },
+      try {
+        const { id, deviceIds, ...updates } = input
+        
+        // Get the zone to find its siteId for validation
+        const zone = await prisma.zone.findUnique({
+          where: { id },
+          select: { siteId: true },
         })
         
-        // Create new relationships
-        if (deviceIds.length > 0) {
-          await prisma.zoneDevice.createMany({
-            data: deviceIds.map(deviceId => ({
-              zoneId: id,
-              deviceId,
-            })),
-          })
+        if (!zone) {
+          throw new Error(`Zone with ID ${id} not found`)
         }
-      }
+        
+        // If deviceIds is provided, validate they exist before updating
+        if (deviceIds !== undefined) {
+          if (deviceIds.length > 0) {
+            // Validate that all deviceIds exist in the database
+            const existingDevices = await prisma.device.findMany({
+              where: {
+                id: { in: deviceIds },
+                siteId: zone.siteId,
+              },
+              select: { id: true },
+            })
+            
+            const existingDeviceIds = new Set(existingDevices.map(d => d.id))
+            const invalidDeviceIds = deviceIds.filter(deviceId => !existingDeviceIds.has(deviceId))
+            
+            if (invalidDeviceIds.length > 0) {
+              throw new Error(`The following device IDs do not exist: ${invalidDeviceIds.join(', ')}`)
+            }
+          }
+          
+          // Delete existing relationships
+          await prisma.zoneDevice.deleteMany({
+            where: { zoneId: id },
+          })
+          
+          // Create new relationships
+          if (deviceIds.length > 0) {
+            await prisma.zoneDevice.createMany({
+              data: deviceIds.map(deviceId => ({
+                zoneId: id,
+                deviceId,
+              })),
+            })
+          }
+        }
+        
+        const updatedZone = await prisma.zone.update({
+          where: { id },
+          data: {
+            ...updates,
+            polygon: input.polygon ? (input.polygon as any) : undefined,
+          },
+          include: {
+            devices: {
+              include: {
+                device: true,
+              },
+            },
+          },
+        })
       
-      const zone = await prisma.zone.update({
-        where: { id },
-        data: {
-          ...updates,
-          polygon: input.polygon ? (input.polygon as any) : undefined,
-        },
-      })
-      
-      return {
-        id: zone.id,
-        name: zone.name,
-        color: zone.color,
-        description: zone.description,
-        polygon: zone.polygon as Array<{ x: number; y: number }> | null,
+        return {
+          id: updatedZone.id,
+          name: updatedZone.name,
+          color: updatedZone.color,
+          description: updatedZone.description,
+          polygon: updatedZone.polygon as Array<{ x: number; y: number }> | null,
+          deviceIds: updatedZone.devices.map(zd => zd.deviceId),
+          createdAt: updatedZone.createdAt,
+          updatedAt: updatedZone.updatedAt,
+        }
+      } catch (error: any) {
+        console.error('Error in zone.update:', {
+          message: error.message,
+          code: error.code,
+          meta: error.meta,
+          input: input,
+        })
+        
+        // Handle foreign key constraint violations
+        if (error.code === 'P2003' || error.message?.includes('Foreign key constraint')) {
+          throw new Error(`Cannot update zone: One or more device IDs do not exist in the database.`)
+        }
+        
+        // Handle "record not found" errors
+        if (error.code === 'P2025' || error.message?.includes('Record to update not found')) {
+          throw new Error(`Zone with ID ${input.id} not found in database`)
+        }
+        
+        // Handle prepared statement errors with retry
+        if (error.code === '26000' || error.message?.includes('prepared statement')) {
+          console.log('Retrying zone.update after prepared statement error...')
+          await new Promise(resolve => setTimeout(resolve, 200))
+          
+          try {
+            const { id, deviceIds, ...updates } = input
+            
+            const zone = await prisma.zone.findUnique({
+              where: { id },
+              select: { siteId: true },
+            })
+            
+            if (!zone) {
+              throw new Error(`Zone with ID ${id} not found`)
+            }
+            
+            if (deviceIds !== undefined && deviceIds.length > 0) {
+              const existingDevices = await prisma.device.findMany({
+                where: {
+                  id: { in: deviceIds },
+                  siteId: zone.siteId,
+                },
+                select: { id: true },
+              })
+              
+              const existingDeviceIds = new Set(existingDevices.map(d => d.id))
+              const invalidDeviceIds = deviceIds.filter(deviceId => !existingDeviceIds.has(deviceId))
+              
+              if (invalidDeviceIds.length > 0) {
+                throw new Error(`The following device IDs do not exist: ${invalidDeviceIds.join(', ')}`)
+              }
+              
+              await prisma.zoneDevice.deleteMany({
+                where: { zoneId: id },
+              })
+              
+              if (deviceIds.length > 0) {
+                await prisma.zoneDevice.createMany({
+                  data: deviceIds.map(deviceId => ({
+                    zoneId: id,
+                    deviceId,
+                  })),
+                })
+              }
+            }
+            
+            const updatedZone = await prisma.zone.update({
+              where: { id },
+              data: {
+                ...updates,
+                polygon: input.polygon ? (input.polygon as any) : undefined,
+              },
+              include: {
+                devices: {
+                  include: {
+                    device: true,
+                  },
+                },
+              },
+            })
+            
+            return {
+              id: updatedZone.id,
+              name: updatedZone.name,
+              color: updatedZone.color,
+              description: updatedZone.description,
+              polygon: updatedZone.polygon as Array<{ x: number; y: number }> | null,
+              deviceIds: updatedZone.devices.map(zd => zd.deviceId),
+              createdAt: updatedZone.createdAt,
+              updatedAt: updatedZone.updatedAt,
+            }
+          } catch (retryError: any) {
+            console.error('Retry also failed:', retryError)
+            throw new Error(`Failed to update zone: ${retryError.message || 'Unknown error'}`)
+          }
+        }
+        
+        throw new Error(`Failed to update zone: ${error.message || 'Unknown error'}`)
       }
     }),
 

@@ -153,6 +153,43 @@ export const deviceRouter = router({
           code: error.code,
           siteId: input.siteId,
         })
+        
+        // Handle prepared statement errors with retry
+        if (error.code === '26000' || error.message?.includes('prepared statement')) {
+          console.log('Retrying device.list after prepared statement error...')
+          await new Promise(resolve => setTimeout(resolve, 200))
+          
+          try {
+            const devices = await prisma.device.findMany({
+              where: {
+                siteId: input.siteId,
+                parentId: null,
+              },
+              include: {
+                components: {
+                  orderBy: {
+                    createdAt: 'asc',
+                  },
+                },
+              },
+              orderBy: {
+                createdAt: 'asc',
+              },
+            })
+
+            return devices.map(device => {
+              const transformed = transformDevice(device)
+              if (!input.includeComponents) {
+                transformed.components = undefined
+              }
+              return transformed
+            })
+          } catch (retryError: any) {
+            console.error('Retry also failed:', retryError)
+            return []
+          }
+        }
+        
         // Return empty array on error to prevent UI crashes
         return []
       }
@@ -289,7 +326,7 @@ export const deviceRouter = router({
         })
         
         // Handle prepared statement conflicts by retrying once
-        if (error.code === '42P05' || error.message?.includes('prepared statement')) {
+        if (error.code === '42P05' || error.code === '26000' || error.message?.includes('prepared statement')) {
           console.log('Retrying device.create after prepared statement conflict...')
           // Wait a bit and retry
           await new Promise(resolve => setTimeout(resolve, 100))
@@ -357,29 +394,99 @@ export const deviceRouter = router({
       warrantyExpiry: z.date().optional(),
     }))
     .mutation(async ({ input }) => {
-      const { id, ...updates } = input
+      try {
+        const { id, ...updates } = input
 
-      const updateData: any = {}
-      if (updates.deviceId !== undefined) updateData.deviceId = updates.deviceId
-      if (updates.serialNumber !== undefined) updateData.serialNumber = updates.serialNumber
-      if (updates.type !== undefined) updateData.type = toPrismaDeviceType(updates.type)
-      if (updates.status !== undefined) updateData.status = toPrismaDeviceStatus(updates.status)
-      if (updates.signal !== undefined) updateData.signal = updates.signal
-      if (updates.battery !== undefined) updateData.battery = updates.battery
-      if (updates.x !== undefined) updateData.x = updates.x
-      if (updates.y !== undefined) updateData.y = updates.y
-      if (updates.warrantyStatus !== undefined) updateData.warrantyStatus = updates.warrantyStatus
-      if (updates.warrantyExpiry !== undefined) updateData.warrantyExpiry = updates.warrantyExpiry
+        // Check if device exists first
+        const existingDevice = await prisma.device.findUnique({
+          where: { id },
+          select: { id: true },
+        })
 
-      const device = await prisma.device.update({
-        where: { id },
-        data: updateData,
-        include: {
-          components: true,
-        },
-      })
+        if (!existingDevice) {
+          throw new Error(`Device with ID ${id} not found`)
+        }
 
-      return transformDevice(device)
+        const updateData: any = {}
+        if (updates.deviceId !== undefined) updateData.deviceId = updates.deviceId
+        if (updates.serialNumber !== undefined) updateData.serialNumber = updates.serialNumber
+        if (updates.type !== undefined) updateData.type = toPrismaDeviceType(updates.type)
+        if (updates.status !== undefined) updateData.status = toPrismaDeviceStatus(updates.status)
+        if (updates.signal !== undefined) updateData.signal = updates.signal
+        if (updates.battery !== undefined) updateData.battery = updates.battery
+        if (updates.x !== undefined) updateData.x = updates.x
+        if (updates.y !== undefined) updateData.y = updates.y
+        if (updates.warrantyStatus !== undefined) updateData.warrantyStatus = updates.warrantyStatus
+        if (updates.warrantyExpiry !== undefined) updateData.warrantyExpiry = updates.warrantyExpiry
+
+        const device = await prisma.device.update({
+          where: { id },
+          data: updateData,
+          include: {
+            components: true,
+          },
+        })
+
+        return transformDevice(device)
+      } catch (error: any) {
+        console.error('Error in device.update:', {
+          message: error.message,
+          code: error.code,
+          meta: error.meta,
+          input: input,
+        })
+        
+        // Handle "record not found" errors
+        if (error.code === 'P2025' || error.message?.includes('Record to update not found')) {
+          throw new Error(`Device with ID ${input.id} not found in database`)
+        }
+        
+        // Handle prepared statement errors with retry
+        if (error.code === '26000' || error.message?.includes('prepared statement')) {
+          console.log('Retrying device.update after prepared statement error...')
+          await new Promise(resolve => setTimeout(resolve, 200))
+          
+          try {
+            const { id, ...updates } = input
+            
+            const existingDevice = await prisma.device.findUnique({
+              where: { id },
+              select: { id: true },
+            })
+
+            if (!existingDevice) {
+              throw new Error(`Device with ID ${id} not found`)
+            }
+
+            const updateData: any = {}
+            if (updates.deviceId !== undefined) updateData.deviceId = updates.deviceId
+            if (updates.serialNumber !== undefined) updateData.serialNumber = updates.serialNumber
+            if (updates.type !== undefined) updateData.type = toPrismaDeviceType(updates.type)
+            if (updates.status !== undefined) updateData.status = toPrismaDeviceStatus(updates.status)
+            if (updates.signal !== undefined) updateData.signal = updates.signal
+            if (updates.battery !== undefined) updateData.battery = updates.battery
+            if (updates.x !== undefined) updateData.x = updates.x
+            if (updates.y !== undefined) updateData.y = updates.y
+            if (updates.warrantyStatus !== undefined) updateData.warrantyStatus = updates.warrantyStatus
+            if (updates.warrantyExpiry !== undefined) updateData.warrantyExpiry = updates.warrantyExpiry
+
+            const device = await prisma.device.update({
+              where: { id },
+              data: updateData,
+              include: {
+                components: true,
+              },
+            })
+
+            return transformDevice(device)
+          } catch (retryError: any) {
+            console.error('Retry also failed:', retryError)
+            throw new Error(`Failed to update device: ${retryError.message || 'Unknown error'}`)
+          }
+        }
+        
+        throw new Error(`Failed to update device: ${error.message || 'Unknown error'}`)
+      }
     }),
 
   delete: publicProcedure
