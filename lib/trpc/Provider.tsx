@@ -10,7 +10,7 @@
 
 import { useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { httpBatchLink } from '@trpc/client'
+import { httpBatchLink, httpLink, splitLink } from '@trpc/client'
 import superjson from 'superjson'
 import { trpc } from './client'
 
@@ -26,9 +26,22 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
   const [trpcClient] = useState(() =>
     trpc.createClient({
       links: [
-        httpBatchLink({
-          url: `${getBaseUrl()}/api/trpc`,
-          transformer: superjson,
+        // Split link: use non-batched link for site.ensureExists, batched for everything else
+        splitLink({
+          condition: (op) => {
+            // Use non-batched link for site.ensureExists mutations
+            return op.type === 'mutation' && op.path === 'site.ensureExists'
+          },
+          // Non-batched link for ensureExists
+          true: httpLink({
+            url: `${getBaseUrl()}/api/trpc`,
+            transformer: superjson,
+          }),
+          // Batched link for everything else
+          false: httpBatchLink({
+            url: `${getBaseUrl()}/api/trpc`,
+            transformer: superjson,
+          }),
         }),
       ],
     })
