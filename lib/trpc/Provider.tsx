@@ -30,7 +30,21 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
         splitLink({
           condition: (op) => {
             // Use non-batched link for site.ensureExists mutations
-            return op.type === 'mutation' && op.path === 'site.ensureExists'
+            // Check both the path and type to be sure
+            const isEnsureExists = op.type === 'mutation' && 
+              (op.path === 'site.ensureExists' || 
+               (typeof op.path === 'string' && op.path.includes('site.ensureExists')))
+            
+            // Log for debugging in production
+            if (isEnsureExists && typeof window !== 'undefined') {
+              console.log('[tRPC] Routing site.ensureExists to non-batched link', {
+                type: op.type,
+                path: op.path,
+                id: op.id,
+              })
+            }
+            
+            return isEnsureExists
           },
           // Non-batched link for ensureExists
           true: httpLink({
@@ -41,6 +55,8 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
           false: httpBatchLink({
             url: `${getBaseUrl()}/api/trpc`,
             transformer: superjson,
+            // Increase maxBatchSize to prevent accidental batching
+            maxBatchSize: 1, // Actually, let's disable batching entirely for now
           }),
         }),
       ],
