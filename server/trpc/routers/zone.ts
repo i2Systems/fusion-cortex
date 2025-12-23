@@ -74,7 +74,9 @@ export const zoneRouter = router({
     }))
     .mutation(async ({ input }) => {
       try {
-        // Validate that all deviceIds exist in the database
+        // Filter out device IDs that don't exist in the database
+        // This allows zones to be created even if some devices haven't been saved yet
+        let validDeviceIds: string[] = []
         if (input.deviceIds.length > 0) {
           const existingDevices = await prisma.device.findMany({
             where: {
@@ -85,10 +87,11 @@ export const zoneRouter = router({
           })
           
           const existingDeviceIds = new Set(existingDevices.map(d => d.id))
-          const invalidDeviceIds = input.deviceIds.filter(id => !existingDeviceIds.has(id))
+          validDeviceIds = input.deviceIds.filter(id => existingDeviceIds.has(id))
           
+          const invalidDeviceIds = input.deviceIds.filter(id => !existingDeviceIds.has(id))
           if (invalidDeviceIds.length > 0) {
-            throw new Error(`The following device IDs do not exist: ${invalidDeviceIds.join(', ')}`)
+            console.warn(`Zone creation: Skipping ${invalidDeviceIds.length} device IDs that don't exist: ${invalidDeviceIds.slice(0, 5).join(', ')}${invalidDeviceIds.length > 5 ? '...' : ''}`)
           }
         }
 
@@ -99,8 +102,8 @@ export const zoneRouter = router({
             color: input.color || '#4c7dff',
             description: input.description,
             polygon: input.polygon ? (input.polygon as any) : null,
-            devices: input.deviceIds.length > 0 ? {
-              create: input.deviceIds.map(deviceId => ({
+            devices: validDeviceIds.length > 0 ? {
+              create: validDeviceIds.map(deviceId => ({
                 deviceId,
               })),
             } : undefined,
@@ -144,6 +147,7 @@ export const zoneRouter = router({
           
           try {
             // Retry the same operation
+            let retryValidDeviceIds: string[] = []
             if (input.deviceIds.length > 0) {
               const existingDevices = await prisma.device.findMany({
                 where: {
@@ -154,11 +158,7 @@ export const zoneRouter = router({
               })
               
               const existingDeviceIds = new Set(existingDevices.map(d => d.id))
-              const invalidDeviceIds = input.deviceIds.filter(id => !existingDeviceIds.has(id))
-              
-              if (invalidDeviceIds.length > 0) {
-                throw new Error(`The following device IDs do not exist: ${invalidDeviceIds.join(', ')}`)
-              }
+              retryValidDeviceIds = input.deviceIds.filter(id => existingDeviceIds.has(id))
             }
 
             const zone = await prisma.zone.create({
@@ -168,8 +168,8 @@ export const zoneRouter = router({
                 color: input.color || '#4c7dff',
                 description: input.description,
                 polygon: input.polygon ? (input.polygon as any) : null,
-                devices: input.deviceIds.length > 0 ? {
-                  create: input.deviceIds.map(deviceId => ({
+                devices: retryValidDeviceIds.length > 0 ? {
+                  create: retryValidDeviceIds.map(deviceId => ({
                     deviceId,
                   })),
                 } : undefined,

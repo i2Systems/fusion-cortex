@@ -129,8 +129,9 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
   }, [activeStoreId, activeStore])
 
   // Update local state when data from database changes
+  // Only update if we have valid data - don't clear zones on error
   useEffect(() => {
-    if (zonesData) {
+    if (zonesData && Array.isArray(zonesData)) {
       const transformedZones: Zone[] = zonesData.map(zone => ({
         id: zone.id,
         name: zone.name,
@@ -143,6 +144,9 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
       }))
       setZones(transformedZones)
     }
+    // Don't clear zones if zonesData is null/undefined - might be a loading state
+    // Only clear if we explicitly get an empty array (no zones for this site)
+    // This prevents zones from disappearing when there's a temporary error
   }, [zonesData])
 
 
