@@ -142,7 +142,7 @@ function scheduleQueueProcessing() {
   }
   queueProcessingTimeout = setTimeout(() => {
     processEnsureQueue()
-  }, 10) // Small delay to batch rapid calls
+  }, 100) // Delay to allow queue to accumulate before processing
 }
 
 /**
