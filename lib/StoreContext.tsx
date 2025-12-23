@@ -204,20 +204,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     gcTime: 10 * 60 * 1000, // 10 minutes
   })
 
-  // Ensure default sites exist in database
-  const ensureSiteMutations = trpc.site.ensureExists.useMutation({
-    onSuccess: () => {
-      // Only refetch if we're not already refetching
-      setTimeout(() => {
-        refetchSites()
-      }, 500)
-    },
-  })
-
   // Track which sites we've already initiated creation for
   const ensuredSitesRef = useRef<Set<string>>(new Set())
 
   // Ensure all default sites exist in database on mount
+  // Use the deduplicated ensureSite function to prevent duplicate calls
   useEffect(() => {
     if (!sitesData) return
 
@@ -230,7 +221,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         // Mark as being ensured to prevent duplicate calls
         ensuredSitesRef.current.add(defaultStore.id)
         
-        ensureSiteMutations.mutate({
+        // Use the deduplicated ensureSite function
+        ensureSite({
           id: defaultStore.id,
           name: defaultStore.name,
           storeNumber: defaultStore.storeNumber,
@@ -242,13 +234,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           manager: defaultStore.manager,
           squareFootage: defaultStore.squareFootage,
           openedDate: defaultStore.openedDate,
+        }).then(() => {
+          // Refetch sites after ensuring
+          setTimeout(() => {
+            refetchSites()
+          }, 500)
+        }).catch(error => {
+          console.error('Failed to ensure default site:', error)
+          // Remove from ensured set on error so we can retry
+          ensuredSitesRef.current.delete(defaultStore.id)
         })
       } else if (exists) {
         // Site exists, mark as ensured
         ensuredSitesRef.current.add(defaultStore.id)
       }
     })
-  }, [sitesData]) // Removed ensureSiteMutations from deps - it's stable
+  }, [sitesData, ensureSite, refetchSites])
 
   // Merge database sites with default store metadata
   const stores = useMemo<Store[]>(() => {
