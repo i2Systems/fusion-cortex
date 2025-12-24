@@ -86,9 +86,12 @@ export function MapProvider({ children }: { children: ReactNode }) {
             setMapCache(prev => ({ ...prev, [storeId]: mapData }))
             setIsLoading(false)
             return mapData
+          } else {
+            console.warn(`No data found in IndexedDB for store ${storeId}, key ${location.storageKey}`)
           }
         } catch (e) {
-          console.warn('Failed to load location data from IndexedDB:', e)
+          console.error('Failed to load location data from IndexedDB:', e)
+          // Continue to fallback options
         }
       }
 
@@ -110,9 +113,12 @@ export function MapProvider({ children }: { children: ReactNode }) {
               setMapCache(prev => ({ ...prev, [storeId]: mapData }))
               setIsLoading(false)
               return mapData
+            } else {
+              console.warn(`Failed to load image from IndexedDB, imageId: ${imageId}`)
             }
           } catch (e) {
-            console.warn('Failed to load image from IndexedDB:', e)
+            console.error('Failed to load image from IndexedDB:', e)
+            // Continue to fallback
           }
         } else {
           const mapData: MapData = {

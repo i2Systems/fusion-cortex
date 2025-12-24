@@ -329,24 +329,40 @@ export async function getSiteImage(siteId: string): Promise<string | null> {
   if (typeof window === 'undefined') return null
   try {
     const stored = localStorage.getItem(`${SITE_IMAGE_PREFIX}${siteId}`)
-    if (!stored) return null
+    if (!stored) {
+      console.log(`No site image found for ${siteId}`)
+      return null
+    }
 
     // Check if it's an IndexedDB reference
     if (stored.startsWith('indexeddb:')) {
       const imageId = stored.replace('indexeddb:', '')
       try {
         const { getImageDataUrl } = await import('./indexedDB')
-        return await getImageDataUrl(imageId)
+        const dataUrl = await getImageDataUrl(imageId)
+        if (!dataUrl) {
+          console.warn(`Failed to load site image from IndexedDB for ${siteId}, imageId: ${imageId}`)
+        }
+        return dataUrl
       } catch (error) {
-        console.error('Failed to load site image from IndexedDB:', error)
+        console.error(`Failed to load site image from IndexedDB for ${siteId}:`, error)
+        // Try to remove the broken reference
+        try {
+          localStorage.removeItem(`${SITE_IMAGE_PREFIX}${siteId}`)
+        } catch {}
         return null
       }
     }
 
     // Direct base64 string
-    return stored
+    if (stored.startsWith('data:') || stored.length > 100) {
+      return stored
+    }
+    
+    console.warn(`Invalid site image format for ${siteId}`)
+    return null
   } catch (error) {
-    console.error('Failed to get site image:', error)
+    console.error(`Failed to get site image for ${siteId}:`, error)
     return null
   }
 }
