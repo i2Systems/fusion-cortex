@@ -150,7 +150,16 @@ export async function storeImage(
     const request = store.add(image)
 
     request.onsuccess = () => {
-      resolve(id)
+      // Wait for transaction to complete before resolving
+      transaction.oncomplete = () => {
+        // Small delay to ensure IndexedDB is fully committed
+        setTimeout(() => {
+          resolve(id)
+        }, 50)
+      }
+      transaction.onerror = () => {
+        reject(new Error('Transaction failed'))
+      }
     }
 
     request.onerror = () => {
@@ -181,22 +190,49 @@ export async function getImage(imageId: string): Promise<StoredImage | null> {
 }
 
 /**
- * Get image data URL from stored image
+ * Get image data URL from stored image with retry logic
  */
-export async function getImageDataUrl(imageId: string): Promise<string | null> {
-  const image = await getImage(imageId)
-  if (!image) return null
-  
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      resolve(reader.result as string)
+export async function getImageDataUrl(imageId: string, retries: number = 3): Promise<string | null> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const image = await getImage(imageId)
+      if (!image) {
+        if (attempt < retries - 1) {
+          // Wait a bit before retrying
+          await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1)))
+          continue
+        }
+        return null
+      }
+      
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          resolve(reader.result as string)
+        }
+        reader.onerror = () => {
+          if (attempt < retries - 1) {
+            // Retry on error
+            setTimeout(() => {
+              getImageDataUrl(imageId, retries - attempt - 1).then(resolve).catch(reject)
+            }, 100 * (attempt + 1))
+          } else {
+            reject(new Error('Failed to read image'))
+          }
+        }
+        reader.readAsDataURL(image.imageData)
+      })
+    } catch (error) {
+      if (attempt < retries - 1) {
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1)))
+        continue
+      }
+      console.error(`Failed to get image data URL after ${retries} attempts:`, error)
+      return null
     }
-    reader.onerror = () => {
-      reject(new Error('Failed to read image'))
-    }
-    reader.readAsDataURL(image.imageData)
-  })
+  }
+  return null
 }
 
 /**

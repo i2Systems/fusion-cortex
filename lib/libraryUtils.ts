@@ -90,17 +90,33 @@ async function getCustomImage(libraryId: string): Promise<string | null> {
     // Check if it's an IndexedDB reference
     if (stored.startsWith('indexeddb:')) {
       const imageId = stored.replace('indexeddb:', '')
-      try {
-        const { getImage, getImageDataUrl } = await import('./indexedDB')
-        const storedImage = await getImage(imageId)
-        if (storedImage) {
-          const dataUrl = await getImageDataUrl(storedImage.id)
-          return dataUrl
+      const retries = 3
+      for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+          const { getImage, getImageDataUrl } = await import('./indexedDB')
+          const storedImage = await getImage(imageId)
+          if (storedImage) {
+            const dataUrl = await getImageDataUrl(storedImage.id, retries)
+            if (dataUrl) {
+              return dataUrl
+            }
+          }
+          // If not found and not last attempt, wait and retry
+          if (attempt < retries - 1) {
+            await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)))
+            continue
+          }
+        } catch (error) {
+          if (attempt < retries - 1) {
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)))
+            continue
+          }
+          console.error('Failed to load image from IndexedDB:', error)
+          return null
         }
-      } catch (error) {
-        console.error('Failed to load image from IndexedDB:', error)
-        return null
       }
+      return null
     }
     
     // It's a direct base64 string
@@ -177,12 +193,12 @@ export async function setCustomImage(libraryId: string, imageUrl: string): Promi
     if (compressedImage.length > IMAGE_SIZE_THRESHOLD) {
       // Large image - store in IndexedDB
       try {
-        const { storeImage } = await import('./indexedDB')
+        const { storeImage, getImage } = await import('./indexedDB')
         // Convert base64 to Blob
         const response = await fetch(compressedImage)
         const blob = await response.blob()
         
-        // Store in IndexedDB
+        // Store in IndexedDB and wait for it to complete
         const imageId = await storeImage(
           LIBRARY_STORE_ID,
           blob,
@@ -190,7 +206,23 @@ export async function setCustomImage(libraryId: string, imageUrl: string): Promi
           blob.type || 'image/jpeg'
         )
         
-        // Store only the reference in localStorage
+        // Verify the image was actually stored before saving reference
+        let verified = false
+        for (let i = 0; i < 3; i++) {
+          const storedImage = await getImage(imageId)
+          if (storedImage) {
+            verified = true
+            break
+          }
+          // Wait a bit before retrying
+          await new Promise(resolve => setTimeout(resolve, 100 * (i + 1)))
+        }
+
+        if (!verified) {
+          throw new Error('Image stored but could not be verified')
+        }
+        
+        // Store only the reference in localStorage after verification
         const reference = `indexeddb:${imageId}`
         localStorage.setItem(`library_image_${libraryId}`, reference)
       } catch (indexedDBError) {
@@ -208,8 +240,11 @@ export async function setCustomImage(libraryId: string, imageUrl: string): Promi
     }
     
     // Trigger a custom event so components can react to image changes
-    window.dispatchEvent(new CustomEvent('libraryImageUpdated', { detail: { libraryId } }))
-    window.dispatchEvent(new Event('libraryImageUpdated'))
+    // Add a small delay to ensure IndexedDB is ready
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('libraryImageUpdated', { detail: { libraryId } }))
+      window.dispatchEvent(new Event('libraryImageUpdated'))
+    }, 200)
   } catch (error) {
     console.error('Failed to save custom library image:', error)
     throw error // Re-throw so caller can show error message
@@ -325,7 +360,7 @@ const SITE_IMAGE_PREFIX = 'site_image_'
 /**
  * Get site image (stored in localStorage or IndexedDB)
  */
-export async function getSiteImage(siteId: string): Promise<string | null> {
+export async function getSiteImage(siteId: string, retries: number = 3): Promise<string | null> {
   if (typeof window === 'undefined') return null
   try {
     const stored = localStorage.getItem(`${SITE_IMAGE_PREFIX}${siteId}`)
@@ -337,21 +372,34 @@ export async function getSiteImage(siteId: string): Promise<string | null> {
     // Check if it's an IndexedDB reference
     if (stored.startsWith('indexeddb:')) {
       const imageId = stored.replace('indexeddb:', '')
-      try {
-        const { getImageDataUrl } = await import('./indexedDB')
-        const dataUrl = await getImageDataUrl(imageId)
-        if (!dataUrl) {
-          console.warn(`Failed to load site image from IndexedDB for ${siteId}, imageId: ${imageId}`)
-        }
-        return dataUrl
-      } catch (error) {
-        console.error(`Failed to load site image from IndexedDB for ${siteId}:`, error)
-        // Try to remove the broken reference
+      for (let attempt = 0; attempt < retries; attempt++) {
         try {
-          localStorage.removeItem(`${SITE_IMAGE_PREFIX}${siteId}`)
-        } catch {}
-        return null
+          const { getImageDataUrl } = await import('./indexedDB')
+          const dataUrl = await getImageDataUrl(imageId, retries)
+          if (dataUrl) {
+            return dataUrl
+          }
+          // If no data URL and not last attempt, wait and retry
+          if (attempt < retries - 1) {
+            await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)))
+            continue
+          }
+          console.warn(`Failed to load site image from IndexedDB for ${siteId} after ${retries} attempts, imageId: ${imageId}`)
+        } catch (error) {
+          if (attempt < retries - 1) {
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)))
+            continue
+          }
+          console.error(`Failed to load site image from IndexedDB for ${siteId}:`, error)
+          // Try to remove the broken reference
+          try {
+            localStorage.removeItem(`${SITE_IMAGE_PREFIX}${siteId}`)
+          } catch {}
+          return null
+        }
       }
+      return null
     }
 
     // Direct base64 string
@@ -394,7 +442,7 @@ export async function setSiteImage(siteId: string, imageUrl: string): Promise<vo
         const blob = await response.blob()
         console.log(`Blob size: ${blob.size} bytes`)
 
-        // Store in IndexedDB
+        // Store in IndexedDB and wait for it to complete
         const imageId = await storeImage(
           siteId,
           blob,
@@ -403,7 +451,24 @@ export async function setSiteImage(siteId: string, imageUrl: string): Promise<vo
         )
         console.log(`✅ Stored in IndexedDB with ID: ${imageId}`)
 
-        // Store only the reference in localStorage
+        // Verify the image was actually stored before saving reference
+        const { getImage } = await import('./indexedDB')
+        let verified = false
+        for (let i = 0; i < 3; i++) {
+          const storedImage = await getImage(imageId)
+          if (storedImage) {
+            verified = true
+            break
+          }
+          // Wait a bit before retrying
+          await new Promise(resolve => setTimeout(resolve, 100 * (i + 1)))
+        }
+
+        if (!verified) {
+          throw new Error('Image stored but could not be verified')
+        }
+
+        // Store only the reference in localStorage after verification
         const reference = `indexeddb:${imageId}`
         localStorage.setItem(`${SITE_IMAGE_PREFIX}${siteId}`, reference)
         console.log(`✅ Saved reference to localStorage: ${SITE_IMAGE_PREFIX}${siteId}`)
@@ -425,7 +490,8 @@ export async function setSiteImage(siteId: string, imageUrl: string): Promise<vo
       console.log(`✅ Saved to localStorage: ${SITE_IMAGE_PREFIX}${siteId}`)
     }
 
-    // Verify it was saved
+    // Verify it was saved (with a small delay for IndexedDB)
+    await new Promise(resolve => setTimeout(resolve, 150))
     const verify = localStorage.getItem(`${SITE_IMAGE_PREFIX}${siteId}`)
     if (verify) {
       console.log(`✅ Verified: Image saved successfully for ${siteId}`)
@@ -433,9 +499,11 @@ export async function setSiteImage(siteId: string, imageUrl: string): Promise<vo
       console.error(`❌ Verification failed: Image not found after save for ${siteId}`)
     }
 
-    // Dispatch event to notify components
-    window.dispatchEvent(new CustomEvent('siteImageUpdated', { detail: { siteId } }))
-    console.log(`✅ Dispatched siteImageUpdated event for ${siteId}`)
+    // Dispatch event to notify components (with a small delay to ensure IndexedDB is ready)
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('siteImageUpdated', { detail: { siteId } }))
+      console.log(`✅ Dispatched siteImageUpdated event for ${siteId}`)
+    }, 200)
   } catch (error) {
     console.error(`❌ Failed to save site image for ${siteId}:`, error)
     throw error
