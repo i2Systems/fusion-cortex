@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation'
 import { Device, DeviceType } from '@/lib/mockData'
 import { FaultCategory, faultCategories, generateFaultDescription } from '@/lib/faultDefinitions'
 import { calculateWarrantyStatus, getWarrantyStatusLabel, getWarrantyStatusTokenClass, formatWarrantyExpiry } from '@/lib/warranty'
-import { getDeviceLibraryUrl, getDeviceImage } from '@/lib/libraryUtils'
+import { getDeviceLibraryUrl, getDeviceImage, getDeviceImageAsync } from '@/lib/libraryUtils'
 import { isFixtureType } from '@/lib/deviceUtils'
 
 interface Fault {
@@ -305,6 +305,40 @@ export function FaultDetailsPanel({ fault, devices = [], onAddNewFault }: FaultD
   function DeviceIcon({ deviceType }: { deviceType: string }) {
     const [imageError, setImageError] = useState(false)
     const [imageKey, setImageKey] = useState(0)
+    const [deviceImage, setDeviceImage] = useState<string | null>(null)
+
+    // Load device image (database first, then client storage, then default)
+    useEffect(() => {
+      const loadImage = async () => {
+        // Try sync first (for localStorage images)
+        const syncImage = getDeviceImage(deviceType as DeviceType)
+        if (syncImage && !syncImage.startsWith('https://images.unsplash.com')) {
+          setDeviceImage(syncImage)
+          return
+        }
+        
+        // Try async (for database/IndexedDB images)
+        try {
+          const asyncImage = await getDeviceImageAsync(deviceType as DeviceType)
+          if (asyncImage && !asyncImage.startsWith('https://images.unsplash.com')) {
+            setDeviceImage(asyncImage)
+            return
+          } else if (asyncImage) {
+            // Default image
+            setDeviceImage(asyncImage)
+            return
+          }
+        } catch (error) {
+          console.error('Failed to load device image:', error)
+        }
+        
+        // Fallback to sync default
+        const defaultImage = getDeviceImage(deviceType as DeviceType)
+        setDeviceImage(defaultImage)
+      }
+      
+      loadImage()
+    }, [deviceType, imageKey])
 
     // Listen for library image updates
     useEffect(() => {
@@ -316,8 +350,6 @@ export function FaultDetailsPanel({ fault, devices = [], onAddNewFault }: FaultD
       return () => window.removeEventListener('libraryImageUpdated', handleImageUpdate)
     }, [])
 
-    // Call getDeviceImage on every render (it checks localStorage each time)
-    const deviceImage = getDeviceImage(deviceType as DeviceType)
     const showImage = deviceImage && !imageError
 
     return (

@@ -19,7 +19,7 @@ import { calculateWarrantyStatus, getWarrantyStatusLabel, getWarrantyStatusToken
 import { assignFaultCategory, generateFaultDescription, faultCategories } from '@/lib/faultDefinitions'
 import { useDevices } from '@/lib/DeviceContext'
 import { isFixtureType } from '@/lib/deviceUtils'
-import { getDeviceLibraryUrl, getDeviceImage } from '@/lib/libraryUtils'
+import { getDeviceLibraryUrl, getDeviceImage, getDeviceImageAsync } from '@/lib/libraryUtils'
 
 interface DeviceProfilePanelProps {
   device: Device | null
@@ -34,11 +34,45 @@ interface DeviceProfilePanelProps {
 function DeviceIcon({ deviceType }: { deviceType: string }) {
   const [imageError, setImageError] = useState(false)
   const [imageKey, setImageKey] = useState(0) // Force re-render when images update
+  const [deviceImage, setDeviceImage] = useState<string | null>(null)
+
+  // Load device image (database first, then client storage, then default)
+  useEffect(() => {
+    const loadImage = async () => {
+      // Try sync first (for localStorage images)
+      const syncImage = getDeviceImage(deviceType as DeviceType)
+      if (syncImage && !syncImage.startsWith('https://images.unsplash.com')) {
+        setDeviceImage(syncImage)
+        return
+      }
+      
+      // Try async (for database/IndexedDB images)
+      try {
+        const asyncImage = await getDeviceImageAsync(deviceType as DeviceType)
+        if (asyncImage && !asyncImage.startsWith('https://images.unsplash.com')) {
+          setDeviceImage(asyncImage)
+          return
+        } else if (asyncImage) {
+          // Default image
+          setDeviceImage(asyncImage)
+          return
+        }
+      } catch (error) {
+        console.error('Failed to load device image:', error)
+      }
+      
+      // Fallback to sync default
+      const defaultImage = getDeviceImage(deviceType as DeviceType)
+      setDeviceImage(defaultImage)
+    }
+    
+    loadImage()
+  }, [deviceType, imageKey])
   
   // Listen for library image updates
   useEffect(() => {
     const handleImageUpdate = () => {
-      // Force re-render by updating key - this will cause getDeviceImage to be called again
+      // Force re-render by updating key - this will cause image to reload
       setImageKey(prev => prev + 1)
       setImageError(false) // Reset error state in case new image loads
     }
@@ -46,8 +80,6 @@ function DeviceIcon({ deviceType }: { deviceType: string }) {
     return () => window.removeEventListener('libraryImageUpdated', handleImageUpdate)
   }, [])
 
-  // Call getDeviceImage on every render (it checks localStorage each time)
-  const deviceImage = getDeviceImage(deviceType as DeviceType)
   const showImage = deviceImage && !imageError
 
   const getTypeLabel = (type: string) => {
