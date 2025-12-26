@@ -10,7 +10,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { X, Image as ImageIcon, Info, Package, Zap, Settings, Upload, Trash2 } from 'lucide-react'
 import { LibraryObject } from '@/app/(main)/library/page'
-import { setCustomImage, removeCustomImage, getDeviceImage, getComponentImage, getComponentLibraryUrl } from '@/lib/libraryUtils'
+import { setCustomImage, removeCustomImage, getDeviceImage, getComponentImage, getComponentLibraryUrl, getDeviceImageAsync, getComponentImageAsync } from '@/lib/libraryUtils'
 
 // Component type to library ID mapping (matches lib/libraryUtils.ts)
 const COMPONENT_TYPE_TO_LIBRARY_ID: Record<string, string> = {
@@ -51,14 +51,37 @@ export function LibraryObjectModal({ object, onClose }: LibraryObjectModalProps)
   }, [])
 
   // Load custom image if it exists (only after mount to avoid hydration issues)
+  // Uses async loading to check database first, then client storage, then default
   useEffect(() => {
     if (!isMounted) return
     
-    const loadImage = () => {
+    const loadImage = async () => {
       // Use the same logic as LibraryCard to get current image
       if (isComponent) {
-        const image = getComponentImage(object.name) || object.defaultImage || null
-        if (image) setCurrentImage(image)
+        // Try sync first (for localStorage images)
+        const syncImage = getComponentImage(object.name)
+        if (syncImage && !syncImage.startsWith('https://images.unsplash.com')) {
+          // Only use sync image if it's not a default image
+          setCurrentImage(syncImage)
+          return
+        }
+        
+        // Try async (for database/IndexedDB images)
+        try {
+          const asyncImage = await getComponentImageAsync(object.name)
+          if (asyncImage && !asyncImage.startsWith('https://images.unsplash.com')) {
+            // Only use async image if it's not a default image
+            setCurrentImage(asyncImage)
+            return
+          }
+        } catch (error) {
+          console.error('Failed to load component image:', error)
+        }
+        
+        // Fallback to default
+        if (object.defaultImage) {
+          setCurrentImage(object.defaultImage)
+        }
       } else {
         // For devices, we need to map the object ID to device type
         const deviceTypeMap: Record<string, string> = {
@@ -73,8 +96,30 @@ export function LibraryObjectModal({ object, onClose }: LibraryObjectModalProps)
         }
         const deviceType = deviceTypeMap[object.id]
         if (deviceType) {
-          const image = getDeviceImage(deviceType as any) || object.defaultImage || null
-          if (image) setCurrentImage(image)
+          // Try sync first (for localStorage images)
+          const syncImage = getDeviceImage(deviceType as any)
+          if (syncImage && !syncImage.startsWith('https://images.unsplash.com')) {
+            // Only use sync image if it's not a default image
+            setCurrentImage(syncImage)
+            return
+          }
+          
+          // Try async (for database/IndexedDB images)
+          try {
+            const asyncImage = await getDeviceImageAsync(deviceType as any)
+            if (asyncImage && !asyncImage.startsWith('https://images.unsplash.com')) {
+              // Only use async image if it's not a default image
+              setCurrentImage(asyncImage)
+              return
+            }
+          } catch (error) {
+            console.error('Failed to load device image:', error)
+          }
+          
+          // Fallback to default
+          if (object.defaultImage) {
+            setCurrentImage(object.defaultImage)
+          }
         } else if (object.defaultImage) {
           setCurrentImage(object.defaultImage)
         }
@@ -185,13 +230,17 @@ export function LibraryObjectModal({ object, onClose }: LibraryObjectModalProps)
         // Also save to client storage as backup
         await setCustomImage(libraryId, previewImage)
         
+        // Set the current image to the preview immediately
         setCurrentImage(previewImage)
         setPreviewImage(null)
+        
         // Trigger update event so other components refresh - dispatch globally
-        window.dispatchEvent(new CustomEvent('libraryImageUpdated', { detail: { libraryId } }))
-        // Also dispatch a general event without detail to force all components to refresh
-        window.dispatchEvent(new Event('libraryImageUpdated'))
-        console.log(`✅ Image saved successfully for ${libraryId}`)
+        // Add a small delay to ensure database write is committed
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('libraryImageUpdated', { detail: { libraryId } }))
+          window.dispatchEvent(new Event('libraryImageUpdated'))
+          console.log(`✅ Image saved successfully for ${libraryId}, events dispatched`)
+        }, 300)
       } catch (error) {
         console.error('❌ Failed to save image:', error)
         alert(error instanceof Error ? error.message : 'Failed to save image. The image may be too large. Please try a smaller image.')

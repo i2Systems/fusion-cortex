@@ -10,7 +10,7 @@
 import { useState, useEffect } from 'react'
 import { LibraryObject } from '@/app/(main)/library/page'
 import { Image as ImageIcon } from 'lucide-react'
-import { getDeviceImage, getComponentImage } from '@/lib/libraryUtils'
+import { getDeviceImage, getComponentImage, getDeviceImageAsync, getComponentImageAsync } from '@/lib/libraryUtils'
 
 interface LibraryCardProps {
   object: LibraryObject
@@ -23,11 +23,38 @@ export function LibraryCard({ object, onClick }: LibraryCardProps) {
   const isComponent = 'quantity' in object
 
   // Load custom image after mount to avoid hydration mismatch
+  // Uses async loading to check database first, then client storage, then default
   useEffect(() => {
-    const loadImage = () => {
+    const loadImage = async () => {
+      console.log(`🖼️ Loading image for ${isComponent ? 'component' : 'device'}: ${object.name || object.id}`)
       if (isComponent) {
-        const image = getComponentImage(object.name) || object.defaultImage || null
-        setCurrentImage(image)
+        // Try sync first (for localStorage images)
+        const syncImage = getComponentImage(object.name)
+        if (syncImage && !syncImage.startsWith('https://images.unsplash.com')) {
+          // Only use sync image if it's not a default image
+          console.log(`✅ Using sync image for component ${object.name}`)
+          setCurrentImage(syncImage)
+          return
+        }
+        
+        // Try async (for database/IndexedDB images)
+        try {
+          const asyncImage = await getComponentImageAsync(object.name)
+          if (asyncImage && !asyncImage.startsWith('https://images.unsplash.com')) {
+            // Only use async image if it's not a default image
+            console.log(`✅ Using async image for component ${object.name}`)
+            setCurrentImage(asyncImage)
+            return
+          } else if (asyncImage) {
+            console.log(`ℹ️ Async returned default image for component ${object.name}`)
+          }
+        } catch (error) {
+          console.error('❌ Failed to load component image:', error)
+        }
+        
+        // Fallback to default
+        console.log(`📷 Using default image for component ${object.name}`)
+        setCurrentImage(object.defaultImage || null)
       } else {
         // Map library object ID to device type
         const deviceTypeMap: Record<string, string> = {
@@ -42,8 +69,33 @@ export function LibraryCard({ object, onClick }: LibraryCardProps) {
         }
         const deviceType = deviceTypeMap[object.id]
         if (deviceType) {
-          const image = getDeviceImage(deviceType as any) || object.defaultImage || null
-          setCurrentImage(image)
+          // Try sync first (for localStorage images)
+          const syncImage = getDeviceImage(deviceType as any)
+          if (syncImage && !syncImage.startsWith('https://images.unsplash.com')) {
+            // Only use sync image if it's not a default image
+            console.log(`✅ Using sync image for device ${object.id} (type: ${deviceType})`)
+            setCurrentImage(syncImage)
+            return
+          }
+          
+          // Try async (for database/IndexedDB images)
+          try {
+            const asyncImage = await getDeviceImageAsync(deviceType as any)
+            if (asyncImage && !asyncImage.startsWith('https://images.unsplash.com')) {
+              // Only use async image if it's not a default image
+              console.log(`✅ Using async image for device ${object.id} (type: ${deviceType})`)
+              setCurrentImage(asyncImage)
+              return
+            } else if (asyncImage) {
+              console.log(`ℹ️ Async returned default image for device ${object.id} (type: ${deviceType})`)
+            }
+          } catch (error) {
+            console.error('❌ Failed to load device image:', error)
+          }
+          
+          // Fallback to default
+          console.log(`📷 Using default image for device ${object.id} (type: ${deviceType})`)
+          setCurrentImage(object.defaultImage || null)
         } else {
           setCurrentImage(object.defaultImage || null)
         }

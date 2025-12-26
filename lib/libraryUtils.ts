@@ -84,6 +84,8 @@ export function getComponentLibraryUrl(componentType: string): string | null {
 async function getCustomImage(libraryId: string, trpcClient?: any): Promise<string | null> {
   if (typeof window === 'undefined') return null
   
+  console.log(`🔍 Loading custom image for libraryId: ${libraryId}`)
+  
   // METHOD 1: Try to load from Supabase database first (primary source)
   try {
     if (trpcClient) {
@@ -91,6 +93,8 @@ async function getCustomImage(libraryId: string, trpcClient?: any): Promise<stri
       if (dbImage) {
         console.log(`✅ Loaded library image from Supabase database for ${libraryId}`)
         return dbImage
+      } else {
+        console.log(`ℹ️ No database image found for ${libraryId}`)
       }
     } else {
       // Try direct API call (tRPC format)
@@ -102,9 +106,14 @@ async function getCustomImage(libraryId: string, trpcClient?: any): Promise<stri
           if (result[0]?.result?.data) {
             console.log(`✅ Loaded library image from Supabase database via API for ${libraryId}`)
             return result[0].result.data
+          } else {
+            console.log(`ℹ️ No database image found in API response for ${libraryId}`)
           }
+        } else {
+          console.warn(`⚠️ API returned ${response.status} for ${libraryId}`)
         }
-      } catch (apiError) {
+      } catch (apiError: any) {
+        console.warn(`⚠️ API call failed for ${libraryId}:`, apiError.message)
         // Continue to client storage fallback
       }
     }
