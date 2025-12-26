@@ -10,7 +10,27 @@
 import { useState, useRef, useEffect } from 'react'
 import { X, Image as ImageIcon, Info, Package, Zap, Settings, Upload, Trash2 } from 'lucide-react'
 import { LibraryObject } from '@/app/(main)/library/page'
-import { setCustomImage, removeCustomImage, getDeviceImage, getComponentImage } from '@/lib/libraryUtils'
+import { setCustomImage, removeCustomImage, getDeviceImage, getComponentImage, getComponentLibraryUrl } from '@/lib/libraryUtils'
+
+// Component type to library ID mapping (matches lib/libraryUtils.ts)
+const COMPONENT_TYPE_TO_LIBRARY_ID: Record<string, string> = {
+  'LCM': 'lcm',
+  'Driver Board': 'driver-board',
+  'Power Supply': 'power-supply',
+  'LED Board': 'led-board',
+  'Metal Bracket': 'metal-bracket',
+  'Cable Harness': 'cable-harness',
+  'Lower LED Housing with Optic': 'lower-led-housing-optic',
+  'Sensor': 'sensor',
+}
+
+// Normalize component type by removing instance numbers
+function normalizeComponentType(componentType: string): string {
+  const trimmed = componentType.trim()
+  // Remove trailing numbers and spaces (e.g., " 1", " 2", etc.)
+  const normalized = trimmed.replace(/\s+\d+$/, '')
+  return normalized
+}
 
 interface LibraryObjectModalProps {
   object: LibraryObject
@@ -119,14 +139,30 @@ export function LibraryObjectModal({ object, onClose }: LibraryObjectModalProps)
   const handleSaveImage = async () => {
     if (previewImage) {
       try {
-        await setCustomImage(object.id, previewImage)
+        // For components, use the component type mapping to get the library ID
+        // For devices, use object.id directly
+        let libraryId: string
+        if (isComponent) {
+          // Components: object.name is the component type (e.g., "LCM", "Driver Board")
+          // We need to normalize it and get the library ID
+          const normalized = normalizeComponentType(object.name)
+          libraryId = COMPONENT_TYPE_TO_LIBRARY_ID[normalized] || object.id
+        } else {
+          // Devices: use object.id directly
+          libraryId = object.id
+        }
+        
+        console.log(`💾 Saving image for ${isComponent ? 'component' : 'device'}: ${libraryId} (object.id: ${object.id}, object.name: ${object.name})`)
+        await setCustomImage(libraryId, previewImage)
         setCurrentImage(previewImage)
         setPreviewImage(null)
         // Trigger update event so other components refresh - dispatch globally
-        window.dispatchEvent(new CustomEvent('libraryImageUpdated', { detail: { libraryId: object.id } }))
+        window.dispatchEvent(new CustomEvent('libraryImageUpdated', { detail: { libraryId } }))
         // Also dispatch a general event without detail to force all components to refresh
         window.dispatchEvent(new Event('libraryImageUpdated'))
+        console.log(`✅ Image saved successfully for ${libraryId}`)
       } catch (error) {
+        console.error('❌ Failed to save image:', error)
         alert(error instanceof Error ? error.message : 'Failed to save image. The image may be too large. Please try a smaller image.')
       }
     }
@@ -141,14 +177,30 @@ export function LibraryObjectModal({ object, onClose }: LibraryObjectModalProps)
 
   const handleRemoveCustomImage = () => {
     if (confirm('Remove custom image and restore default?')) {
-      removeCustomImage(object.id)
+      // For components, use the component type mapping to get the library ID
+      let libraryId: string
+      if (isComponent) {
+        const normalized = normalizeComponentType(object.name)
+        libraryId = COMPONENT_TYPE_TO_LIBRARY_ID[normalized] || object.id
+      } else {
+        libraryId = object.id
+      }
+      removeCustomImage(libraryId)
       setCurrentImage(object.defaultImage || '')
     }
   }
 
   const hasCustomImage = () => {
     if (typeof window === 'undefined') return false
-    return localStorage.getItem(`library_image_${object.id}`) !== null
+    // For components, use the component type mapping to get the library ID
+    let libraryId: string
+    if (isComponent) {
+      const normalized = normalizeComponentType(object.name)
+      libraryId = COMPONENT_TYPE_TO_LIBRARY_ID[normalized] || object.id
+    } else {
+      libraryId = object.id
+    }
+    return localStorage.getItem(`library_image_${libraryId}`) !== null
   }
 
   return (

@@ -153,17 +153,17 @@ export const deviceRouter = router({
       try {
         // Always include components relation to avoid prepared statement parameter mismatch
         // We'll filter them out in transformDevice if needed
-        const devices = await prisma.device.findMany({
-          where: {
-            siteId: input.siteId,
-            parentId: null, // Only get top-level devices (not components)
-          },
+      const devices = await prisma.device.findMany({
+        where: {
+          siteId: input.siteId,
+          parentId: null, // Only get top-level devices (not components)
+        },
           include: {
-            components: {
-              orderBy: {
-                createdAt: 'asc',
+              components: {
+                orderBy: {
+                  createdAt: 'asc',
+                },
               },
-            },
           },
           orderBy: {
             createdAt: 'asc',
@@ -203,10 +203,10 @@ export const deviceRouter = router({
                   },
                 },
               },
-              orderBy: {
-                createdAt: 'asc',
-              },
-            })
+        orderBy: {
+          createdAt: 'asc',
+        },
+      })
 
             return devices.map(device => {
               const transformed = transformDevice(device)
@@ -319,7 +319,7 @@ export const deviceRouter = router({
     }))
     .mutation(async ({ input }) => {
       try {
-        const { components, ...deviceData } = input
+      const { components, ...deviceData } = input
 
         // Validate that type is present and is a string
         if (!deviceData.type || typeof deviceData.type !== 'string') {
@@ -367,18 +367,26 @@ export const deviceRouter = router({
             warrantyExpiry: deviceData.warrantyExpiry,
             components: components
               ? {
-                  create: components.map(comp => ({
-                    siteId: deviceData.siteId,
-                    deviceId: `${deviceData.deviceId}-${comp.componentType}`,
-                    serialNumber: comp.componentSerialNumber,
-                    type: DeviceType.FIXTURE_16FT_POWER_ENTRY, // Components are typically fixtures
-                    status: DeviceStatus.ONLINE,
-                    componentType: comp.componentType,
-                    componentSerialNumber: comp.componentSerialNumber,
-                    warrantyStatus: comp.warrantyStatus,
-                    warrantyExpiry: comp.warrantyExpiry,
-                    buildDate: comp.buildDate,
-                  })),
+                  create: components.map((comp, index) => {
+                    // Generate unique serial number for component to avoid conflicts
+                    // Combine parent device serial with component type and index for uniqueness
+                    const uniqueSerialNumber = comp.componentSerialNumber
+                      ? `${deviceData.serialNumber}-${comp.componentType}-${comp.componentSerialNumber}-${index}`
+                      : `${deviceData.serialNumber}-${comp.componentType}-${Date.now()}-${index}`
+                    
+                    return {
+                      siteId: deviceData.siteId,
+                      deviceId: `${deviceData.deviceId}-${comp.componentType}`,
+                      serialNumber: uniqueSerialNumber,
+                      type: DeviceType.FIXTURE_16FT_POWER_ENTRY, // Components are typically fixtures
+                      status: DeviceStatus.ONLINE,
+                      componentType: comp.componentType,
+                      componentSerialNumber: comp.componentSerialNumber, // Keep original for reference
+                      warrantyStatus: comp.warrantyStatus,
+                      warrantyExpiry: comp.warrantyExpiry,
+                      buildDate: comp.buildDate,
+                    }
+                  }),
                 }
               : undefined,
           },
@@ -434,18 +442,26 @@ export const deviceRouter = router({
                     ...(input.components && input.components.length > 0 ? {
                       components: {
                         deleteMany: {}, // Remove old components
-                        create: input.components.map(comp => ({
-                          siteId: input.siteId,
-                          deviceId: `${input.deviceId}-${comp.componentType}`,
-                          serialNumber: comp.componentSerialNumber,
-                          type: DeviceType.FIXTURE_16FT_POWER_ENTRY,
-                          status: DeviceStatus.ONLINE,
-                          componentType: comp.componentType,
-                          componentSerialNumber: comp.componentSerialNumber,
-                          warrantyStatus: comp.warrantyStatus,
-                          warrantyExpiry: comp.warrantyExpiry,
-                          buildDate: comp.buildDate,
-                        })),
+                        create: input.components.map((comp, index) => {
+                          // Generate unique serial number for component to avoid conflicts
+                          // Combine parent device serial with component type and index for uniqueness
+                          const uniqueSerialNumber = comp.componentSerialNumber
+                            ? `${input.serialNumber}-${comp.componentType}-${comp.componentSerialNumber}-${index}`
+                            : `${input.serialNumber}-${comp.componentType}-${Date.now()}-${index}`
+                          
+                          return {
+                            siteId: input.siteId,
+                            deviceId: `${input.deviceId}-${comp.componentType}`,
+                            serialNumber: uniqueSerialNumber,
+                            type: DeviceType.FIXTURE_16FT_POWER_ENTRY,
+                            status: DeviceStatus.ONLINE,
+                            componentType: comp.componentType,
+                            componentSerialNumber: comp.componentSerialNumber, // Keep original for reference
+                            warrantyStatus: comp.warrantyStatus,
+                            warrantyExpiry: comp.warrantyExpiry,
+                            buildDate: comp.buildDate,
+                          }
+                        }),
                       },
                     } : {}),
                   },
@@ -491,34 +507,34 @@ export const deviceRouter = router({
                 deviceId: deviceData.deviceId,
                 serialNumber: deviceData.serialNumber,
                 type: retryPrismaType,
-                status: toPrismaDeviceStatus(deviceData.status || 'offline'),
-                signal: deviceData.signal,
-                battery: deviceData.battery,
-                x: deviceData.x,
-                y: deviceData.y,
-                warrantyStatus: deviceData.warrantyStatus,
-                warrantyExpiry: deviceData.warrantyExpiry,
-                components: components
-                  ? {
-                      create: components.map(comp => ({
-                        siteId: deviceData.siteId,
-                        deviceId: `${deviceData.deviceId}-${comp.componentType}`,
-                        serialNumber: comp.componentSerialNumber,
+          status: toPrismaDeviceStatus(deviceData.status || 'offline'),
+          signal: deviceData.signal,
+          battery: deviceData.battery,
+          x: deviceData.x,
+          y: deviceData.y,
+          warrantyStatus: deviceData.warrantyStatus,
+          warrantyExpiry: deviceData.warrantyExpiry,
+          components: components
+            ? {
+                create: components.map(comp => ({
+                  siteId: deviceData.siteId,
+                  deviceId: `${deviceData.deviceId}-${comp.componentType}`,
+                  serialNumber: comp.componentSerialNumber,
                         type: DeviceType.FIXTURE_16FT_POWER_ENTRY,
-                        status: DeviceStatus.ONLINE,
-                        componentType: comp.componentType,
-                        componentSerialNumber: comp.componentSerialNumber,
-                        warrantyStatus: comp.warrantyStatus,
-                        warrantyExpiry: comp.warrantyExpiry,
-                        buildDate: comp.buildDate,
-                      })),
-                    }
-                  : undefined,
-              },
-              include: {
-                components: true,
-              },
-            })
+                  status: DeviceStatus.ONLINE,
+                  componentType: comp.componentType,
+                  componentSerialNumber: comp.componentSerialNumber,
+                  warrantyStatus: comp.warrantyStatus,
+                  warrantyExpiry: comp.warrantyExpiry,
+                  buildDate: comp.buildDate,
+                })),
+              }
+            : undefined,
+        },
+        include: {
+          components: true,
+        },
+      })
             return transformDevice(device)
           } catch (retryError: any) {
             console.error('Retry also failed:', retryError)
@@ -607,7 +623,7 @@ export const deviceRouter = router({
           await new Promise(resolve => setTimeout(resolve, 200))
           
           try {
-            const { id, ...updates } = input
+      const { id, ...updates } = input
             
             const existingDevice = await prisma.device.findUnique({
               where: { id },
@@ -618,9 +634,9 @@ export const deviceRouter = router({
               throw new Error(`Device with ID ${id} not found`)
             }
 
-            const updateData: any = {}
-            if (updates.deviceId !== undefined) updateData.deviceId = updates.deviceId
-            if (updates.serialNumber !== undefined) updateData.serialNumber = updates.serialNumber
+      const updateData: any = {}
+      if (updates.deviceId !== undefined) updateData.deviceId = updates.deviceId
+      if (updates.serialNumber !== undefined) updateData.serialNumber = updates.serialNumber
             if (updates.type !== undefined) {
               // Convert simplified type to full FrontendDeviceType, then to Prisma type
               const fullType: FrontendDeviceType = updates.type === 'fixture' 
@@ -630,23 +646,23 @@ export const deviceRouter = router({
                 : 'light-sensor'
               updateData.type = toPrismaDeviceType(fullType)
             }
-            if (updates.status !== undefined) updateData.status = toPrismaDeviceStatus(updates.status)
-            if (updates.signal !== undefined) updateData.signal = updates.signal
-            if (updates.battery !== undefined) updateData.battery = updates.battery
-            if (updates.x !== undefined) updateData.x = updates.x
-            if (updates.y !== undefined) updateData.y = updates.y
-            if (updates.warrantyStatus !== undefined) updateData.warrantyStatus = updates.warrantyStatus
-            if (updates.warrantyExpiry !== undefined) updateData.warrantyExpiry = updates.warrantyExpiry
+      if (updates.status !== undefined) updateData.status = toPrismaDeviceStatus(updates.status)
+      if (updates.signal !== undefined) updateData.signal = updates.signal
+      if (updates.battery !== undefined) updateData.battery = updates.battery
+      if (updates.x !== undefined) updateData.x = updates.x
+      if (updates.y !== undefined) updateData.y = updates.y
+      if (updates.warrantyStatus !== undefined) updateData.warrantyStatus = updates.warrantyStatus
+      if (updates.warrantyExpiry !== undefined) updateData.warrantyExpiry = updates.warrantyExpiry
 
-            const device = await prisma.device.update({
-              where: { id },
-              data: updateData,
-              include: {
-                components: true,
-              },
-            })
+      const device = await prisma.device.update({
+        where: { id },
+        data: updateData,
+        include: {
+          components: true,
+        },
+      })
 
-            return transformDevice(device)
+      return transformDevice(device)
           } catch (retryError: any) {
             console.error('Retry also failed:', retryError)
             throw new Error(`Failed to update device: ${retryError.message || 'Unknown error'}`)
