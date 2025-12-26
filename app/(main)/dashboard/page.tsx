@@ -78,12 +78,19 @@ function StoreImageCard({ storeId }: { storeId: string }) {
 
   useEffect(() => {
     const loadImage = async () => {
+      console.log(`🖼️ Loading image for site: ${storeId}`)
       try {
         const { getSiteImage } = await import('@/lib/libraryUtils')
         const image = await getSiteImage(storeId)
-        setDisplayUrl(image)
+        if (image) {
+          console.log(`✅ Loaded image for site ${storeId}`)
+          setDisplayUrl(image)
+        } else {
+          console.log(`📷 No image found for site ${storeId}, using default`)
+          setDisplayUrl(null)
+        }
       } catch (error) {
-        console.error('Failed to load store image:', error)
+        console.error(`❌ Failed to load store image for ${storeId}:`, error)
         setDisplayUrl(null)
       }
     }
@@ -93,14 +100,16 @@ function StoreImageCard({ storeId }: { storeId: string }) {
     // Listen for site image updates
     const handleSiteImageUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ siteId: string }>
-      if (customEvent.detail?.siteId === storeId) {
+      // Handle both specific siteId events and general events
+      if (!customEvent.detail || customEvent.detail?.siteId === storeId) {
+        console.log(`🔄 Site image updated event received for ${storeId}`)
         setImageKey(prev => prev + 1) // Force re-render
         loadImage() // Reload image
       }
     }
     window.addEventListener('siteImageUpdated', handleSiteImageUpdate)
     return () => window.removeEventListener('siteImageUpdated', handleSiteImageUpdate)
-  }, [storeId, imageKey])
+  }, [storeId])
 
   return (
     <div className="flex-shrink-0 w-24 h-24 rounded-lg bg-gradient-to-br from-[var(--color-primary-soft)]/20 to-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] flex items-center justify-center relative overflow-hidden">

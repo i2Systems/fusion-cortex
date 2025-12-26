@@ -101,12 +101,19 @@ export function StoreDetailsPanel({
         return
       }
 
+      console.log(`🖼️ Loading image for store: ${store.id}`)
       try {
         const { getSiteImage } = await import('@/lib/libraryUtils')
         const image = await getSiteImage(store.id)
-        setStoreImageUrl(image)
+        if (image) {
+          console.log(`✅ Loaded image for store ${store.id}`)
+          setStoreImageUrl(image)
+        } else {
+          console.log(`📷 No image found for store ${store.id}, using default`)
+          setStoreImageUrl(null)
+        }
       } catch (error) {
-        console.error('Failed to load store image:', error)
+        console.error(`❌ Failed to load store image for ${store.id}:`, error)
         setStoreImageUrl(null)
       }
     }
@@ -116,14 +123,16 @@ export function StoreDetailsPanel({
     // Listen for site image updates
     const handleSiteImageUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ siteId: string }>
-      if (customEvent.detail?.siteId === store?.id) {
+      // Handle both specific siteId events and general events
+      if (!customEvent.detail || customEvent.detail?.siteId === store?.id) {
+        console.log(`🔄 Site image updated event received for ${store?.id}`)
         setImageKey(prev => prev + 1) // Force re-render
         loadStoreImage() // Reload image
       }
     }
     window.addEventListener('siteImageUpdated', handleSiteImageUpdate)
     return () => window.removeEventListener('siteImageUpdated', handleSiteImageUpdate)
-  }, [store?.id, imageKey])
+  }, [store?.id])
 
   if (!store) {
     return (

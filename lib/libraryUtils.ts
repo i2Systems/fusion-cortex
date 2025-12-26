@@ -477,6 +477,8 @@ const SITE_IMAGE_PREFIX = 'site_image_'
 export async function getSiteImage(siteId: string, retries: number = 3, trpcClient?: any): Promise<string | null> {
   if (typeof window === 'undefined') return null
   
+  console.log(`🔍 Loading site image for siteId: ${siteId}`)
+  
   // METHOD 1: Try to load from Supabase database first (primary source)
   try {
     if (trpcClient) {
@@ -484,6 +486,8 @@ export async function getSiteImage(siteId: string, retries: number = 3, trpcClie
       if (dbImage) {
         console.log(`✅ Loaded site image from Supabase database for ${siteId}`)
         return dbImage
+      } else {
+        console.log(`ℹ️ No database image found for ${siteId}`)
       }
     } else {
       // Try direct API call (tRPC format)
@@ -492,12 +496,23 @@ export async function getSiteImage(siteId: string, retries: number = 3, trpcClie
         const response = await fetch(`/api/trpc/image.getSiteImage?batch=1&input=${input}`)
         if (response.ok) {
           const result = await response.json()
+          // tRPC batch response format: array of results
           if (result[0]?.result?.data) {
             console.log(`✅ Loaded site image from Supabase database via API for ${siteId}`)
             return result[0].result.data
+          } else if (result[0]?.result?.data === null) {
+            console.log(`ℹ️ No database image found in API response for ${siteId} (null)`)
+          } else if (result[0]?.error) {
+            console.warn(`⚠️ API returned error for ${siteId}:`, result[0].error)
+          } else {
+            console.log(`ℹ️ No database image found in API response for ${siteId} (empty result)`)
           }
+        } else {
+          const errorText = await response.text()
+          console.warn(`⚠️ API returned ${response.status} for ${siteId}:`, errorText.substring(0, 200))
         }
-      } catch (apiError) {
+      } catch (apiError: any) {
+        console.warn(`⚠️ API call failed for ${siteId}:`, apiError.message)
         // Continue to client storage fallback
       }
     }
@@ -711,6 +726,8 @@ export async function setSiteImage(siteId: string, imageUrl: string, trpcClient?
     // Dispatch event to notify components (with a delay to ensure IndexedDB is ready)
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('siteImageUpdated', { detail: { siteId } }))
+      // Also dispatch a general event without detail to force all components to refresh
+      window.dispatchEvent(new Event('siteImageUpdated'))
       console.log(`✅ Dispatched siteImageUpdated event for ${siteId}`)
     }, 300)
   } catch (error) {
