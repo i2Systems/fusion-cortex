@@ -207,6 +207,17 @@ model Fault {
   @@index([detectedAt])
 }
 
+model LibraryImage {
+  id        String   @id @default(cuid())
+  libraryId String   @unique // Library object ID (e.g., "lcm", "fixture-16ft-power-entry")
+  imageData String   // Base64 encoded image data
+  mimeType  String   @default("image/jpeg") // MIME type (image/jpeg, image/png)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([libraryId])
+}
+
 // NOTE: DiscoverySession model kept for potential future use
 // Currently, device entry is manual via the lookup page
 // model DiscoverySession {

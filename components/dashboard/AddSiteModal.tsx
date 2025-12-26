@@ -194,10 +194,41 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
       const { setSiteImage, getSiteImage } = await import('@/lib/libraryUtils')
       
       if (editingStore) {
-        // Save for existing store
+        // Save for existing store - try database first, then client storage
         console.log(`Saving image for existing store: ${editingStore.id}`)
+        
+        // Try database save via tRPC API
+        try {
+          // Use tRPC batch format: ?batch=1&input=...
+          const input = encodeURIComponent(JSON.stringify({
+            siteId: editingStore.id,
+            imageData: previewImage,
+          }))
+          const response = await fetch(`/api/trpc/image.saveSiteImage?batch=1&input=${input}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          })
+          if (response.ok) {
+            const result = await response.json()
+            if (result[0]?.result?.data) {
+              console.log('✅ Image saved to Supabase database')
+            } else if (result[0]?.error) {
+              throw new Error(result[0].error.message || 'Database save failed')
+            } else {
+              throw new Error('Invalid response format')
+            }
+          } else {
+            const errorText = await response.text()
+            throw new Error(`API returned ${response.status}: ${errorText}`)
+          }
+        } catch (dbError: any) {
+          console.warn('⚠️ Database save failed, using client storage as fallback:', dbError.message)
+        }
+        
+        // Also save to client storage as backup
         await setSiteImage(editingStore.id, previewImage)
-        // Reload the image to display
+        
+        // Reload the image to display (try database first, then client storage)
         const savedImage = await getSiteImage(editingStore.id)
         if (savedImage) {
           console.log('✅ Image saved and retrieved successfully')
@@ -208,7 +239,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
         }
         setPreviewImage(null)
       } else {
-        // For new sites, store in a temporary location
+        // For new sites, store in a temporary location (client storage only for now)
         const tempId = `temp-${Date.now()}`
         console.log(`Saving image for new site (temp ID: ${tempId})`)
         await setSiteImage(tempId, previewImage)

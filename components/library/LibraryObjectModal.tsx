@@ -153,7 +153,38 @@ export function LibraryObjectModal({ object, onClose }: LibraryObjectModalProps)
         }
         
         console.log(`💾 Saving image for ${isComponent ? 'component' : 'device'}: ${libraryId} (object.id: ${object.id}, object.name: ${object.name})`)
+        
+        // Try to save to database first via tRPC API
+        try {
+          // Use tRPC batch format: ?batch=1&input=...
+          const input = encodeURIComponent(JSON.stringify({
+            libraryId,
+            imageData: previewImage,
+          }))
+          const response = await fetch(`/api/trpc/image.saveLibraryImage?batch=1&input=${input}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          })
+          if (response.ok) {
+            const result = await response.json()
+            if (result[0]?.result?.data) {
+              console.log('✅ Image saved to Supabase database')
+            } else if (result[0]?.error) {
+              throw new Error(result[0].error.message || 'Database save failed')
+            } else {
+              throw new Error('Invalid response format')
+            }
+          } else {
+            const errorText = await response.text()
+            throw new Error(`API returned ${response.status}: ${errorText}`)
+          }
+        } catch (dbError: any) {
+          console.warn('⚠️ Database save failed, using client storage as fallback:', dbError.message)
+        }
+        
+        // Also save to client storage as backup
         await setCustomImage(libraryId, previewImage)
+        
         setCurrentImage(previewImage)
         setPreviewImage(null)
         // Trigger update event so other components refresh - dispatch globally

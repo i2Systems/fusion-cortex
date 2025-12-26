@@ -81,8 +81,38 @@ export function getComponentLibraryUrl(componentType: string): string | null {
 /**
  * Get custom image for a library object (stored in localStorage or IndexedDB)
  */
-async function getCustomImage(libraryId: string): Promise<string | null> {
+async function getCustomImage(libraryId: string, trpcClient?: any): Promise<string | null> {
   if (typeof window === 'undefined') return null
+  
+  // METHOD 1: Try to load from Supabase database first (primary source)
+  try {
+    if (trpcClient) {
+      const dbImage = await trpcClient.image.getLibraryImage.query({ libraryId })
+      if (dbImage) {
+        console.log(`✅ Loaded library image from Supabase database for ${libraryId}`)
+        return dbImage
+      }
+    } else {
+      // Try direct API call (tRPC format)
+      try {
+        const input = encodeURIComponent(JSON.stringify({ libraryId }))
+        const response = await fetch(`/api/trpc/image.getLibraryImage?batch=1&input=${input}`)
+        if (response.ok) {
+          const result = await response.json()
+          if (result[0]?.result?.data) {
+            console.log(`✅ Loaded library image from Supabase database via API for ${libraryId}`)
+            return result[0].result.data
+          }
+        }
+      } catch (apiError) {
+        // Continue to client storage fallback
+      }
+    }
+  } catch (dbError: any) {
+    console.warn(`⚠️ Failed to load from database for ${libraryId}, trying client storage:`, dbError.message)
+  }
+
+  // METHOD 2: Fallback to client storage (localStorage/IndexedDB)
   try {
     const stored = localStorage.getItem(`library_image_${libraryId}`)
     if (!stored) return null
@@ -192,15 +222,60 @@ async function compressImage(base64String: string, maxWidth: number = 800, quali
 }
 
 /**
- * Set custom image for a library object (stored in localStorage or IndexedDB)
+ * Set custom image for a library object (stored in Supabase database AND client storage as backup)
  */
-export async function setCustomImage(libraryId: string, imageUrl: string): Promise<void> {
+export async function setCustomImage(libraryId: string, imageUrl: string, trpcClient?: any): Promise<void> {
   if (typeof window === 'undefined') return
   
   try {
     // Compress image first to reduce size
     const compressedImage = await compressImage(imageUrl)
     
+    // Determine mime type
+    const isPNG = compressedImage.startsWith('data:image/png')
+    const mimeType = isPNG ? 'image/png' : 'image/jpeg'
+
+    // METHOD 1: Try to save to Supabase database first (primary storage)
+    try {
+      if (trpcClient) {
+        console.log('💾 Attempting to save library image to Supabase database...')
+        await trpcClient.image.saveLibraryImage.mutateAsync({
+          libraryId,
+          imageData: compressedImage,
+          mimeType,
+        })
+        console.log('✅ Library image saved to Supabase database')
+      } else {
+        // Try direct API call (tRPC format)
+        const input = encodeURIComponent(JSON.stringify({
+          libraryId,
+          imageData: compressedImage,
+          mimeType,
+        }))
+        const response = await fetch(`/api/trpc/image.saveLibraryImage?batch=1&input=${input}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+        if (response.ok) {
+          const result = await response.json()
+          if (result[0]?.result?.data) {
+            console.log('✅ Library image saved to Supabase database via API')
+          } else if (result[0]?.error) {
+            throw new Error(result[0].error.message || 'Database save failed')
+          } else {
+            throw new Error('Invalid response format')
+          }
+        } else {
+          const errorText = await response.text()
+          throw new Error(`API returned ${response.status}: ${errorText}`)
+        }
+      }
+    } catch (dbError: any) {
+      console.warn('⚠️ Failed to save to database, using client storage as fallback:', dbError.message)
+      // Continue to client storage fallback
+    }
+    
+    // METHOD 2: Also save to client storage as backup (IndexedDB or localStorage)
     // Check if compressed image is still too large for localStorage
     if (compressedImage.length > IMAGE_SIZE_THRESHOLD) {
       // Large image - store in IndexedDB
@@ -384,12 +459,42 @@ const SITE_IMAGE_PREFIX = 'site_image_'
 /**
  * Get site image (stored in localStorage or IndexedDB)
  */
-export async function getSiteImage(siteId: string, retries: number = 3): Promise<string | null> {
+export async function getSiteImage(siteId: string, retries: number = 3, trpcClient?: any): Promise<string | null> {
   if (typeof window === 'undefined') return null
+  
+  // METHOD 1: Try to load from Supabase database first (primary source)
+  try {
+    if (trpcClient) {
+      const dbImage = await trpcClient.image.getSiteImage.query({ siteId })
+      if (dbImage) {
+        console.log(`✅ Loaded site image from Supabase database for ${siteId}`)
+        return dbImage
+      }
+    } else {
+      // Try direct API call (tRPC format)
+      try {
+        const input = encodeURIComponent(JSON.stringify({ siteId }))
+        const response = await fetch(`/api/trpc/image.getSiteImage?batch=1&input=${input}`)
+        if (response.ok) {
+          const result = await response.json()
+          if (result[0]?.result?.data) {
+            console.log(`✅ Loaded site image from Supabase database via API for ${siteId}`)
+            return result[0].result.data
+          }
+        }
+      } catch (apiError) {
+        // Continue to client storage fallback
+      }
+    }
+  } catch (dbError: any) {
+    console.warn(`⚠️ Failed to load from database for ${siteId}, trying client storage:`, dbError.message)
+  }
+
+  // METHOD 2: Fallback to client storage (localStorage/IndexedDB)
   try {
     const stored = localStorage.getItem(`${SITE_IMAGE_PREFIX}${siteId}`)
     if (!stored) {
-      console.log(`No site image found for ${siteId}`)
+      console.log(`No site image found in client storage for ${siteId}`)
       return null
     }
 
@@ -440,9 +545,9 @@ export async function getSiteImage(siteId: string, retries: number = 3): Promise
 }
 
 /**
- * Set site image (stored in localStorage or IndexedDB)
+ * Set site image (stored in Supabase database AND client storage as backup)
  */
-export async function setSiteImage(siteId: string, imageUrl: string): Promise<void> {
+export async function setSiteImage(siteId: string, imageUrl: string, trpcClient?: any): Promise<void> {
   if (typeof window === 'undefined') {
     console.warn('setSiteImage called on server side, skipping')
     return
@@ -455,6 +560,53 @@ export async function setSiteImage(siteId: string, imageUrl: string): Promise<vo
     console.log('Compressing image...')
     const compressedImage = await compressImage(imageUrl)
     console.log(`Compressed size: ${compressedImage.length} chars`)
+
+    // Determine mime type
+    const isPNG = compressedImage.startsWith('data:image/png')
+    const mimeType = isPNG ? 'image/png' : 'image/jpeg'
+
+    // METHOD 1: Try to save to Supabase database first (primary storage)
+    if (trpcClient) {
+      try {
+        console.log('💾 Attempting to save to Supabase database...')
+        await trpcClient.image.saveSiteImage.mutateAsync({
+          siteId,
+          imageData: compressedImage,
+          mimeType,
+        })
+        console.log('✅ Site image saved to Supabase database')
+      } catch (dbError: any) {
+        console.warn('⚠️ Failed to save to database, using client storage as fallback:', dbError.message)
+        // Continue to client storage fallback
+      }
+    } else {
+      // Try to get tRPC client dynamically
+      try {
+        const { trpc } = await import('./trpc/client')
+        // Note: This won't work in non-React contexts, but we'll try
+        console.log('💾 Attempting to save to Supabase database (dynamic import)...')
+        // We can't use hooks here, so we'll need to make a direct API call
+        const response = await fetch('/api/trpc/image.saveSiteImage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            json: {
+              siteId,
+              imageData: compressedImage,
+              mimeType,
+            },
+          }),
+        })
+        if (response.ok) {
+          console.log('✅ Site image saved to Supabase database via API')
+        } else {
+          throw new Error(`API returned ${response.status}`)
+        }
+      } catch (apiError: any) {
+        console.warn('⚠️ Failed to save to database via API, using client storage:', apiError.message)
+        // Continue to client storage fallback
+      }
+    }
 
     // Check if compressed image is still too large for localStorage
     if (compressedImage.length > IMAGE_SIZE_THRESHOLD) {

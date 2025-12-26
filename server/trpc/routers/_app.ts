@@ -13,6 +13,7 @@ import { bacnetRouter } from './bacnet'
 import { ruleRouter } from './rule'
 import { siteRouter } from './site'
 import { faultRouter } from './fault'
+import { imageRouter } from './image'
 
 export const appRouter = router({
   device: deviceRouter,
@@ -21,6 +22,7 @@ export const appRouter = router({
   rule: ruleRouter,
   site: siteRouter,
   fault: faultRouter,
+  image: imageRouter,
 })
 
 export type AppRouter = typeof appRouter
