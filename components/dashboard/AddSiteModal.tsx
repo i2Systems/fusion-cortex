@@ -615,15 +615,21 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
                       <>
                         <button
                           type="button"
-                          onClick={handleSaveImage}
-                          className="px-3 py-1.5 text-xs rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-[var(--color-text-on-primary)] transition-colors flex items-center gap-1.5 shadow-lg font-medium"
+                          onClick={(e) => {
+                            console.log('🖱️ Save Image button clicked!')
+                            e.stopPropagation()
+                            handleSaveImage()
+                          }}
+                          disabled={isUploading}
+                          className="px-3 py-1.5 text-xs rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-[var(--color-text-on-primary)] transition-colors flex items-center gap-1.5 shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Save Image
+                          {isUploading ? 'Saving...' : '💾 Save Image'}
                         </button>
                         <button
                           type="button"
                           onClick={handleCancelPreview}
-                          className="px-3 py-1.5 text-xs rounded-lg bg-[var(--color-surface)]/90 backdrop-blur-sm hover:bg-[var(--color-surface)] border border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors shadow-lg"
+                          disabled={isUploading}
+                          className="px-3 py-1.5 text-xs rounded-lg bg-[var(--color-surface)]/90 backdrop-blur-sm hover:bg-[var(--color-surface)] border border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Cancel
                         </button>
@@ -676,9 +682,29 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
               )}
               
               {previewImage && (
-                <p className="text-xs text-[var(--color-text-muted)] text-center">
-                  Preview - Click Save to apply
-                </p>
+                <div className="space-y-2">
+                  <p className="text-xs text-[var(--color-text-muted)] text-center">
+                    Preview - Click "Save Image" button below to save
+                  </p>
+                  <div className="flex justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveImage}
+                      disabled={isUploading}
+                      className="px-4 py-2 text-sm rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-[var(--color-text-on-primary)] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg font-medium"
+                    >
+                      {isUploading ? 'Saving...' : '💾 Save Image'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelPreview}
+                      disabled={isUploading}
+                      className="px-4 py-2 text-sm rounded-lg bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </div>

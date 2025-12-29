@@ -340,6 +340,8 @@ export async function setCustomImage(libraryId: string, imageUrl: string, trpcCl
     }
     
     // METHOD 2: Also save to client storage as backup (IndexedDB or localStorage)
+    // Always save to client storage as backup, even if database save succeeded
+    console.log('💾 Saving to client storage as backup...')
     // Check if compressed image is still too large for localStorage
     if (compressedImage.length > IMAGE_SIZE_THRESHOLD) {
       // Large image - store in IndexedDB
