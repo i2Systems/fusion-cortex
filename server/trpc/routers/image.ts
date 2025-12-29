@@ -1,13 +1,15 @@
 /**
  * Image Router
  * 
- * tRPC procedures for storing and retrieving images in Supabase database.
- * Handles both site images and library object images.
+ * tRPC procedures for storing and retrieving images.
+ * Images are stored in Supabase Storage, with URLs saved in the database.
+ * Falls back to base64 storage if Supabase is not configured.
  */
 
 import { z } from 'zod'
 import { router, publicProcedure } from '../trpc'
 import { prisma } from '@/lib/prisma'
+import { supabaseAdmin, STORAGE_BUCKETS } from '@/lib/supabase'
 
 export const imageRouter = router({
   // Save site image to database (with retry logic)
@@ -28,7 +30,7 @@ export const imageRouter = router({
             await new Promise(resolve => setTimeout(resolve, 200 * attempt))
           }
           
-          console.log(`💾 [SERVER] Saving site image to database for ${input.siteId}, size: ${input.imageData.length} chars (${(input.imageData.length / 1024).toFixed(1)} KB)`)
+          console.log(`💾 [SERVER] Saving site image for ${input.siteId}, size: ${input.imageData.length} chars (${(input.imageData.length / 1024).toFixed(1)} KB)`)
           
           // First ensure site exists
           const siteExists = await prisma.site.findUnique({
@@ -54,14 +56,51 @@ export const imageRouter = router({
             }
           }
           
-          // Update site with imageUrl
+          // Try to upload to Supabase Storage
+          let imageUrl = input.imageData // Fallback to base64
+          
+          if (supabaseAdmin && input.imageData.startsWith('data:')) {
+            try {
+              // Convert base64 to Buffer
+              const base64Data = input.imageData.replace(/^data:image\/\w+;base64,/, '')
+              const buffer = Buffer.from(base64Data, 'base64')
+              
+              // Generate filename
+              const fileExtension = 'jpg' // Always use jpg for optimization
+              const fileName = `${input.siteId}.${fileExtension}`
+              
+              // Upload to Supabase Storage
+              const { data, error } = await supabaseAdmin.storage
+                .from(STORAGE_BUCKETS.SITE_IMAGES)
+                .upload(fileName, buffer, {
+                  contentType: 'image/jpeg', // Always JPEG for optimization
+                  upsert: true,
+                })
+              
+              if (!error && data) {
+                // Get public URL
+                const { data: urlData } = supabaseAdmin.storage
+                  .from(STORAGE_BUCKETS.SITE_IMAGES)
+                  .getPublicUrl(fileName)
+                
+                imageUrl = urlData.publicUrl
+                console.log(`✅ [SERVER] Uploaded site image to Supabase Storage: ${imageUrl}`)
+              } else {
+                console.warn(`⚠️ [SERVER] Supabase upload failed, using base64 fallback:`, error?.message)
+              }
+            } catch (uploadError: any) {
+              console.warn(`⚠️ [SERVER] Supabase upload error, using base64 fallback:`, uploadError.message)
+            }
+          }
+          
+          // Update site with imageUrl (either Supabase URL or base64 fallback)
           const site = await prisma.site.update({
             where: { id: input.siteId },
-            data: { imageUrl: input.imageData },
+            data: { imageUrl },
           })
           
-          console.log(`✅ [SERVER] Site image saved to database for ${input.siteId}`)
-          return { success: true, siteId: input.siteId }
+          console.log(`✅ [SERVER] Site image saved for ${input.siteId}`)
+          return { success: true, siteId: input.siteId, imageUrl }
         } catch (error: any) {
           lastError = error
           console.error(`Error saving site image to database (attempt ${attempt + 1}):`, error)
@@ -71,10 +110,11 @@ export const imageRouter = router({
             console.warn('imageUrl column missing, attempting to add it...')
             try {
               await prisma.$executeRaw`ALTER TABLE "Site" ADD COLUMN IF NOT EXISTS "imageUrl" TEXT`
-              // Retry the update
+              // Retry the update (will use base64 fallback if Supabase not configured)
+              const fallbackUrl = input.imageData
               const site = await prisma.site.update({
                 where: { id: input.siteId },
-                data: { imageUrl: input.imageData },
+                data: { imageUrl: fallbackUrl },
               })
               return { success: true, siteId: input.siteId }
             } catch (addColumnError) {
@@ -177,11 +217,11 @@ export const imageRouter = router({
       return null
     }),
 
-  // Save library object image to database (with retry logic)
+  // Save library object image (uploads to Supabase Storage, stores URL in database)
   saveLibraryImage: publicProcedure
     .input(z.object({
       libraryId: z.string(),
-      imageData: z.string(), // Base64 encoded image
+      imageData: z.string(), // Base64 encoded image (will be uploaded to Supabase)
       mimeType: z.string().optional().default('image/jpeg'),
     }))
     .mutation(async ({ input }) => {
@@ -195,25 +235,62 @@ export const imageRouter = router({
             await new Promise(resolve => setTimeout(resolve, 200 * attempt))
           }
           
-          console.log(`💾 Saving library image to database for ${input.libraryId}, size: ${input.imageData.length} chars`)
+          console.log(`💾 [SERVER] Saving library image for ${input.libraryId}, size: ${input.imageData.length} chars`)
           
-          // Upsert library image (create or update)
+          // Try to upload to Supabase Storage
+          let imageUrl = input.imageData // Fallback to base64
+          
+          if (supabaseAdmin && input.imageData.startsWith('data:')) {
+            try {
+              // Convert base64 to Buffer
+              const base64Data = input.imageData.replace(/^data:image\/\w+;base64,/, '')
+              const buffer = Buffer.from(base64Data, 'base64')
+              
+              // Generate filename (sanitize libraryId for filename)
+              const sanitizedId = input.libraryId.replace(/[^a-zA-Z0-9-_]/g, '_')
+              const fileName = `${sanitizedId}.jpg`
+              
+              // Upload to Supabase Storage
+              const { data, error } = await supabaseAdmin.storage
+                .from(STORAGE_BUCKETS.LIBRARY_IMAGES)
+                .upload(fileName, buffer, {
+                  contentType: 'image/jpeg', // Always JPEG for optimization
+                  upsert: true,
+                })
+              
+              if (!error && data) {
+                // Get public URL
+                const { data: urlData } = supabaseAdmin.storage
+                  .from(STORAGE_BUCKETS.LIBRARY_IMAGES)
+                  .getPublicUrl(fileName)
+                
+                imageUrl = urlData.publicUrl
+                console.log(`✅ [SERVER] Uploaded library image to Supabase Storage: ${imageUrl}`)
+              } else {
+                console.warn(`⚠️ [SERVER] Supabase upload failed, using base64 fallback:`, error?.message)
+              }
+            } catch (uploadError: any) {
+              console.warn(`⚠️ [SERVER] Supabase upload error, using base64 fallback:`, uploadError.message)
+            }
+          }
+          
+          // Upsert library image (create or update) - now using imageUrl instead of imageData
           const libraryImage = await prisma.libraryImage.upsert({
             where: { libraryId: input.libraryId },
             update: {
-              imageData: input.imageData,
+              imageUrl,
               mimeType: input.mimeType,
               updatedAt: new Date(),
             },
             create: {
               libraryId: input.libraryId,
-              imageData: input.imageData,
+              imageUrl,
               mimeType: input.mimeType,
             },
           })
           
-          console.log(`✅ Library image saved to database for ${input.libraryId}`)
-          return { success: true, libraryId: input.libraryId }
+          console.log(`✅ [SERVER] Library image saved for ${input.libraryId}`)
+          return { success: true, libraryId: input.libraryId, imageUrl }
         } catch (error: any) {
           lastError = error
           console.error(`Error saving library image to database (attempt ${attempt + 1}):`, error)
@@ -226,7 +303,7 @@ export const imageRouter = router({
                 CREATE TABLE IF NOT EXISTS "LibraryImage" (
                   "id" TEXT NOT NULL,
                   "libraryId" TEXT NOT NULL,
-                  "imageData" TEXT NOT NULL,
+                  "imageUrl" TEXT,
                   "mimeType" TEXT NOT NULL DEFAULT 'image/jpeg',
                   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
                   "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -277,10 +354,10 @@ export const imageRouter = router({
           
           const libraryImage = await prisma.libraryImage.findUnique({
             where: { libraryId: input.libraryId },
-            select: { imageData: true, mimeType: true },
+            select: { imageUrl: true, mimeType: true },
           })
           
-          return libraryImage?.imageData || null
+          return libraryImage?.imageUrl || null
         } catch (error: any) {
           console.error(`Error getting library image from database (attempt ${attempt + 1}):`, error)
           

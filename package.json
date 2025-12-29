@@ -21,6 +21,7 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.0.0",
     "@prisma/client": "^5.7.0",
+    "@supabase/supabase-js": "^2.89.0",
     "@tanstack/react-query": "^5.17.0",
     "@trpc/client": "^11.0.0",
     "@trpc/react-query": "^11.0.0",

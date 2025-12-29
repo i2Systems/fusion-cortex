@@ -210,7 +210,7 @@ model Fault {
 model LibraryImage {
   id        String   @id @default(cuid())
   libraryId String   @unique // Library object ID (e.g., "lcm", "fixture-16ft-power-entry")
-  imageData String   // Base64 encoded image data
+  imageUrl  String?  // URL to image in Supabase Storage (or base64 fallback)
   mimeType  String   @default("image/jpeg") // MIME type (image/jpeg, image/png)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

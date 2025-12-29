@@ -175,10 +175,10 @@ function getCustomImageSync(libraryId: string): string | null {
 
 /**
  * Compress image by reducing quality/size
- * Preserves original format (PNG/JPEG) to maintain transparency
- * More aggressive compression to avoid 414 URI_TOO_LONG errors
+ * Aggressive compression for free storage - images are not critical
+ * Always converts to JPEG for maximum compression
  */
-async function compressImage(base64String: string, maxWidth: number = 600, quality: number = 0.7, maxSizeBytes: number = 500000): Promise<string> {
+async function compressImage(base64String: string, maxWidth: number = 400, quality: number = 0.6, maxSizeBytes: number = 200000): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image()
     img.onload = () => {
@@ -199,47 +199,29 @@ async function compressImage(base64String: string, maxWidth: number = 600, quali
       if (ctx) {
         ctx.drawImage(img, 0, 0, width, height)
         
-        // Detect original format and preserve it
-        const isPNG = base64String.startsWith('data:image/png') || base64String.includes('image/png')
-        const isJPEG = base64String.startsWith('data:image/jpeg') || base64String.startsWith('data:image/jpg') || base64String.includes('image/jpeg') || base64String.includes('image/jpg')
-        
-        // Try compression with quality, reducing quality if still too large
-        let compressed: string
+        // Always use JPEG for maximum compression (images are not critical)
+        // Start with aggressive quality setting
+        let compressed = canvas.toDataURL('image/jpeg', quality)
         let currentQuality = quality
         
-        // For PNG, try to compress, but if too large, convert to JPEG
-        if (isPNG) {
-          compressed = canvas.toDataURL('image/png')
-          // If PNG is too large, convert to JPEG
-          if (compressed.length > maxSizeBytes) {
-            console.log(`PNG too large (${compressed.length} bytes), converting to JPEG...`)
-            compressed = canvas.toDataURL('image/jpeg', currentQuality)
-          }
-        } else {
-          // For JPEG, start with quality and reduce if needed
-          compressed = canvas.toDataURL('image/jpeg', currentQuality)
-        }
-        
-        // If still too large, reduce quality further
+        // If still too large, reduce quality further (down to 0.4 minimum)
         let attempts = 0
-        while (compressed.length > maxSizeBytes && attempts < 5 && currentQuality > 0.3) {
-          currentQuality -= 0.1
+        while (compressed.length > maxSizeBytes && attempts < 5 && currentQuality > 0.4) {
+          currentQuality -= 0.05
           compressed = canvas.toDataURL('image/jpeg', currentQuality)
           attempts++
-          console.log(`Image still too large (${compressed.length} bytes), reducing quality to ${currentQuality}...`)
         }
         
-        // If still too large after quality reduction, scale down more
-        if (compressed.length > maxSizeBytes && width > 400) {
-          const scaleFactor = Math.sqrt(maxSizeBytes / compressed.length)
-          width = Math.max(400, Math.floor(width * scaleFactor))
+        // If still too large after quality reduction, scale down more aggressively
+        if (compressed.length > maxSizeBytes && width > 300) {
+          const scaleFactor = Math.sqrt(maxSizeBytes / compressed.length) * 0.9 // Extra 10% reduction
+          width = Math.max(300, Math.floor(width * scaleFactor))
           height = Math.floor((height * width) / img.width)
           
           canvas.width = width
           canvas.height = height
           ctx.drawImage(img, 0, 0, width, height)
           compressed = canvas.toDataURL('image/jpeg', 0.5)
-          console.log(`Rescaled to ${width}x${height}, new size: ${compressed.length} bytes`)
         }
         
         console.log(`✅ Compressed image: ${compressed.length} bytes (${(compressed.length / 1024).toFixed(1)} KB)`)
