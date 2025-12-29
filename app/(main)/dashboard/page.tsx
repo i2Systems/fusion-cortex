@@ -101,9 +101,11 @@ function SiteImageCard({ siteId }: { siteId: string }) {
       enabled: isValidSiteId && !!siteId && siteId.trim().length > 0,
       // Skip if siteId is invalid to avoid validation errors
       retry: false,
-      // Don't refetch on mount if disabled
-      refetchOnMount: false,
+      // Refetch on mount to ensure fresh data
+      refetchOnMount: true,
       refetchOnWindowFocus: false,
+      // Don't use stale data
+      staleTime: 0,
     }
   )
 
@@ -146,14 +148,15 @@ function SiteImageCard({ siteId }: { siteId: string }) {
         }
 
         // Only fallback to client storage if database query completed and returned null
-        console.log(`ℹ️ No database image found for site ${siteId}, checking client storage...`)
+        // Note: dbImage being null/undefined means the query completed but found no image in database
+        console.log(`ℹ️ No database image found for site ${siteId} (query completed, returned null), checking client storage...`)
         const { getSiteImage } = await import('@/lib/libraryUtils')
         const image = await getSiteImage(siteId)
         if (image) {
           console.log(`✅ Loaded image from client storage for site ${siteId}`)
           setDisplayUrl(image)
         } else {
-          console.log(`📷 No image found for site ${siteId}, using default`)
+          console.log(`📷 No image found for site ${siteId} (neither database nor client storage), using default`)
           setDisplayUrl(null)
         }
       } catch (error) {

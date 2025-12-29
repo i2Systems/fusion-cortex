@@ -111,9 +111,11 @@ export function SiteDetailsPanel({
       enabled: isValidSiteId && !!site?.id && site.id.trim().length > 0,
       // Skip if siteId is invalid to avoid validation errors
       retry: false,
-      // Don't refetch on mount if disabled
-      refetchOnMount: false,
+      // Refetch on mount to ensure fresh data
+      refetchOnMount: true,
       refetchOnWindowFocus: false,
+      // Don't use stale data
+      staleTime: 0,
     }
   )
 

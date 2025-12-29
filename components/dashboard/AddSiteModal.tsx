@@ -57,9 +57,11 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
       enabled: isValidSiteId && !!editingSite?.id && editingSite.id.trim().length > 0 && isOpen,
       // Skip if siteId is invalid to avoid validation errors
       retry: false,
-      // Don't refetch on mount if disabled
-      refetchOnMount: false,
+      // Refetch when modal opens to get fresh data
+      refetchOnMount: true,
       refetchOnWindowFocus: false,
+      // Don't use stale data
+      staleTime: 0,
     }
   )
   const saveSiteImageMutation = trpc.image.saveSiteImage.useMutation({
