@@ -11,12 +11,14 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { skipToken } from '@tanstack/react-query'
 import { Site, useSite } from '@/lib/SiteContext'
 import { Device } from '@/lib/mockData'
 import { Zone } from '@/lib/ZoneContext'
 import { Rule } from '@/lib/mockRules'
 import { FaultCategory } from '@/lib/faultDefinitions'
 import { calculateWarrantyStatus } from '@/lib/warranty'
+import { trpc } from '@/lib/trpc/client'
 import {
   MapPin,
   Phone,
@@ -93,7 +95,23 @@ export function SiteDetailsPanel({
   const [siteImageUrl, setSiteImageUrl] = useState<string | null>(null)
   const [imageKey, setImageKey] = useState(0) // Force re-render on update
 
-  // Load site image from client storage
+  // Validate siteId before querying - use skipToken to completely skip query if invalid
+  const isValidSiteId = !!(site?.id && typeof site.id === 'string' && site.id.length > 0)
+
+  // Query site image from database using tRPC
+  // Use skipToken to completely skip the query when siteId is invalid
+  const { data: dbImage, refetch: refetchSiteImage } = trpc.image.getSiteImage.useQuery(
+    isValidSiteId ? { siteId: site.id } : skipToken,
+    { 
+      // Skip if siteId is invalid to avoid validation errors
+      retry: false,
+      // Don't refetch on mount if disabled
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+    }
+  )
+
+  // Load site image (database first, then client storage fallback)
   useEffect(() => {
     const loadSiteImage = async () => {
       if (!site?.id) {
@@ -103,10 +121,18 @@ export function SiteDetailsPanel({
 
       console.log(`🖼️ Loading image for site: ${site.id}`)
       try {
+        // First try database (from tRPC query)
+        if (dbImage) {
+          console.log(`✅ Loaded image from database for site ${site.id}`)
+          setSiteImageUrl(dbImage)
+          return
+        }
+
+        // Fallback to client storage
         const { getSiteImage } = await import('@/lib/libraryUtils')
         const image = await getSiteImage(site.id)
         if (image) {
-          console.log(`✅ Loaded image for site ${site.id}`)
+          console.log(`✅ Loaded image from client storage for site ${site.id}`)
           setSiteImageUrl(image)
         } else {
           console.log(`📷 No image found for site ${site.id}, using default`)
@@ -127,12 +153,13 @@ export function SiteDetailsPanel({
       if (!customEvent.detail || customEvent.detail?.siteId === site?.id) {
         console.log(`🔄 Site image updated event received for ${site?.id}`)
         setImageKey(prev => prev + 1) // Force re-render
-        loadSiteImage() // Reload image
+        refetchSiteImage() // Refetch from database
+        loadSiteImage() // Reload from client storage
       }
     }
     window.addEventListener('siteImageUpdated', handleSiteImageUpdate)
     return () => window.removeEventListener('siteImageUpdated', handleSiteImageUpdate)
-  }, [site?.id])
+  }, [site?.id, dbImage, refetchSiteImage])
 
   if (!site) {
     return (

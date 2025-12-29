@@ -84,11 +84,19 @@ export function getComponentLibraryUrl(componentType: string): string | null {
 async function getCustomImage(libraryId: string, trpcClient?: any): Promise<string | null> {
   if (typeof window === 'undefined') return null
   
+  // Validate libraryId before attempting any queries
+  if (!libraryId || typeof libraryId !== 'string' || libraryId.length === 0) {
+    console.warn(`⚠️ Invalid libraryId provided to getCustomImage: ${libraryId}`)
+    return null
+  }
+  
   console.log(`🔍 Loading custom image for libraryId: ${libraryId}`)
   
   // METHOD 1: Try to load from Supabase database first (primary source)
+  // Only use tRPC client if provided (from React hooks in components)
+  // Direct fetch calls don't work well with tRPC's superjson transformer
   try {
-    if (trpcClient) {
+    if (trpcClient && libraryId && libraryId.length > 0) {
       const dbImage = await trpcClient.image.getLibraryImage.query({ libraryId })
       if (dbImage) {
         console.log(`✅ Loaded library image from Supabase database for ${libraryId}`)
@@ -96,36 +104,9 @@ async function getCustomImage(libraryId: string, trpcClient?: any): Promise<stri
       } else {
         console.log(`ℹ️ No database image found for ${libraryId}`)
       }
-    } else {
-      // Try direct API call (tRPC format)
-      // For queries, use GET with input in query string (standard tRPC query format)
-      try {
-        const input = encodeURIComponent(JSON.stringify({ libraryId }))
-        const response = await fetch(`/api/trpc/image.getLibraryImage?input=${input}`, {
-          method: 'GET',
-        })
-        if (response.ok) {
-          const result = await response.json()
-          // tRPC query response format: { result: { data: ... } }
-          if (result?.result?.data) {
-            console.log(`✅ Loaded library image from Supabase database via API for ${libraryId}`)
-            return result.result.data
-          } else if (result?.result?.data === null) {
-            console.log(`ℹ️ No database image found in API response for ${libraryId} (null)`)
-          } else if (result?.error) {
-            console.warn(`⚠️ API returned error for ${libraryId}:`, result.error)
-          } else {
-            console.log(`ℹ️ No database image found in API response for ${libraryId} (empty result)`)
-          }
-        } else {
-          const errorText = await response.text()
-          console.warn(`⚠️ API returned ${response.status} for ${libraryId}:`, errorText.substring(0, 200))
-        }
-      } catch (apiError: any) {
-        console.warn(`⚠️ API call failed for ${libraryId}:`, apiError.message)
-        // Continue to client storage fallback
-      }
     }
+    // Skip direct API calls - they require complex tRPC format handling
+    // Components should use tRPC hooks directly for database access
   } catch (dbError: any) {
     console.warn(`⚠️ Failed to load from database for ${libraryId}, trying client storage:`, dbError.message)
   }
@@ -264,28 +245,39 @@ export async function setCustomImage(libraryId: string, imageUrl: string, trpcCl
         })
         console.log('✅ Library image saved to Supabase database')
       } else {
-        // Try direct API call (tRPC format)
-        const input = encodeURIComponent(JSON.stringify({
-          libraryId,
-          imageData: compressedImage,
-          mimeType,
-        }))
-        const response = await fetch(`/api/trpc/image.saveLibraryImage?batch=1&input=${input}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        })
-        if (response.ok) {
-          const result = await response.json()
-          if (result[0]?.result?.data) {
-            console.log('✅ Library image saved to Supabase database via API')
-          } else if (result[0]?.error) {
-            throw new Error(result[0].error.message || 'Database save failed')
+        // Try direct API call for mutation (POST with batch format)
+        try {
+          console.log('💾 Attempting to save library image to Supabase database (direct API call)...')
+          // tRPC batch format for mutations: POST with JSON body
+          const response = await fetch(`/api/trpc/image.saveLibraryImage?batch=1`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              "0": {
+                json: {
+                  libraryId,
+                  imageData: compressedImage,
+                  mimeType,
+                },
+              },
+            }),
+          })
+          if (response.ok) {
+            const result = await response.json()
+            if (Array.isArray(result) && result[0]?.result?.data) {
+              console.log('✅ Library image saved to Supabase database via API')
+            } else if (result[0]?.error) {
+              throw new Error(result[0].error.json?.message || result[0].error.message || 'Database save failed')
+            } else {
+              throw new Error('Invalid response format')
+            }
           } else {
-            throw new Error('Invalid response format')
+            const errorText = await response.text()
+            throw new Error(`API returned ${response.status}: ${errorText.substring(0, 200)}`)
           }
-        } else {
-          const errorText = await response.text()
-          throw new Error(`API returned ${response.status}: ${errorText}`)
+        } catch (apiError: any) {
+          console.warn('⚠️ Failed to save library image to database via API, using client storage:', apiError.message)
+          // Continue to client storage fallback
         }
       }
     } catch (dbError: any) {
@@ -480,11 +472,19 @@ const SITE_IMAGE_PREFIX = 'site_image_'
 export async function getSiteImage(siteId: string, retries: number = 3, trpcClient?: any): Promise<string | null> {
   if (typeof window === 'undefined') return null
   
+  // Validate siteId before attempting any queries
+  if (!siteId || typeof siteId !== 'string' || siteId.length === 0) {
+    console.warn(`⚠️ Invalid siteId provided to getSiteImage: ${siteId}`)
+    return null
+  }
+  
   console.log(`🔍 Loading site image for siteId: ${siteId}`)
   
   // METHOD 1: Try to load from Supabase database first (primary source)
+  // Only use tRPC client if provided (from React hooks in components)
+  // Direct fetch calls don't work well with tRPC's superjson transformer
   try {
-    if (trpcClient) {
+    if (trpcClient && siteId && siteId.length > 0) {
       const dbImage = await trpcClient.image.getSiteImage.query({ siteId })
       if (dbImage) {
         console.log(`✅ Loaded site image from Supabase database for ${siteId}`)
@@ -492,37 +492,9 @@ export async function getSiteImage(siteId: string, retries: number = 3, trpcClie
       } else {
         console.log(`ℹ️ No database image found for ${siteId}`)
       }
-    } else {
-      // Try direct API call (tRPC format)
-      // For queries, use GET with input in query string, or POST with simple JSON body
-      try {
-        // Use GET request with input in query string (standard tRPC query format)
-        const input = encodeURIComponent(JSON.stringify({ siteId }))
-        const response = await fetch(`/api/trpc/image.getSiteImage?input=${input}`, {
-          method: 'GET',
-        })
-        if (response.ok) {
-          const result = await response.json()
-          // tRPC query response format: { result: { data: ... } }
-          if (result?.result?.data) {
-            console.log(`✅ Loaded site image from Supabase database via API for ${siteId}`)
-            return result.result.data
-          } else if (result?.result?.data === null) {
-            console.log(`ℹ️ No database image found in API response for ${siteId} (null)`)
-          } else if (result?.error) {
-            console.warn(`⚠️ API returned error for ${siteId}:`, result.error)
-          } else {
-            console.log(`ℹ️ No database image found in API response for ${siteId} (empty result)`)
-          }
-        } else {
-          const errorText = await response.text()
-          console.warn(`⚠️ API returned ${response.status} for ${siteId}:`, errorText.substring(0, 200))
-        }
-      } catch (apiError: any) {
-        console.warn(`⚠️ API call failed for ${siteId}:`, apiError.message)
-        // Continue to client storage fallback
-      }
     }
+    // Skip direct API calls - they require complex tRPC format handling
+    // Components should use tRPC hooks directly for database access
   } catch (dbError: any) {
     console.warn(`⚠️ Failed to load from database for ${siteId}, trying client storage:`, dbError.message)
   }
@@ -617,33 +589,35 @@ export async function setSiteImage(siteId: string, imageUrl: string, trpcClient?
         // Continue to client storage fallback
       }
     } else {
-      // Try to get tRPC client dynamically
+      // Try direct API call for mutation (POST with batch format)
       try {
-        const { trpc } = await import('./trpc/client')
-        // Note: This won't work in non-React contexts, but we'll try
-        console.log('💾 Attempting to save to Supabase database (dynamic import)...')
-        // We can't use hooks here, so we'll need to make a direct API call (tRPC format)
-        const input = encodeURIComponent(JSON.stringify({
-          siteId,
-          imageData: compressedImage,
-          mimeType,
-        }))
-        const response = await fetch(`/api/trpc/image.saveSiteImage?batch=1&input=${input}`, {
+        console.log('💾 Attempting to save to Supabase database (direct API call)...')
+        // tRPC batch format for mutations: POST with JSON body
+        const response = await fetch(`/api/trpc/image.saveSiteImage?batch=1`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            "0": {
+              json: {
+                siteId,
+                imageData: compressedImage,
+                mimeType,
+              },
+            },
+          }),
         })
         if (response.ok) {
           const result = await response.json()
-          if (result[0]?.result?.data) {
+          if (Array.isArray(result) && result[0]?.result?.data) {
             console.log('✅ Site image saved to Supabase database via API')
           } else if (result[0]?.error) {
-            throw new Error(result[0].error.message || 'Database save failed')
+            throw new Error(result[0].error.json?.message || result[0].error.message || 'Database save failed')
           } else {
             throw new Error('Invalid response format')
           }
         } else {
           const errorText = await response.text()
-          throw new Error(`API returned ${response.status}: ${errorText}`)
+          throw new Error(`API returned ${response.status}: ${errorText.substring(0, 200)}`)
         }
       } catch (apiError: any) {
         console.warn('⚠️ Failed to save to database via API, using client storage:', apiError.message)

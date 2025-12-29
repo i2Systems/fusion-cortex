@@ -13,6 +13,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { skipToken } from '@tanstack/react-query'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { ResizablePanel } from '@/components/layout/ResizablePanel'
 import { SiteDetailsPanel } from '@/components/dashboard/StoreDetailsPanel'
@@ -71,19 +72,43 @@ interface SiteSummary {
   needsAttention: boolean
 }
 
-// Site Image Card Component (loads from client storage)
+// Site Image Card Component (loads from database first, then client storage)
 function SiteImageCard({ siteId }: { siteId: string }) {
   const [displayUrl, setDisplayUrl] = useState<string | null>(null)
   const [imageKey, setImageKey] = useState(0) // Force re-render on update
+
+  // Validate siteId before querying - use skipToken to completely skip query if invalid
+  const isValidSiteId = !!(siteId && typeof siteId === 'string' && siteId.length > 0)
+
+  // Query site image from database using tRPC
+  // Use skipToken to completely skip the query when siteId is invalid
+  const { data: dbImage, refetch: refetchSiteImage } = trpc.image.getSiteImage.useQuery(
+    isValidSiteId ? { siteId } : skipToken,
+    { 
+      // Skip if siteId is invalid to avoid validation errors
+      retry: false,
+      // Don't refetch on mount if disabled
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+    }
+  )
 
   useEffect(() => {
     const loadImage = async () => {
       console.log(`🖼️ Loading image for site: ${siteId}`)
       try {
+        // First try database (from tRPC query)
+        if (dbImage) {
+          console.log(`✅ Loaded image from database for site ${siteId}`)
+          setDisplayUrl(dbImage)
+          return
+        }
+
+        // Fallback to client storage
         const { getSiteImage } = await import('@/lib/libraryUtils')
         const image = await getSiteImage(siteId)
         if (image) {
-          console.log(`✅ Loaded image for site ${siteId}`)
+          console.log(`✅ Loaded image from client storage for site ${siteId}`)
           setDisplayUrl(image)
         } else {
           console.log(`📷 No image found for site ${siteId}, using default`)
@@ -104,12 +129,13 @@ function SiteImageCard({ siteId }: { siteId: string }) {
       if (!customEvent.detail || customEvent.detail?.siteId === siteId) {
         console.log(`🔄 Site image updated event received for ${siteId}`)
         setImageKey(prev => prev + 1) // Force re-render
-        loadImage() // Reload image
+        refetchSiteImage() // Refetch from database
+        loadImage() // Reload from client storage
       }
     }
     window.addEventListener('siteImageUpdated', handleSiteImageUpdate)
     return () => window.removeEventListener('siteImageUpdated', handleSiteImageUpdate)
-  }, [siteId])
+  }, [siteId, dbImage, refetchSiteImage])
 
   return (
     <div className="flex-shrink-0 w-24 h-24 rounded-lg bg-gradient-to-br from-[var(--color-primary-soft)]/20 to-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] flex items-center justify-center relative overflow-hidden">

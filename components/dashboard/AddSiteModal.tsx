@@ -10,8 +10,10 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { skipToken } from '@tanstack/react-query'
 import { X, Building2, MapPin, Phone, User, Calendar, Hash, Image as ImageIcon, Upload, Trash2 } from 'lucide-react'
 import { Site } from '@/lib/SiteContext'
+import { trpc } from '@/lib/trpc/client'
 
 interface AddSiteModalProps {
   isOpen: boolean
@@ -38,6 +40,30 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
   const [currentImage, setCurrentImage] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // tRPC hooks for image operations
+  const utils = trpc.useUtils()
+  
+  // Validate siteId before querying - use skipToken to completely skip query if invalid
+  const isValidSiteId = !!(editingSite?.id && typeof editingSite.id === 'string' && editingSite.id.length > 0 && isOpen)
+  
+  const { data: dbImage, refetch: refetchSiteImage } = trpc.image.getSiteImage.useQuery(
+    isValidSiteId ? { siteId: editingSite.id } : skipToken,
+    { 
+      // Skip if siteId is invalid to avoid validation errors
+      retry: false,
+      // Don't refetch on mount if disabled
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+    }
+  )
+  const saveSiteImageMutation = trpc.image.saveSiteImage.useMutation({
+    onSuccess: () => {
+      refetchSiteImage()
+      window.dispatchEvent(new CustomEvent('siteImageUpdated', { detail: { siteId: editingSite?.id } }))
+    },
+  })
+  const ensureSiteMutation = trpc.site.ensureExists.useMutation()
 
   // Compress image function
   const compressImage = async (base64String: string, maxWidth: number = 800, quality: number = 0.8): Promise<string> => {
@@ -70,14 +96,21 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
     })
   }
 
-  // Load site image when editing
+  // Load site image when editing (database first, then client storage fallback)
   useEffect(() => {
     const loadSiteImage = async () => {
       if (!isOpen) return
       
       if (editingSite) {
-        // Load client-side stored image
         try {
+          // First try database (from tRPC query)
+          if (dbImage) {
+            console.log(`✅ Loaded image from database for site ${editingSite.id}`)
+            setCurrentImage(dbImage)
+            return
+          }
+
+          // Fallback to client storage
           const { getSiteImage } = await import('@/lib/libraryUtils')
           const image = await getSiteImage(editingSite.id)
           setCurrentImage(image)
@@ -96,12 +129,13 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
     const handleSiteImageUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ siteId: string }>
       if (editingSite && customEvent.detail?.siteId === editingSite.id) {
+        refetchSiteImage()
         loadSiteImage()
       }
     }
     window.addEventListener('siteImageUpdated', handleSiteImageUpdate)
     return () => window.removeEventListener('siteImageUpdated', handleSiteImageUpdate)
-  }, [editingSite, isOpen])
+  }, [editingSite, isOpen, dbImage, refetchSiteImage])
 
   // Populate form when editing
   useEffect(() => {
@@ -199,10 +233,10 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
         
         // CRITICAL: Ensure site exists in database before saving image
         try {
-          const ensureInput = encodeURIComponent(JSON.stringify({
+          await ensureSiteMutation.mutateAsync({
             id: editingSite.id,
             name: editingSite.name,
-            storeNumber: editingSite.siteNumber || '', // Database field is still storeNumber
+            storeNumber: editingSite.siteNumber || '',
             address: editingSite.address || '',
             city: editingSite.city || '',
             state: editingSite.state || '',
@@ -210,47 +244,45 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
             phone: editingSite.phone || '',
             manager: editingSite.manager || '',
             squareFootage: editingSite.squareFootage || 0,
-            openedDate: editingSite.openedDate ? new Date(editingSite.openedDate).toISOString() : new Date().toISOString(),
-          }))
-          const ensureResponse = await fetch(`/api/trpc/site.ensureExists?batch=1&input=${ensureInput}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            openedDate: editingSite.openedDate ? new Date(editingSite.openedDate) : new Date(),
           })
-          if (ensureResponse.ok) {
-            const ensureResult = await ensureResponse.json()
-            if (ensureResult[0]?.result?.data || ensureResult[0]?.result) {
-              console.log('✅ Site ensured in database')
-            } else {
-              console.warn('⚠️ Site ensure returned unexpected format')
-            }
-          } else {
-            const errorText = await ensureResponse.text()
-            console.warn('⚠️ Failed to ensure site exists in database:', errorText.substring(0, 100))
-            // Continue anyway - client storage will work
-          }
+          console.log('✅ Site ensured in database')
         } catch (ensureError: any) {
           console.warn('⚠️ Error ensuring site exists:', ensureError.message)
           // Continue anyway - client storage will work
         }
         
-        // Now save the image (setSiteImage will try database first, then client storage)
-        console.log('💾 Calling setSiteImage...')
-        await setSiteImage(editingSite.id, previewImage)
-        console.log('✅ setSiteImage completed')
+        // Determine mime type
+        const isPNG = previewImage.startsWith('data:image/png')
+        const mimeType = isPNG ? 'image/png' : 'image/jpeg'
+        
+        // Try to save to database first using tRPC mutation
+        try {
+          console.log('💾 Attempting to save to database via tRPC...')
+          await saveSiteImageMutation.mutateAsync({
+            siteId: editingSite.id,
+            imageData: previewImage,
+            mimeType,
+          })
+          console.log('✅ Image saved to database via tRPC')
+        } catch (dbError: any) {
+          console.warn('⚠️ Failed to save to database via tRPC, trying utility function:', dbError.message)
+          // Fallback to utility function (which will try direct API call, then client storage)
+          await setSiteImage(editingSite.id, previewImage, utils.client as any)
+        }
         
         // Wait a bit for the save to complete and event to dispatch
-        await new Promise(resolve => setTimeout(resolve, 600))
+        await new Promise(resolve => setTimeout(resolve, 300))
         
-        // Reload the image to display (try database first, then client storage)
-        console.log('🔍 Retrieving saved image...')
-        const savedImage = await getSiteImage(editingSite.id)
+        // Reload the image to display (database query will refetch automatically)
+        refetchSiteImage()
+        const savedImage = dbImage || await getSiteImage(editingSite.id)
         if (savedImage) {
           console.log('✅ Image saved and retrieved successfully')
           setCurrentImage(savedImage)
           setPreviewImage(null)
         } else {
           console.warn('⚠️ Image saved but could not be retrieved immediately')
-          // Still clear preview and show current - it might load on next render
           setPreviewImage(null)
           // Trigger a reload by dispatching event again
           setTimeout(() => {
