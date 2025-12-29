@@ -164,27 +164,16 @@ export function SiteProvider({ children }: { children: ReactNode }) {
           setActiveSiteId(savedSiteId)
           hasInitializedSite.current = true
         } else {
-          // Stored ID is invalid or not yet loaded
-          // Check if it's a temporary ID (site-timestamp format)
-          const isTemporaryId = savedSiteId.startsWith('site-') && /^site-\d+$/.test(savedSiteId)
-          
-          if (isTemporaryId) {
-            // Temporary ID - this means a new site was just created
-            // The database will have the real ID, so use the most recently created site
-            // (assuming it's the last one in the list, or we can find it by name/siteNumber)
-            const mostRecentSite = sites[sites.length - 1]
-            if (mostRecentSite) {
-              setActiveSiteId(mostRecentSite.id)
-              hasInitializedSite.current = true
-            }
+          // Stored ID is invalid or not yet loaded - site was deleted
+          // Fall back to first site if available
+          const firstSiteId = sites[0]?.id
+          if (firstSiteId) {
+            setActiveSiteId(firstSiteId)
+            hasInitializedSite.current = true
           } else {
-            // Real ID that doesn't exist - site was deleted or ID changed
-            // Fall back to first site
-            const firstSiteId = sites[0]?.id
-            if (firstSiteId) {
-              setActiveSiteId(firstSiteId)
-              hasInitializedSite.current = true
-            }
+            // No sites available
+            setActiveSiteId(null)
+            hasInitializedSite.current = true
           }
         }
       } else if (!hasInitializedSite.current) {
