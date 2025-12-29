@@ -100,6 +100,21 @@ export const imageRouter = router({
           })
           
           console.log(`✅ [SERVER] Site image saved for ${input.siteId}`)
+          console.log(`   imageUrl type: ${imageUrl.startsWith('http') ? 'Supabase URL' : 'base64'}`)
+          console.log(`   imageUrl length: ${imageUrl.length}`)
+          console.log(`   imageUrl preview: ${imageUrl.substring(0, 100)}...`)
+          
+          // Verify it was actually saved by reading it back
+          const verify = await prisma.site.findUnique({
+            where: { id: input.siteId },
+            select: { imageUrl: true },
+          })
+          if (verify?.imageUrl) {
+            console.log(`✅ [SERVER] Verified: Image URL saved to database for ${input.siteId}, length: ${verify.imageUrl.length}`)
+          } else {
+            console.error(`❌ [SERVER] VERIFICATION FAILED: Image URL not found in database after save for ${input.siteId}`)
+          }
+          
           return { success: true, siteId: input.siteId, imageUrl }
         } catch (error: any) {
           lastError = error

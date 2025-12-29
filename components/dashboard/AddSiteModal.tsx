@@ -65,16 +65,33 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
     }
   )
   const saveSiteImageMutation = trpc.image.saveSiteImage.useMutation({
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       console.log('✅ [CLIENT] saveSiteImage mutation succeeded:', result)
+      console.log('   Result imageUrl length:', result?.imageUrl?.length || 'N/A')
+      
+      // Wait a bit for the database write to complete
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
       // Invalidate and refetch the image query
-      refetchSiteImage()
-      // Also invalidate the query cache to force fresh fetch
-      utils.image.getSiteImage.invalidate({ siteId: editingSite?.id })
-      window.dispatchEvent(new CustomEvent('siteImageUpdated', { detail: { siteId: editingSite?.id } }))
+      if (editingSite?.id) {
+        console.log('🔄 Invalidating query cache for site:', editingSite.id)
+        // Invalidate all queries for this site
+        await utils.image.getSiteImage.invalidate({ siteId: editingSite.id })
+        // Also refetch immediately
+        refetchSiteImage()
+        // Dispatch event to notify other components
+        window.dispatchEvent(new CustomEvent('siteImageUpdated', { detail: { siteId: editingSite.id } }))
+        window.dispatchEvent(new Event('siteImageUpdated')) // General event too
+        console.log('✅ Cache invalidated and events dispatched')
+      }
     },
     onError: (error) => {
       console.error('❌ [CLIENT] saveSiteImage mutation failed:', error)
+      console.error('   Error details:', {
+        message: error.message,
+        data: error.data,
+        shape: error.shape,
+      })
     },
   })
   const ensureSiteMutation = trpc.site.ensureExists.useMutation()
@@ -285,12 +302,16 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
           console.log(`   Compressed size: ${compressedImage.length} chars (${(compressedImage.length / 1024).toFixed(1)} KB)`)
           
           // Use the mutation hook directly - this is the React way (components use direct fetch, but mutation hook is better)
-          await saveSiteImageMutation.mutateAsync({
+          const saveResult = await saveSiteImageMutation.mutateAsync({
             siteId: editingSite.id,
             imageData: compressedImage,
             mimeType: compressedImage.startsWith('data:image/png') ? 'image/png' : 'image/jpeg',
           })
-          console.log('✅ Image saved via mutation hook')
+          console.log('✅ Image saved via mutation hook, result:', saveResult)
+          console.log('   Saved imageUrl:', saveResult?.imageUrl ? `${saveResult.imageUrl.substring(0, 50)}...` : 'N/A')
+          
+          // Wait for cache invalidation to complete (handled in onSuccess)
+          await new Promise(resolve => setTimeout(resolve, 500))
           
           // Also save to client storage as backup (like components do)
           const { setSiteImage } = await import('@/lib/libraryUtils')
