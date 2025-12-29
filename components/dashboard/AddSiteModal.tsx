@@ -249,6 +249,10 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
   }
 
   const handleSaveImage = async () => {
+    console.log('🖱️ handleSaveImage called!')
+    console.log('   previewImage:', !!previewImage, previewImage ? `${previewImage.length} chars` : 'null')
+    console.log('   editingSite:', editingSite ? editingSite.id : 'null')
+    
     if (!previewImage) {
       console.warn('⚠️ No preview image to save')
       alert('Please select an image first')
@@ -651,10 +655,15 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
                       <>
                         <button
                           type="button"
-                          onClick={(e) => {
-                            console.log('🖱️ Save Image button clicked!')
+                          onClick={async (e) => {
+                            e.preventDefault()
                             e.stopPropagation()
-                            handleSaveImage()
+                            console.log('🖱️ Save Image button clicked! (overlay button)')
+                            try {
+                              await handleSaveImage()
+                            } catch (error) {
+                              console.error('❌ Error in handleSaveImage:', error)
+                            }
                           }}
                           disabled={isUploading}
                           className="px-3 py-1.5 text-xs rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-[var(--color-text-on-primary)] transition-colors flex items-center gap-1.5 shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -725,7 +734,16 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
                   <div className="flex justify-center gap-2">
                     <button
                       type="button"
-                      onClick={handleSaveImage}
+                      onClick={async (e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        console.log('🖱️ Save Image button clicked! (below preview)')
+                        try {
+                          await handleSaveImage()
+                        } catch (error) {
+                          console.error('❌ Error in handleSaveImage:', error)
+                        }
+                      }}
                       disabled={isUploading}
                       className="px-4 py-2 text-sm rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-[var(--color-text-on-primary)] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg font-medium"
                     >
