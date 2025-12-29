@@ -194,50 +194,69 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
       const { setSiteImage, getSiteImage } = await import('@/lib/libraryUtils')
       
       if (editingStore) {
-        // Save for existing store - try database first, then client storage
+        // Save for existing store - ensure site exists in database first
         console.log(`Saving image for existing store: ${editingStore.id}`)
         
-        // Try database save via tRPC API
+        // CRITICAL: Ensure site exists in database before saving image
         try {
-          // Use tRPC batch format: ?batch=1&input=...
-          const input = encodeURIComponent(JSON.stringify({
-            siteId: editingStore.id,
-            imageData: previewImage,
+          const ensureInput = encodeURIComponent(JSON.stringify({
+            id: editingStore.id,
+            name: editingStore.name,
+            storeNumber: editingStore.storeNumber || '',
+            address: editingStore.address || '',
+            city: editingStore.city || '',
+            state: editingStore.state || '',
+            zipCode: editingStore.zipCode || '',
+            phone: editingStore.phone || '',
+            manager: editingStore.manager || '',
+            squareFootage: editingStore.squareFootage || 0,
+            openedDate: editingStore.openedDate ? new Date(editingStore.openedDate).toISOString() : new Date().toISOString(),
           }))
-          const response = await fetch(`/api/trpc/image.saveSiteImage?batch=1&input=${input}`, {
+          const ensureResponse = await fetch(`/api/trpc/site.ensureExists?batch=1&input=${ensureInput}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
           })
-          if (response.ok) {
-            const result = await response.json()
-            if (result[0]?.result?.data) {
-              console.log('✅ Image saved to Supabase database')
-            } else if (result[0]?.error) {
-              throw new Error(result[0].error.message || 'Database save failed')
+          if (ensureResponse.ok) {
+            const ensureResult = await ensureResponse.json()
+            if (ensureResult[0]?.result?.data || ensureResult[0]?.result) {
+              console.log('✅ Site ensured in database')
             } else {
-              throw new Error('Invalid response format')
+              console.warn('⚠️ Site ensure returned unexpected format')
             }
           } else {
-            const errorText = await response.text()
-            throw new Error(`API returned ${response.status}: ${errorText}`)
+            const errorText = await ensureResponse.text()
+            console.warn('⚠️ Failed to ensure site exists in database:', errorText.substring(0, 100))
+            // Continue anyway - client storage will work
           }
-        } catch (dbError: any) {
-          console.warn('⚠️ Database save failed, using client storage as fallback:', dbError.message)
+        } catch (ensureError: any) {
+          console.warn('⚠️ Error ensuring site exists:', ensureError.message)
+          // Continue anyway - client storage will work
         }
         
-        // Also save to client storage as backup
+        // Now save the image (setSiteImage will try database first, then client storage)
+        console.log('💾 Calling setSiteImage...')
         await setSiteImage(editingStore.id, previewImage)
+        console.log('✅ setSiteImage completed')
+        
+        // Wait a bit for the save to complete and event to dispatch
+        await new Promise(resolve => setTimeout(resolve, 600))
         
         // Reload the image to display (try database first, then client storage)
+        console.log('🔍 Retrieving saved image...')
         const savedImage = await getSiteImage(editingStore.id)
         if (savedImage) {
           console.log('✅ Image saved and retrieved successfully')
           setCurrentImage(savedImage)
+          setPreviewImage(null)
         } else {
-          console.error('❌ Image saved but could not be retrieved')
-          alert('Image saved but could not be loaded. Please refresh the page.')
+          console.warn('⚠️ Image saved but could not be retrieved immediately')
+          // Still clear preview and show current - it might load on next render
+          setPreviewImage(null)
+          // Trigger a reload by dispatching event again
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('siteImageUpdated', { detail: { siteId: editingStore.id } }))
+          }, 500)
         }
-        setPreviewImage(null)
       } else {
         // For new sites, store in a temporary location (client storage only for now)
         const tempId = `temp-${Date.now()}`

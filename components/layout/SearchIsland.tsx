@@ -75,7 +75,7 @@ export function SearchIsland({
 
   return (
     <div className={`${containerClass} ${positionClass}`}>
-      <div className="fusion-card backdrop-blur-xl border border-[var(--color-primary)]/20 search-island py-3 px-4">
+      <div className="fusion-card backdrop-blur-xl border border-[var(--color-primary)]/20 search-island py-4 px-5">
         {/* Single Row: Title + Search + Actions */}
         <div className="flex items-center gap-4 flex-wrap md:flex-nowrap">
           {/* Title Section */}
@@ -99,12 +99,12 @@ export function SearchIsland({
           <div className="relative min-w-0 ml-auto md:ml-0" style={{ width: '100%', maxWidth: '500px' }}>
             <div className="w-full md:w-[400px] lg:w-[500px]">
               <Search 
-                size={16} 
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" 
+                size={22} 
+                className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" 
               />
               {detectedAction && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                  <Sparkles size={12} className="text-[var(--color-primary)] animate-pulse" />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <Sparkles size={14} className="text-[var(--color-primary)] animate-pulse" />
                   <span className="text-xs text-[var(--color-primary)] font-medium bg-[var(--color-primary-soft)] px-2 py-0.5 rounded">
                     {detectedAction.label}
                   </span>
@@ -121,10 +121,10 @@ export function SearchIsland({
                     setSearchQuery('')
                   }
                 }}
-                className={`w-full pl-10 pr-3 py-2 h-[38px] bg-[var(--color-bg-elevated)] border rounded-lg text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-soft)] focus:outline-none focus:shadow-[var(--shadow-glow-primary)] transition-all ${
+                className={`w-full pl-14 pr-4 py-3.5 h-[52px] bg-[var(--color-bg-elevated)] border-2 rounded-xl text-lg font-medium text-[var(--color-text)] placeholder:text-[var(--color-text-soft)] placeholder:font-normal focus:outline-none focus:shadow-[var(--shadow-glow-primary)] transition-all ${
                   detectedAction 
-                    ? 'border-[var(--color-primary)] pr-28' 
-                    : 'border-[var(--color-border-subtle)] focus:border-[var(--color-primary)]'
+                    ? 'border-[var(--color-primary)] pr-32 focus:ring-2 focus:ring-[var(--color-primary)]' 
+                    : 'border-[var(--color-border-subtle)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]'
                 }`}
               />
             </div>
