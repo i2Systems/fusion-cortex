@@ -208,7 +208,8 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
       reader.onload = async (event) => {
         const base64String = event.target?.result as string
         if (base64String) {
-          // Compress the image
+          // Compress the image using the utility function
+          const { compressImage } = await import('@/lib/libraryUtils')
           const compressed = await compressImage(base64String)
           setPreviewImage(compressed)
           setIsUploading(false)
@@ -232,11 +233,18 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
 
   const handleSaveImage = async () => {
     if (!previewImage) {
-      console.warn('No preview image to save')
+      console.warn('⚠️ No preview image to save')
+      alert('Please select an image first')
       return
     }
     
-    console.log('💾 Starting image save process...')
+    if (!editingSite?.id) {
+      console.warn('⚠️ No site ID available for saving image')
+      alert('Please save the site first, or the site ID is missing')
+      return
+    }
+    
+    console.log('💾 Starting image save process for site:', editingSite.id)
     setIsUploading(true)
     try {
       const { setSiteImage, getSiteImage } = await import('@/lib/libraryUtils')
@@ -270,29 +278,37 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
         // This will compress the image aggressively to avoid 414 errors
         try {
           console.log('💾 Attempting to save to database via utility function (with compression)...')
+          console.log('   Preview image size:', previewImage.length, 'chars')
           await setSiteImage(editingSite.id, previewImage, utils.client as any)
           console.log('✅ Image saved via utility function')
         } catch (saveError: any) {
-          console.error('❌ Failed to save image:', saveError.message)
-          alert(`Failed to save image: ${saveError.message}`)
+          console.error('❌ Failed to save image:', saveError)
+          alert(`Failed to save image: ${saveError.message || 'Unknown error'}`)
+          setIsUploading(false)
+          return
         }
         
         // Wait a bit for the save to complete and event to dispatch
-        await new Promise(resolve => setTimeout(resolve, 300))
+        console.log('⏳ Waiting for save to complete...')
+        await new Promise(resolve => setTimeout(resolve, 500))
         
         // Reload the image to display (database query will refetch automatically)
+        console.log('🔄 Refetching image from database...')
         refetchSiteImage()
+        await new Promise(resolve => setTimeout(resolve, 300))
+        
         const savedImage = dbImage || await getSiteImage(editingSite.id)
         if (savedImage) {
           console.log('✅ Image saved and retrieved successfully')
           setCurrentImage(savedImage)
           setPreviewImage(null)
         } else {
-          console.warn('⚠️ Image saved but could not be retrieved immediately')
+          console.warn('⚠️ Image saved but could not be retrieved immediately, will reload on next render')
           setPreviewImage(null)
           // Trigger a reload by dispatching event again
           setTimeout(() => {
             window.dispatchEvent(new CustomEvent('siteImageUpdated', { detail: { siteId: editingSite.id } }))
+            window.dispatchEvent(new Event('siteImageUpdated')) // General event too
           }, 500)
         }
       } else {

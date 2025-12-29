@@ -194,7 +194,7 @@ function getCustomImageSync(libraryId: string): string | null {
  * Aggressive compression for free storage - images are not critical
  * Always converts to JPEG for maximum compression
  */
-async function compressImage(base64String: string, maxWidth: number = 400, quality: number = 0.6, maxSizeBytes: number = 200000): Promise<string> {
+export async function compressImage(base64String: string, maxWidth: number = 400, quality: number = 0.6, maxSizeBytes: number = 200000): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image()
     img.onload = () => {
