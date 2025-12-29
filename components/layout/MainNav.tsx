@@ -22,7 +22,6 @@ import {
   Search,
   AlertTriangle,
   User,
-  Bell,
   Workflow,
   HelpCircle
 } from 'lucide-react'
@@ -51,8 +50,6 @@ const navGroups = [
   ],
 ]
 
-// Notifications (moved to bottom)
-const notificationsItem = { href: '/notifications', label: 'Notifications', icon: Bell }
 
 export function MainNav() {
   const pathname = usePathname()
@@ -114,24 +111,8 @@ export function MainNav() {
           ))}
         </div>
 
-        {/* Bottom: Notifications, Library, Profile & Settings */}
+        {/* Bottom: Library, Profile & Settings */}
         <div className="p-4 flex flex-col items-center gap-2 border-t border-[var(--color-border-subtle)]">
-          {/* Notifications Icon */}
-          <Link
-            href={notificationsItem.href}
-            className={`
-              w-14 h-14 flex items-center justify-center rounded-lg
-              transition-all duration-200
-              ${pathname === notificationsItem.href || pathname?.startsWith(notificationsItem.href + '/')
-                ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)] shadow-[var(--shadow-glow-primary)]' 
-                : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-primary)] hover:shadow-[0_0_15px_rgba(0,217,255,0.3)]'
-              }
-            `}
-            title={notificationsItem.label}
-          >
-            <Bell size={22} strokeWidth={pathname === notificationsItem.href || pathname?.startsWith(notificationsItem.href + '/') ? 2.5 : 2} />
-          </Link>
-
           {/* Library Icon */}
           <Link
             href="/library"

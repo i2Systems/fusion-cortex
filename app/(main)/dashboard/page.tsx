@@ -372,11 +372,11 @@ export default function DashboardPage() {
       const mapUploaded = typeof window !== 'undefined' ? !!localStorage.getItem(mapImageKey) : false
 
       // Calculate stats
-  const onlineDevices = devices.filter(d => d.status === 'online').length
+      const onlineDevices = devices.filter(d => d.status === 'online').length
       const offlineDevices = devices.filter(d => d.status === 'offline' || d.status === 'missing')
-  const healthPercentage = devices.length > 0 
-    ? Math.round((onlineDevices / devices.length) * 100)
-    : 100
+      const healthPercentage = devices.length > 0 
+        ? Math.round((onlineDevices / devices.length) * 100)
+        : 100
 
       // Count warranties expiring/expired
       const now = new Date()
@@ -724,16 +724,59 @@ export default function DashboardPage() {
           placeholder="Search sites, devices, or type 'view devices' or 'view zones'..."
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
+          metrics={siteSummaries.length > 0 ? [
+            {
+              label: 'Total Sites',
+              value: siteSummaries.length,
+              color: 'var(--color-text)',
+            },
+            {
+              label: 'Total Devices',
+              value: siteSummaries.reduce((sum, s) => sum + s.totalDevices, 0).toLocaleString(),
+              color: 'var(--color-text)',
+            },
+            {
+              label: 'Sites Needing Attention',
+              value: siteSummaries.filter(s => s.needsAttention).length,
+              color: 'var(--color-warning)',
+            },
+            {
+              label: 'Avg. Health',
+              value: `${Math.round(
+                siteSummaries.reduce((sum, s) => sum + s.healthPercentage, 0) / siteSummaries.length
+              )}%`,
+              color: 'var(--color-success)',
+            },
+            ...(dashboardInsight ? [{
+              label: dashboardInsight.healthTrend.label,
+              value: `${dashboardInsight.healthTrend.value}%`,
+              color: dashboardInsight.healthTrend.trend === 'improving' 
+                ? 'var(--color-success)' 
+                : dashboardInsight.healthTrend.trend === 'declining'
+                ? 'var(--color-danger)'
+                : 'var(--color-text)',
+              trend: dashboardInsight.healthTrend.trend === 'improving' ? 'up' as const 
+                : dashboardInsight.healthTrend.trend === 'declining' ? 'down' as const 
+                : 'stable' as const,
+              delta: dashboardInsight.healthTrend.delta,
+              icon: dashboardInsight.healthTrend.trend === 'improving' ? (
+                <TrendingUp size={14} className="text-[var(--color-success)]" />
+              ) : dashboardInsight.healthTrend.trend === 'declining' ? (
+                <TrendingDown size={14} className="text-[var(--color-danger)]" />
+              ) : (
+                <Activity size={14} className="text-[var(--color-text-muted)]" />
+              ),
+            }] : []),
+          ] : []}
         />
       </div>
 
       {/* Main Content: Site Cards + Details Panel */}
       <div 
-        className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" 
-        style={{ overflow: 'visible' }}
+        className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14 overflow-hidden"
       >
         {/* Site Cards - Left Side */}
-        <div className="flex-1 min-w-0 flex flex-col overflow-auto">
+        <div className="flex-1 min-w-0 flex flex-col overflow-y-auto">
           {/* Site Cards Grid - Responsive */}
           <div className="flex-1 min-h-0">
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
@@ -856,82 +899,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Quick Stats Summary - Pushed to Bottom */}
-          {siteSummaries.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-x-4 gap-y-2 mt-auto pt-6 flex-shrink-0">
-            <div className="fusion-card">
-              <div className="text-xs text-[var(--color-text-muted)] mb-1">Total Sites</div>
-              <div className="text-2xl font-bold text-[var(--color-text)]">
-                {siteSummaries.length}
-              </div>
-            </div>
-            <div className="fusion-card">
-              <div className="text-xs text-[var(--color-text-muted)] mb-1">Total Devices</div>
-              <div className="text-2xl font-bold text-[var(--color-text)]">
-                {siteSummaries.reduce((sum, s) => sum + s.totalDevices, 0).toLocaleString()}
-              </div>
-            </div>
-            <div className="fusion-card">
-              <div className="text-xs text-[var(--color-text-muted)] mb-1">Sites Needing Attention</div>
-              <div className="text-2xl font-bold text-[var(--color-warning)]">
-                {siteSummaries.filter(s => s.needsAttention).length}
-              </div>
-            </div>
-            <div className="fusion-card">
-              <div className="text-xs text-[var(--color-text-muted)] mb-1">Avg. Health</div>
-              <div className="text-2xl font-bold text-[var(--color-success)]">
-                {Math.round(
-                  siteSummaries.reduce((sum, s) => sum + s.healthPercentage, 0) / siteSummaries.length
-                )}%
-              </div>
-            </div>
-            {/* Insight Card: Health Trend */}
-            {dashboardInsight && (
-          <div className="fusion-card">
-                <div className="flex items-start justify-between mb-1">
-                  <div className="flex items-center gap-1.5">
-                    {dashboardInsight.healthTrend.trend === 'improving' ? (
-                      <TrendingUp size={14} className="text-[var(--color-success)]" />
-                    ) : dashboardInsight.healthTrend.trend === 'declining' ? (
-                      <TrendingDown size={14} className="text-[var(--color-danger)]" />
-                    ) : (
-                      <Activity size={14} className="text-[var(--color-text-muted)]" />
-                    )}
-                    <span className="text-xs text-[var(--color-text-muted)]">
-                      {dashboardInsight.healthTrend.label}
-                    </span>
-                  </div>
-                  {dashboardInsight.healthTrend.delta !== 0 && (
-                    <div className={`flex items-center gap-1 text-xs font-semibold ${
-                      dashboardInsight.healthTrend.trend === 'improving' 
-                        ? 'text-[var(--color-success)]' 
-                        : 'text-[var(--color-danger)]'
-                    }`}>
-                      {dashboardInsight.healthTrend.trend === 'improving' ? (
-                        <ArrowUp size={10} />
-                      ) : (
-                        <ArrowDown size={10} />
-                      )}
-                      {Math.abs(dashboardInsight.healthTrend.delta)}
-                    </div>
-                  )}
-                </div>
-                <div className={`text-2xl font-bold mb-1 ${
-                  dashboardInsight.healthTrend.trend === 'improving'
-                    ? 'text-[var(--color-success)]'
-                    : dashboardInsight.healthTrend.trend === 'declining'
-                    ? 'text-[var(--color-danger)]'
-                    : 'text-[var(--color-text)]'
-                }`}>
-                  {dashboardInsight.healthTrend.value}%
-                </div>
-                <div className="text-xs text-[var(--color-text-muted)]">
-                  {dashboardInsight.healthTrend.description}
-                </div>
-              </div>
-            )}
-            </div>
-          )}
           </div>
 
         {/* Site Details Panel - Right Side */}

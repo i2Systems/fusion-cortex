@@ -12,10 +12,11 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useRole } from '@/lib/role'
 import { useSite } from '@/lib/SiteContext'
-import { ChevronDown } from 'lucide-react'
+import { useNotifications } from '@/lib/NotificationContext'
+import { ChevronDown, Bell } from 'lucide-react'
 
 const pageTitles: Record<string, { primary: string; secondary?: string }> = {
   '/dashboard': { primary: 'Fusion', secondary: 'i2 Cloud' },
@@ -30,8 +31,10 @@ const pageTitles: Record<string, { primary: string; secondary?: string }> = {
 
 export function PageTitle() {
   const pathname = usePathname()
+  const router = useRouter()
   const { role } = useRole()
   const { sites, activeSite, setActiveSite } = useSite()
+  const { unreadCount } = useNotifications()
   const title = pageTitles[pathname || '/dashboard'] || { primary: 'Fusion', secondary: 'i2 Cloud' }
   const [showSiteDropdown, setShowSiteDropdown] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -74,15 +77,36 @@ export function PageTitle() {
           </span>
         </div>
 
-        {/* Right: Site Selector */}
-        <div className="relative pointer-events-auto">
+        {/* Right: Site Selector + Notifications */}
+        <div className="flex items-center gap-3 pointer-events-auto">
+          {/* Notifications icon */}
+          <button
+            onClick={() => router.push('/notifications')}
+            className="relative p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+            title="Notifications"
+          >
+            <Bell size={20} />
+            {unreadCount > 0 && (
+              <>
+                {/* Dot indicator */}
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[var(--color-primary)] animate-pulse" />
+                {/* Counter badge */}
+                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[var(--color-primary)] text-[var(--color-text-on-primary)] text-xs flex items-center justify-center font-semibold shadow-[var(--shadow-glow-primary)]">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              </>
+            )}
+          </button>
+
+          {/* Site Selector */}
+          <div className="relative">
           <button 
             ref={buttonRef}
-            onClick={() => setShowSiteDropdown(!showSiteDropdown)}
+              onClick={() => setShowSiteDropdown(!showSiteDropdown)}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors border border-[var(--color-border-subtle)]"
           >
             <span className="text-sm font-medium text-[var(--color-text)] whitespace-nowrap max-w-[180px] truncate">
-              {activeSite?.name || 'Select Site'}
+                {activeSite?.name || 'Select Site'}
             </span>
             <ChevronDown size={14} className="text-[var(--color-text-muted)] flex-shrink-0" />
           </button>
@@ -118,6 +142,7 @@ export function PageTitle() {
             </>,
             document.body
           )}
+          </div>
         </div>
       </div>
     </div>

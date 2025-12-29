@@ -11,9 +11,10 @@
 
 import { useState, useMemo } from 'react'
 import { useNotifications, NotificationType } from '@/lib/NotificationContext'
+import { useSite } from '@/lib/SiteContext'
 import { useRouter } from 'next/navigation'
 import { SearchIsland } from '@/components/layout/SearchIsland'
-import { AlertTriangle, Layers, Network, Workflow, Search, Home, X, CheckCheck, Mail, ArrowUpDown, Clock, Filter, Sparkles, List, Grid3x3, LayoutGrid } from 'lucide-react'
+import { AlertTriangle, Layers, Network, Workflow, Search, Home, X, CheckCheck, Mail, ArrowUpDown, Clock, Filter, Sparkles, List, Grid3x3, LayoutGrid, Columns, Rss, Building2 } from 'lucide-react'
 import Link from 'next/link'
 
 const typeIcons: Record<string, any> = {
@@ -35,14 +36,16 @@ const typeColors: Record<string, string> = {
 }
 
 type SortOption = 'newest' | 'oldest' | 'type' | 'unread-first'
-type LayoutOption = 'grid' | 'list' | 'cards'
+type LayoutOption = 'singular' | 'grid' | 'double-list' | 'mortar'
 
 export default function NotificationsPage() {
   const { notifications, unreadCount, markAsRead, markAsUnread, markAllAsRead, dismissNotification, addNotification } = useNotifications()
+  const { sites, activeSiteId } = useSite()
   const router = useRouter()
-  const [filter, setFilter] = useState<'all' | 'unread'>('all')
+  const [filter, setFilter] = useState<'all' | 'unread' | 'faults'>('all')
+  const [siteFilter, setSiteFilter] = useState<string | 'all'>('all') // 'all' or specific siteId
   const [sortBy, setSortBy] = useState<SortOption>('newest')
-  const [layout, setLayout] = useState<LayoutOption>('grid')
+  const [layout, setLayout] = useState<LayoutOption>('singular')
   const [searchQuery, setSearchQuery] = useState('')
 
   // Import generateRandomNotification from context (we'll need to export it)
@@ -125,9 +128,31 @@ export default function NotificationsPage() {
   }
 
   const filteredNotifications = useMemo(() => {
-    let filtered = filter === 'unread' 
-      ? notifications.filter(n => !n.read)
-      : notifications
+    let filtered = notifications
+    
+    // Apply read/unread filter
+    if (filter === 'unread') {
+      filtered = filtered.filter(n => !n.read)
+    } else if (filter === 'faults') {
+      // Show only fault notifications
+      filtered = filtered.filter(n => n.type === 'fault')
+    }
+    
+    // Apply site filter
+    if (siteFilter !== 'all') {
+      const beforeCount = filtered.length
+      filtered = filtered.filter(n => {
+        // Only include notifications for the selected site (exclude global notifications when filtering by site)
+        const matches = n.siteId === siteFilter
+        return matches
+      })
+      const afterCount = filtered.length
+      console.log(`[Notifications] Site filter "${siteFilter}": ${beforeCount} -> ${afterCount} notifications`)
+      console.log(`[Notifications] Sample siteIds in notifications:`, notifications.slice(0, 3).map(n => ({ id: n.id, siteId: n.siteId })))
+    } else {
+      // When showing "All Sites", show all notifications (both site-specific and global)
+      // No filtering needed
+    }
     
     // Apply search filter
     if (searchQuery.trim()) {
@@ -160,7 +185,7 @@ export default function NotificationsPage() {
     })
     
     return sorted
-  }, [notifications, filter, sortBy, searchQuery])
+  }, [notifications, filter, siteFilter, sortBy, searchQuery])
 
   // Determine card size and styling based on content and position
   const getCardSize = (notification: any, index: number) => {
@@ -222,6 +247,17 @@ export default function NotificationsPage() {
             {/* Layout Toggle */}
             <div className="flex items-center gap-1 bg-[var(--color-surface-subtle)] rounded-lg p-1">
               <button
+                onClick={() => setLayout('singular')}
+                className={`p-2 rounded transition-all duration-200 ${
+                  layout === 'singular'
+                    ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[var(--shadow-soft)] scale-105'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
+                }`}
+                title="Feed Layout"
+              >
+                <Rss size={16} />
+              </button>
+              <button
                 onClick={() => setLayout('grid')}
                 className={`p-2 rounded transition-all duration-200 ${
                   layout === 'grid'
@@ -233,24 +269,24 @@ export default function NotificationsPage() {
                 <LayoutGrid size={16} />
               </button>
               <button
-                onClick={() => setLayout('list')}
+                onClick={() => setLayout('double-list')}
                 className={`p-2 rounded transition-all duration-200 ${
-                  layout === 'list'
+                  layout === 'double-list'
                     ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[var(--shadow-soft)] scale-105'
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
                 }`}
-                title="List Layout"
+                title="Double List Layout"
               >
-                <List size={16} />
+                <Columns size={16} />
               </button>
               <button
-                onClick={() => setLayout('cards')}
+                onClick={() => setLayout('mortar')}
                 className={`p-2 rounded transition-all duration-200 ${
-                  layout === 'cards'
+                  layout === 'mortar'
                     ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[var(--shadow-soft)] scale-105'
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
                 }`}
-                title="Card Grid Layout"
+                title="Mortar Layout"
               >
                 <Grid3x3 size={16} />
               </button>
@@ -279,6 +315,45 @@ export default function NotificationsPage() {
               >
                 Unread
               </button>
+              <button
+                onClick={() => setFilter('faults')}
+                className={`px-3 py-1.5 rounded text-sm transition-all duration-200 ${
+                  filter === 'faults'
+                    ? 'bg-[var(--color-surface)] text-[var(--color-text)] font-medium shadow-[var(--shadow-soft)] scale-105'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
+                }`}
+              >
+                All Faults
+              </button>
+            </div>
+            
+            {/* Site Filter */}
+            <div className="flex items-center gap-1 bg-[var(--color-surface-subtle)] rounded-lg p-1">
+              <Building2 size={14} className="text-[var(--color-text-muted)] ml-1" />
+              <button
+                onClick={() => setSiteFilter('all')}
+                className={`px-3 py-1.5 rounded text-sm transition-all duration-200 ${
+                  siteFilter === 'all'
+                    ? 'bg-[var(--color-surface)] text-[var(--color-text)] font-medium shadow-[var(--shadow-soft)] scale-105'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
+                }`}
+              >
+                All Sites
+              </button>
+              {sites.map((site) => (
+                <button
+                  key={site.id}
+                  onClick={() => setSiteFilter(site.id)}
+                  className={`px-3 py-1.5 rounded text-sm transition-all duration-200 truncate max-w-[120px] ${
+                    siteFilter === site.id
+                      ? 'bg-[var(--color-surface)] text-[var(--color-text)] font-medium shadow-[var(--shadow-soft)] scale-105'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
+                  }`}
+                  title={site.name}
+                >
+                  {site.name}
+                </button>
+              ))}
             </div>
             
             {/* Sort */}
@@ -321,22 +396,138 @@ export default function NotificationsPage() {
       </div>
 
       {/* Notifications Content */}
-      <div className="flex-1 overflow-auto px-[20px] py-6">
+      <div className="flex-1 overflow-auto py-6">
         {filteredNotifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
+          <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-4">
             <div className="w-16 h-16 rounded-full bg-[var(--color-surface-subtle)] flex items-center justify-center mb-4">
               <AlertTriangle size={24} className="text-[var(--color-text-muted)]" />
             </div>
             <h3 className="text-lg font-semibold text-[var(--color-text)] mb-2">
-              {filter === 'unread' ? 'No unread notifications' : 'No notifications'}
+              {filter === 'unread' 
+                ? 'No unread notifications' 
+                : filter === 'faults'
+                ? 'No fault notifications'
+                : 'No notifications'}
             </h3>
             <p className="text-sm text-[var(--color-text-muted)]">
-              {filter === 'unread' ? 'You\'re all caught up!' : 'Notifications will appear here when events occur.'}
+              {filter === 'unread' 
+                ? 'You\'re all caught up!' 
+                : filter === 'faults'
+                ? siteFilter !== 'all'
+                  ? `No faults found for ${sites.find(s => s.id === siteFilter)?.name || 'this site'}.`
+                  : 'No fault notifications found across all sites.'
+                : siteFilter !== 'all'
+                ? `No notifications found for ${sites.find(s => s.id === siteFilter)?.name || 'this site'}.`
+                : 'Notifications will appear here when events occur.'}
             </p>
           </div>
         ) : (
           <>
+            {layout === 'singular' && (
+              <div className="max-w-2xl mx-auto px-[20px] space-y-4">
+                {filteredNotifications.map((notification, index) => {
+                  const Icon = typeIcons[notification.type] || AlertTriangle
+                  const color = typeColors[notification.type] || 'var(--color-text-muted)'
+                  
+                  return (
+                    <div
+                      key={notification.id}
+                      className={`
+                        fusion-card p-5 cursor-pointer transition-all duration-200 group
+                        ${notification.read 
+                          ? 'opacity-75 hover:opacity-100 border-[var(--color-border-subtle)]' 
+                          : 'border-l-4 border-l-[var(--color-primary)] shadow-[var(--shadow-soft)]'
+                        }
+                        hover:shadow-[var(--shadow-soft)] hover:scale-[1.01]
+                      `}
+                      onClick={() => handleNotificationClick(notification)}
+                      style={{
+                        animation: `fadeInUp 0.3s ease-out ${index * 0.03}s both`
+                      }}
+                    >
+                      <div className="flex items-start gap-4">
+                        {/* Icon */}
+                        <div 
+                          className="p-3 rounded-xl flex-shrink-0 transition-all duration-200 group-hover:scale-110"
+                          style={{ 
+                            backgroundColor: notification.read ? 'var(--color-surface-subtle)' : `${color}20`,
+                          }}
+                        >
+                          <Icon 
+                            size={22} 
+                            style={{ 
+                              color: notification.read ? 'var(--color-text-muted)' : color 
+                            }} 
+                          />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                <h3 className="text-base font-semibold text-[var(--color-text)]">
+                                  {notification.title}
+                                </h3>
+                                {!notification.read && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] font-medium flex-shrink-0">
+                                    New
+                                  </span>
+                                )}
+                                {notification.siteId && (
+                                  <span className="text-xs px-2 py-0.5 text-[var(--color-text-soft)] font-normal flex-shrink-0 flex items-center gap-1">
+                                    <Building2 size={10} />
+                                    {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                                {notification.message}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (notification.read) {
+                                    markAsUnread(notification.id)
+                                  } else {
+                                    markAsRead(notification.id)
+                                  }
+                                }}
+                                className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-all duration-200 hover:scale-110"
+                                title={notification.read ? 'Mark as unread' : 'Mark as read'}
+                              >
+                                <Mail size={16} className="text-[var(--color-text-muted)]" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  dismissNotification(notification.id)
+                                }}
+                                className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-all duration-200 hover:scale-110"
+                                title="Dismiss"
+                              >
+                                <X size={16} className="text-[var(--color-text-muted)]" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--color-border-subtle)]">
+                            <Clock size={12} className="text-[var(--color-text-soft)]" />
+                            <span className="text-xs text-[var(--color-text-soft)]">
+                              {formatTime(notification.timestamp)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
             {layout === 'grid' && (
+              <div className="px-[20px]">
               <div className="notifications-grid">
                 {filteredNotifications.map((notification, index) => {
                   const Icon = typeIcons[notification.type] || AlertTriangle
@@ -392,6 +583,12 @@ export default function NotificationsPage() {
                                     New
                                   </span>
                                 )}
+                                {notification.siteId && (
+                                  <span className="text-xs px-2 py-0.5 text-[var(--color-text-soft)] font-normal flex-shrink-0 flex items-center gap-1">
+                                    <Building2 size={10} />
+                                    {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
+                                  </span>
+                                )}
                               </div>
                               <p className={`text-sm text-[var(--color-text-muted)] leading-relaxed ${shouldClamp ? 'line-clamp-2' : ''}`}>
                                 {notification.message}
@@ -435,10 +632,12 @@ export default function NotificationsPage() {
                     </div>
                   )
                 })}
+                </div>
               </div>
             )}
 
-            {layout === 'list' && (
+            {layout === 'double-list' && (
+              <div className="px-[20px]">
               <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
                 {filteredNotifications.map((notification, index) => {
                   const Icon = typeIcons[notification.type] || AlertTriangle
@@ -489,6 +688,12 @@ export default function NotificationsPage() {
                                     New
                                   </span>
                                 )}
+                                {notification.siteId && (
+                                  <span className="text-xs px-1.5 py-0.5 text-[var(--color-text-soft)] font-normal flex-shrink-0 flex items-center gap-1">
+                                    <Building2 size={9} />
+                                    {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
+                                  </span>
+                                )}
                               </div>
                               <p className="text-sm text-[var(--color-text-muted)] leading-relaxed line-clamp-2">
                                 {notification.message}
@@ -521,21 +726,31 @@ export default function NotificationsPage() {
                               </button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[var(--color-border-subtle)]">
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--color-border-subtle)]">
+                            <div className="flex items-center gap-2">
                             <Clock size={11} className="text-[var(--color-text-soft)]" />
                             <span className="text-xs text-[var(--color-text-soft)]">
                               {formatTime(notification.timestamp)}
                             </span>
+                            </div>
+                            {notification.siteId && (
+                              <span className="text-xs text-[var(--color-text-soft)] font-normal flex items-center gap-1">
+                                <Building2 size={9} />
+                                {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
                     </div>
                   )
                 })}
+                </div>
               </div>
             )}
 
-            {layout === 'cards' && (
+            {layout === 'mortar' && (
+              <div className="px-[20px]">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {filteredNotifications.map((notification, index) => {
                   const Icon = typeIcons[notification.type] || AlertTriangle
@@ -581,6 +796,12 @@ export default function NotificationsPage() {
                             {!notification.read && (
                               <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)] flex-shrink-0 animate-pulse" />
                             )}
+                            {notification.siteId && (
+                              <span className="text-[10px] px-1.5 py-0.5 text-[var(--color-text-soft)] font-normal flex-shrink-0 flex items-center gap-1">
+                                <Building2 size={8} />
+                                {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -598,6 +819,12 @@ export default function NotificationsPage() {
                             {formatTime(notification.timestamp)}
                           </span>
                         </div>
+                        {notification.siteId && (
+                          <span className="text-[10px] text-[var(--color-text-soft)] font-normal flex items-center gap-1">
+                            <Building2 size={8} />
+                            {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
+                          </span>
+                        )}
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                           <button
                             onClick={(e) => {
@@ -628,6 +855,7 @@ export default function NotificationsPage() {
                     </div>
                   )
                 })}
+                </div>
               </div>
             )}
           </>

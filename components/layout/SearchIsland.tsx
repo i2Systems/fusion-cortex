@@ -9,9 +9,19 @@
 
 'use client'
 
-import { Search, Layers, Sparkles } from 'lucide-react'
+import { Search, Layers, Sparkles, ArrowUp, ArrowDown, TrendingUp, TrendingDown, Activity } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 import { useSearch } from '@/lib/SearchContext'
+
+interface Metric {
+  label: string
+  value: string | number
+  color?: string
+  trend?: 'up' | 'down' | 'stable'
+  delta?: number
+  description?: string
+  icon?: React.ReactNode
+}
 
 interface SearchIslandProps {
   position?: 'top' | 'bottom'
@@ -25,6 +35,7 @@ interface SearchIslandProps {
   onLayersClick?: () => void
   filterCount?: number
   onActionDetected?: (action: { id: string; label: string }) => void
+  metrics?: Metric[]
 }
 
 export function SearchIsland({ 
@@ -38,7 +49,8 @@ export function SearchIsland({
   onSearchChange,
   onLayersClick,
   filterCount = 0,
-  onActionDetected
+  onActionDetected,
+  metrics = []
 }: SearchIslandProps) {
   const [internalSearchQuery, setInternalSearchQuery] = useState('')
   const { detectAction, getPageActions } = useSearch()
@@ -76,7 +88,7 @@ export function SearchIsland({
   return (
     <div className={`${containerClass} ${positionClass}`}>
       <div className="fusion-card backdrop-blur-xl border border-[var(--color-primary)]/20 search-island py-4 px-5">
-        {/* Single Row: Title + Search + Actions */}
+        {/* Single Row: Title + Metrics + Search + Actions */}
         <div className="flex items-center gap-4 flex-wrap md:flex-nowrap">
           {/* Title Section */}
           {title && (
@@ -89,6 +101,53 @@ export function SearchIsland({
                   {subtitle}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Metrics - Compact data viz snippets */}
+          {metrics.length > 0 && (
+            <div className="flex items-center gap-3 flex-shrink-0">
+              {metrics.map((metric, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)]"
+                >
+                  {metric.icon && (
+                    <div className="flex-shrink-0">
+                      {metric.icon}
+                    </div>
+                  )}
+                  <div className="flex flex-col min-w-0">
+                    <div className="text-xs text-[var(--color-text-muted)] leading-tight">
+                      {metric.label}
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span 
+                        className="text-base font-bold leading-tight truncate"
+                        style={{ color: metric.color || 'var(--color-text)' }}
+                      >
+                        {metric.value}
+                      </span>
+                      {metric.trend && metric.delta !== undefined && metric.delta !== 0 && (
+                        <div className={`flex items-center gap-0.5 text-[10px] font-semibold ${
+                          metric.trend === 'up' 
+                            ? 'text-[var(--color-success)]' 
+                            : metric.trend === 'down'
+                            ? 'text-[var(--color-danger)]'
+                            : 'text-[var(--color-text-muted)]'
+                        }`}>
+                          {metric.trend === 'up' ? (
+                            <ArrowUp size={8} />
+                          ) : metric.trend === 'down' ? (
+                            <ArrowDown size={8} />
+                          ) : null}
+                          {Math.abs(metric.delta)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 

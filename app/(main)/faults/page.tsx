@@ -20,6 +20,7 @@ import { ResizablePanel } from '@/components/layout/ResizablePanel'
 import { useDevices } from '@/lib/DeviceContext'
 import { useZones } from '@/lib/ZoneContext'
 import { useSite } from '@/lib/SiteContext'
+import { useNotifications } from '@/lib/NotificationContext'
 import { Device } from '@/lib/mockData'
 import { FaultCategory, assignFaultCategory, generateFaultDescription, faultCategories } from '@/lib/faultDefinitions'
 import { trpc } from '@/lib/trpc/client'
@@ -48,6 +49,7 @@ export default function FaultsPage() {
   const { devices } = useDevices()
   const { zones } = useZones()
   const { activeSiteId } = useSite()
+  const { addNotification, notifications } = useNotifications()
 
   // Use cached map data from context
   const { mapData } = useMap()
@@ -198,6 +200,51 @@ export default function FaultsPage() {
     return allFaults.sort((a, b) => b.detectedAt.getTime() - a.detectedAt.getTime())
   }, [dbFaults, deviceGeneratedFaults, devices])
 
+  // Sync database faults to notifications
+  // Use a ref to track which faults we've already created notifications for
+  // Store as a global map keyed by fault ID to persist across site changes
+  const syncedFaultIdsRef = useRef<Set<string>>(new Set())
+  
+  useEffect(() => {
+    if (!dbFaults || !activeSiteId || devices.length === 0) return
+    
+    // Create notifications for database faults that don't have notifications yet
+    dbFaults.forEach(dbFault => {
+      // Skip if we've already synced this fault (globally, not per-site)
+      if (syncedFaultIdsRef.current.has(dbFault.id)) return
+      
+      const device = devices.find(d => d.id === dbFault.deviceId)
+      if (device) {
+        const categoryInfo = faultCategories[dbFault.faultType as FaultCategory]
+        if (categoryInfo) {
+          const notificationId = `fault-notification-${dbFault.id}`
+          
+          // Check if notification already exists before creating
+          // This prevents duplicates if the component re-renders
+          const existingNotification = notifications.find(n => n.id === notificationId)
+          if (existingNotification) {
+            // Notification already exists, mark fault as synced
+            syncedFaultIdsRef.current.add(dbFault.id)
+            return
+          }
+          
+          addNotification({
+            id: notificationId,
+            type: 'fault',
+            title: `${categoryInfo.label} Detected`,
+            message: dbFault.description || `${categoryInfo.label} detected on device ${device.deviceId}. ${categoryInfo.description.split('.')[0]}.`,
+            timestamp: new Date(dbFault.detectedAt),
+            read: false,
+            link: '/faults',
+            siteId: activeSiteId,
+          })
+          // Mark this fault as synced
+          syncedFaultIdsRef.current.add(dbFault.id)
+        }
+      }
+    })
+  }, [dbFaults, activeSiteId, devices, addNotification, notifications])
+
   // Initialize category filters - will be updated based on actual faults
   const [showCategories, setShowCategories] = useState<Record<FaultCategory, boolean>>({
     'environmental-ingress': false,
@@ -254,6 +301,19 @@ export default function FaultsPage() {
         faultType: faultData.faultType,
         description: faultData.description,
         detectedAt: new Date(),
+      })
+      
+      // Create notification for the new fault
+      const categoryInfo = faultCategories[faultData.faultType]
+      addNotification({
+        id: `fault-notification-${newFault.id}`,
+        type: 'fault',
+        title: `${categoryInfo.label} Detected`,
+        message: faultData.description || `${categoryInfo.label} detected on device ${faultData.device.deviceId}. ${categoryInfo.description.split('.')[0]}.`,
+        timestamp: new Date(newFault.detectedAt),
+        read: false,
+        link: '/faults',
+        siteId: activeSiteId || undefined,
       })
       
       // Select the newly created fault by its ID
@@ -518,6 +578,38 @@ export default function FaultsPage() {
           placeholder="Search faults or devices..."
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
+          metrics={faults.length > 0 ? [
+            {
+              label: insights.newFaults24h.label,
+              value: insights.newFaults24h.count,
+              color: 'var(--color-text)',
+              trend: insights.newFaults24h.trend,
+              delta: insights.newFaults24h.delta,
+              icon: <Clock size={14} className="text-[var(--color-primary)]" />,
+            },
+            ...(insights.trendingCategory ? [{
+              label: insights.trendingCategory.label,
+              value: faultCategories[insights.trendingCategory.category].shortLabel,
+              color: 'var(--color-warning)',
+              trend: 'up' as const,
+              delta: insights.trendingCategory.newCount,
+              icon: <TrendingUp size={14} className="text-[var(--color-warning)]" />,
+            }] : []),
+            {
+              label: insights.criticalFaults.label,
+              value: insights.criticalFaults.count,
+              color: 'var(--color-danger)',
+              trend: insights.criticalFaults.trend,
+              delta: insights.criticalFaults.delta,
+              icon: <AlertTriangle size={14} className="text-[var(--color-danger)]" />,
+            },
+            {
+              label: insights.avgResolutionTime.label,
+              value: `${insights.avgResolutionTime.hours}h`,
+              color: 'var(--color-text)',
+              icon: <TrendingDown size={14} className="text-[var(--color-primary)]" />,
+            },
+          ] : []}
         />
       </div>
 
@@ -529,7 +621,7 @@ export default function FaultsPage() {
         {/* Fault List/Map - Left Side */}
         <div 
           ref={listContainerRef}
-          className="flex-1 min-w-0 flex flex-col overflow-auto"
+          className="flex-1 min-w-0 flex flex-col overflow-y-auto"
         >
           {/* View Toggle and Category Filters */}
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -657,139 +749,6 @@ export default function FaultsPage() {
             )}
           </div>
 
-          {/* Insight Cards - Pushed to Bottom */}
-          {faults.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-auto pt-6 flex-shrink-0">
-              {/* Insight 1: New Faults (24h) */}
-              <div className="fusion-card">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Clock size={16} className="text-[var(--color-primary)]" />
-                    <span className="text-sm font-medium text-[var(--color-text-muted)]">
-                      {insights.newFaults24h.label}
-                    </span>
-                  </div>
-                  {insights.newFaults24h.delta !== 0 && (
-                    <div className={`flex items-center gap-1 text-xs font-semibold ${
-                      insights.newFaults24h.trend === 'up' 
-                        ? 'text-[var(--color-danger)]' 
-                        : 'text-[var(--color-success)]'
-                    }`}>
-                      {insights.newFaults24h.trend === 'up' ? (
-                        <ArrowUp size={12} />
-                      ) : (
-                        <ArrowDown size={12} />
-                      )}
-                      {Math.abs(insights.newFaults24h.delta)}
-                    </div>
-                  )}
-                </div>
-                <div className="text-2xl font-bold text-[var(--color-text)] mb-1">
-                  {insights.newFaults24h.count}
-                </div>
-                <div className="text-xs text-[var(--color-text-muted)]">
-                  {insights.newFaults24h.description}
-                </div>
-              </div>
-
-              {/* Insight 2: Trending Category */}
-              {insights.trendingCategory ? (
-                <div className="fusion-card">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp size={16} className="text-[var(--color-warning)]" />
-                      <span className="text-sm font-medium text-[var(--color-text-muted)]">
-                        {insights.trendingCategory.label}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs font-semibold text-[var(--color-warning)]">
-                      <ArrowUp size={12} />
-                      {insights.trendingCategory.newCount}
-                    </div>
-                  </div>
-                  <div className="text-2xl font-bold text-[var(--color-warning)] mb-1">
-                    {faultCategories[insights.trendingCategory.category].shortLabel}
-                  </div>
-                  <div className="text-xs text-[var(--color-text-muted)]">
-                    {insights.trendingCategory.description} • {insights.trendingCategory.totalCount} total
-                  </div>
-                </div>
-              ) : (
-                <div className="fusion-card opacity-50">
-                  <div className="flex items-center gap-2 mb-3">
-                    <TrendingUp size={16} className="text-[var(--color-text-muted)]" />
-                    <span className="text-sm font-medium text-[var(--color-text-muted)]">
-                      Trending Up
-                    </span>
-                  </div>
-                  <div className="text-2xl font-bold text-[var(--color-text-muted)] mb-1">
-                    —
-                  </div>
-                  <div className="text-xs text-[var(--color-text-muted)]">
-                    No trending category
-                  </div>
-                </div>
-              )}
-
-              {/* Insight 3: Critical Faults */}
-              <div className="fusion-card">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle size={16} className="text-[var(--color-danger)]" />
-                    <span className="text-sm font-medium text-[var(--color-text-muted)]">
-                      {insights.criticalFaults.label}
-                    </span>
-                  </div>
-                  {insights.criticalFaults.delta !== 0 && (
-                    <div className={`flex items-center gap-1 text-xs font-semibold ${
-                      insights.criticalFaults.trend === 'up' 
-                        ? 'text-[var(--color-danger)]' 
-                        : 'text-[var(--color-success)]'
-                    }`}>
-                      {insights.criticalFaults.trend === 'up' ? (
-                        <ArrowUp size={12} />
-                      ) : (
-                        <ArrowDown size={12} />
-                      )}
-                      {Math.abs(insights.criticalFaults.delta)}
-                    </div>
-                  )}
-                </div>
-                <div className="text-2xl font-bold text-[var(--color-danger)] mb-1">
-                  {insights.criticalFaults.count}
-                </div>
-                <div className="text-xs text-[var(--color-text-muted)]">
-                  {insights.criticalFaults.description}
-                </div>
-              </div>
-
-              {/* Insight 4: Average Age */}
-              <div className="fusion-card">
-                <div className="flex items-center gap-2 mb-3">
-                  <TrendingDown size={16} className="text-[var(--color-primary)]" />
-                  <span className="text-sm font-medium text-[var(--color-text-muted)]">
-                    {insights.avgResolutionTime.label}
-                  </span>
-                </div>
-                <div className="text-2xl font-bold text-[var(--color-text)] mb-1">
-                  {insights.avgResolutionTime.hours}h
-                </div>
-                <div className="text-xs text-[var(--color-text-muted)]">
-                  {insights.avgResolutionTime.description}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-auto pt-6 flex-shrink-0">
-              <div className="fusion-card md:col-span-3">
-                <div className="text-center py-4">
-                  <p className="text-sm text-[var(--color-text-muted)]">
-                    No faults detected. All devices are healthy.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Fault Details Panel - Right Side */}
