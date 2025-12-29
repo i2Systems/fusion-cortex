@@ -65,9 +65,16 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
     }
   )
   const saveSiteImageMutation = trpc.image.saveSiteImage.useMutation({
-    onSuccess: () => {
+    onSuccess: (result) => {
+      console.log('✅ [CLIENT] saveSiteImage mutation succeeded:', result)
+      // Invalidate and refetch the image query
       refetchSiteImage()
+      // Also invalidate the query cache to force fresh fetch
+      utils.image.getSiteImage.invalidate({ siteId: editingSite?.id })
       window.dispatchEvent(new CustomEvent('siteImageUpdated', { detail: { siteId: editingSite?.id } }))
+    },
+    onError: (error) => {
+      console.error('❌ [CLIENT] saveSiteImage mutation failed:', error)
     },
   })
   const ensureSiteMutation = trpc.site.ensureExists.useMutation()

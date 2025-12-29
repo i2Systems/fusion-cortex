@@ -84,7 +84,7 @@ export const imageRouter = router({
       siteId: z.string(),
     }))
     .query(async ({ input }) => {
-      console.log(`🔍 [SERVER] getSiteImage called for siteId: ${input.siteId}`)
+      console.log(`🔍 [SERVER] getSiteImage called for siteId: ${input.siteId} at ${new Date().toISOString()}`)
       const MAX_RETRIES = 3
       
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -94,16 +94,22 @@ export const imageRouter = router({
             await new Promise(resolve => setTimeout(resolve, 200 * attempt))
           }
           
-          const site = await prisma.site.findUnique({
+          // First check if site exists
+          const siteExists = await prisma.site.findUnique({
             where: { id: input.siteId },
-            select: { imageUrl: true },
+            select: { id: true, imageUrl: true },
           })
           
-          if (site?.imageUrl) {
-            console.log(`✅ [SERVER] Found image in database for ${input.siteId}, length: ${site.imageUrl.length}`)
-            return site.imageUrl
+          if (!siteExists) {
+            console.log(`⚠️ [SERVER] Site ${input.siteId} does not exist in database`)
+            return null
+          }
+          
+          if (siteExists.imageUrl) {
+            console.log(`✅ [SERVER] Found image in database for ${input.siteId}, length: ${siteExists.imageUrl.length}`)
+            return siteExists.imageUrl
           } else {
-            console.log(`ℹ️ [SERVER] No image found in database for ${input.siteId}`)
+            console.log(`ℹ️ [SERVER] Site ${input.siteId} exists but has no imageUrl (null or empty)`)
             return null
           }
         } catch (error: any) {
@@ -111,11 +117,18 @@ export const imageRouter = router({
             message: error.message,
             code: error.code,
             siteId: input.siteId,
+            stack: error.stack?.substring(0, 200),
           })
           
           // Handle missing column error
           if (error.code === 'P2022' && error.meta?.column === 'Site.imageUrl') {
             console.warn(`⚠️ [SERVER] imageUrl column missing for ${input.siteId}`)
+            return null
+          }
+          
+          // Handle site not found
+          if (error.code === 'P2025' || error.message?.includes('Record to find does not exist')) {
+            console.log(`⚠️ [SERVER] Site ${input.siteId} not found in database`)
             return null
           }
           
