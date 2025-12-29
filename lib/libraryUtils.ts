@@ -98,27 +98,22 @@ async function getCustomImage(libraryId: string, trpcClient?: any): Promise<stri
       }
     } else {
       // Try direct API call (tRPC format)
-      // Use POST for queries with JSON body (tRPC batch format)
+      // For queries, use GET with input in query string (standard tRPC query format)
       try {
-        const response = await fetch(`/api/trpc/image.getLibraryImage?batch=1`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            0: {
-              json: { libraryId }
-            }
-          }),
+        const input = encodeURIComponent(JSON.stringify({ libraryId }))
+        const response = await fetch(`/api/trpc/image.getLibraryImage?input=${input}`, {
+          method: 'GET',
         })
         if (response.ok) {
           const result = await response.json()
-          // tRPC batch response format: array of results
-          if (result[0]?.result?.data) {
+          // tRPC query response format: { result: { data: ... } }
+          if (result?.result?.data) {
             console.log(`✅ Loaded library image from Supabase database via API for ${libraryId}`)
-            return result[0].result.data
-          } else if (result[0]?.result?.data === null) {
+            return result.result.data
+          } else if (result?.result?.data === null) {
             console.log(`ℹ️ No database image found in API response for ${libraryId} (null)`)
-          } else if (result[0]?.error) {
-            console.warn(`⚠️ API returned error for ${libraryId}:`, result[0].error)
+          } else if (result?.error) {
+            console.warn(`⚠️ API returned error for ${libraryId}:`, result.error)
           } else {
             console.log(`ℹ️ No database image found in API response for ${libraryId} (empty result)`)
           }
@@ -499,27 +494,23 @@ export async function getSiteImage(siteId: string, retries: number = 3, trpcClie
       }
     } else {
       // Try direct API call (tRPC format)
-      // Use POST for queries with JSON body (tRPC batch format)
+      // For queries, use GET with input in query string, or POST with simple JSON body
       try {
-        const response = await fetch(`/api/trpc/image.getSiteImage?batch=1`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            0: {
-              json: { siteId }
-            }
-          }),
+        // Use GET request with input in query string (standard tRPC query format)
+        const input = encodeURIComponent(JSON.stringify({ siteId }))
+        const response = await fetch(`/api/trpc/image.getSiteImage?input=${input}`, {
+          method: 'GET',
         })
         if (response.ok) {
           const result = await response.json()
-          // tRPC batch response format: array of results
-          if (result[0]?.result?.data) {
+          // tRPC query response format: { result: { data: ... } }
+          if (result?.result?.data) {
             console.log(`✅ Loaded site image from Supabase database via API for ${siteId}`)
-            return result[0].result.data
-          } else if (result[0]?.result?.data === null) {
+            return result.result.data
+          } else if (result?.result?.data === null) {
             console.log(`ℹ️ No database image found in API response for ${siteId} (null)`)
-          } else if (result[0]?.error) {
-            console.warn(`⚠️ API returned error for ${siteId}:`, result[0].error)
+          } else if (result?.error) {
+            console.warn(`⚠️ API returned error for ${siteId}:`, result.error)
           } else {
             console.log(`ℹ️ No database image found in API response for ${siteId} (empty result)`)
           }
