@@ -38,7 +38,7 @@ const MapCanvas = dynamic(() => import('@/components/map/MapCanvas').then(mod =>
 
 import { useDevices } from '@/lib/DeviceContext'
 import { useZones } from '@/lib/ZoneContext'
-import { useStore } from '@/lib/StoreContext'
+import { useSite } from '@/lib/SiteContext'
 import { useMap } from '@/lib/MapContext'
 import { useRole } from '@/lib/role'
 import { detectAllLights, createDevicesFromLights } from '@/lib/lightDetection'
@@ -99,7 +99,7 @@ export default function MapPage() {
   } = useDevices()
   const { refreshMapData } = useMap()
   const { role } = useRole()
-  const { activeStoreId } = useStore()
+  const { activeSiteId } = useSite()
   const { zones, syncZoneDeviceIds, getDevicesInZone } = useZones()
 
   // Location management
@@ -235,10 +235,10 @@ export default function MapPage() {
       }
       
       // If location has storageKey, load from IndexedDB
-      if (currentLocation.storageKey && activeStoreId) {
+      if (currentLocation.storageKey && activeSiteId) {
         try {
           const { getVectorData } = await import('@/lib/indexedDB')
-          const stored = await getVectorData(activeStoreId, currentLocation.storageKey)
+          const stored = await getVectorData(activeSiteId, currentLocation.storageKey)
           if (stored) {
             // Check if it's vector data or image data
             if (stored.paths || stored.texts) {
@@ -265,10 +265,10 @@ export default function MapPage() {
         if (parentLocation) {
           // Use parent's data if zoom view doesn't have its own
           if (!currentLocation.storageKey && !currentLocation.imageUrl && !currentLocation.vectorData) {
-            if (parentLocation.storageKey && activeStoreId) {
+            if (parentLocation.storageKey && activeSiteId) {
               try {
                 const { getVectorData } = await import('@/lib/indexedDB')
-                const stored = await getVectorData(activeStoreId, parentLocation.storageKey)
+                const stored = await getVectorData(activeSiteId, parentLocation.storageKey)
                 if (stored) {
                   if (stored.paths || stored.texts) {
                     setVectorData(stored)
@@ -291,7 +291,7 @@ export default function MapPage() {
     }
     
     loadLocationData()
-  }, [currentLocation, locations, activeStoreId])
+  }, [currentLocation, locations, activeSiteId])
   const [toolMode, setToolMode] = useState<MapToolMode>('select')
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -311,7 +311,7 @@ export default function MapPage() {
   // Load locations on mount or when store changes
   useEffect(() => {
     const loadLocationsData = async () => {
-      const loadedLocations = await loadLocations(activeStoreId)
+      const loadedLocations = await loadLocations(activeSiteId)
       setLocations(loadedLocations)
       
       // Set current location to first one, or migrate old single map if exists
@@ -319,7 +319,7 @@ export default function MapPage() {
         setCurrentLocationId(loadedLocations[0].id)
       } else {
         // Try to migrate old single map format
-        const imageKey = activeStoreId ? `fusion_map-image-url_${activeStoreId}` : 'map-image-url'
+        const imageKey = activeSiteId ? `fusion_map-image-url_${activeSiteId}` : 'map-image-url'
         const vectorKey = `${imageKey}_vector`
         
         try {
@@ -328,9 +328,9 @@ export default function MapPage() {
           
           // Try IndexedDB first
           try {
-            if (activeStoreId) {
+            if (activeSiteId) {
               const { getVectorData } = await import('@/lib/indexedDB')
-              vectorData = await getVectorData(activeStoreId, vectorKey)
+              vectorData = await getVectorData(activeSiteId, vectorKey)
             }
           } catch (e) {
             // Fallback to localStorage
@@ -348,7 +348,7 @@ export default function MapPage() {
           
           // If we have old data, migrate it to location system
           if (imageUrl || vectorData) {
-            const migratedLocation = await addLocation(activeStoreId, {
+            const migratedLocation = await addLocation(activeSiteId, {
               name: 'Main Floor Plan',
               type: 'base',
               imageUrl,
@@ -368,7 +368,7 @@ export default function MapPage() {
     }
     
     loadLocationsData()
-  }, [activeStoreId])
+  }, [activeSiteId])
 
   const handleMapUpload = async (imageUrl: string) => {
     const locationName = prompt('Enter a name for this location:', 'Main Floor Plan')
@@ -376,12 +376,12 @@ export default function MapPage() {
     
     // Store large images in IndexedDB if they're too big for localStorage
     let storageKey: string | undefined = undefined
-    if (imageUrl.length > 100000 && activeStoreId) {
+    if (imageUrl.length > 100000 && activeSiteId) {
       try {
         const { storeVectorData } = await import('@/lib/indexedDB')
         const vectorKey = `location_image_${Date.now()}`
         // Store as vector data (it's just a blob of data)
-        await storeVectorData(activeStoreId, { data: imageUrl } as any, vectorKey)
+        await storeVectorData(activeSiteId, { data: imageUrl } as any, vectorKey)
         storageKey = vectorKey
         // Don't store large images in location object - use storageKey instead
       } catch (e) {
@@ -389,7 +389,7 @@ export default function MapPage() {
       }
     }
     
-    const newLocation = await addLocation(activeStoreId, {
+    const newLocation = await addLocation(activeSiteId, {
       name: locationName,
       type: 'base',
       imageUrl: imageUrl && imageUrl.length <= 100000 ? imageUrl : undefined,
@@ -409,7 +409,7 @@ export default function MapPage() {
     if (!locationName) return
     
     // Always store vector data in IndexedDB (it's usually large)
-    if (!activeStoreId) {
+    if (!activeSiteId) {
       alert('No store selected. Please select a store first.')
       return
     }
@@ -417,7 +417,7 @@ export default function MapPage() {
     try {
       const { storeVectorData } = await import('@/lib/indexedDB')
       const vectorKey = `location_vector_${Date.now()}`
-      await storeVectorData(activeStoreId, data, vectorKey)
+      await storeVectorData(activeSiteId, data, vectorKey)
       storageKey = vectorKey
     } catch (e) {
       console.error('Failed to store vector data in IndexedDB:', e)
@@ -425,7 +425,7 @@ export default function MapPage() {
       return
     }
     
-    const newLocation = await addLocation(activeStoreId, {
+    const newLocation = await addLocation(activeSiteId, {
       name: locationName,
       type: 'base',
       storageKey, // Store reference only
@@ -445,7 +445,7 @@ export default function MapPage() {
   const handleCreateZoomView = async (name: string, bounds: { minX: number; minY: number; maxX: number; maxY: number }) => {
     if (!currentLocationId) return
     
-    const newZoomView = await addLocation(activeStoreId, {
+    const newZoomView = await addLocation(activeSiteId, {
       name,
       type: 'zoom',
       parentLocationId: currentLocationId,
@@ -459,8 +459,8 @@ export default function MapPage() {
   }
   
   const handleDeleteLocation = async (locationId: string) => {
-    await deleteLocation(activeStoreId, locationId)
-    const updatedLocations = await loadLocations(activeStoreId)
+    await deleteLocation(activeSiteId, locationId)
+    const updatedLocations = await loadLocations(activeSiteId)
     setLocations(updatedLocations)
     
     // If we deleted the current location, switch to first available
@@ -570,7 +570,7 @@ export default function MapPage() {
     }
     
     // Clear all locations (this will also clear all zoom views since they're stored together)
-    await saveLocations(activeStoreId, [])
+    await saveLocations(activeSiteId, [])
     
     // Reset state
     setLocations([])

@@ -11,7 +11,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { Rule, mockRules } from './mockRules'
-import { useStore } from './StoreContext'
+import { useSite } from './SiteContext'
 
 interface RuleContextType {
   rules: Rule[]
@@ -24,17 +24,17 @@ interface RuleContextType {
 const RuleContext = createContext<RuleContextType | undefined>(undefined)
 
 export function RuleProvider({ children }: { children: ReactNode }) {
-  const { activeStoreId } = useStore()
+  const { activeSiteId } = useSite()
   const [rules, setRules] = useState<Rule[]>([])
 
-  // Helper to get store-scoped localStorage keys
+  // Helper to get site-scoped localStorage keys
   const getStorageKey = (key: string) => {
-    return activeStoreId ? `fusion_${key}_${activeStoreId}` : `fusion_${key}`
+    return activeSiteId ? `fusion_${key}_${activeSiteId}` : `fusion_${key}`
   }
 
-  // Load rules when store changes or on mount
+  // Load rules when site changes or on mount
   useEffect(() => {
-    if (!activeStoreId) return // Wait for store to be initialized
+    if (!activeSiteId) return // Wait for site to be initialized
     
     if (typeof window !== 'undefined') {
       const storageKey = getStorageKey('rules')
@@ -52,7 +52,7 @@ export function RuleProvider({ children }: { children: ReactNode }) {
               lastTriggered: rule.lastTriggered ? new Date(rule.lastTriggered) : undefined,
             }))
             setRules(restored)
-            console.log(`✅ Loaded ${restored.length} rules from localStorage for ${activeStoreId}`)
+            console.log(`✅ Loaded ${restored.length} rules from localStorage for ${activeSiteId}`)
             return
           }
         } catch (e) {
@@ -61,31 +61,31 @@ export function RuleProvider({ children }: { children: ReactNode }) {
       }
       
       // Initialize with mock rules (includes new overrides and schedules)
-      // Add store prefix to rule IDs to make them unique per store
-      const storeRules = mockRules.map(rule => ({
+      // Add site prefix to rule IDs to make them unique per site
+      const siteRules = mockRules.map(rule => ({
         ...rule,
-        id: `${activeStoreId}-${rule.id}`,
-        targetId: rule.targetId ? `${activeStoreId}-${rule.targetId}` : undefined,
+        id: `${activeSiteId}-${rule.id}`,
+        targetId: rule.targetId ? `${activeSiteId}-${rule.targetId}` : undefined,
         action: {
           ...rule.action,
           zones: rule.action.zones?.map(z => z), // Keep zone names as-is (they'll be matched by name)
         },
       }))
-      setRules(storeRules)
-      console.log(`✅ Loaded ${storeRules.length} rules for ${activeStoreId} (fresh data)`)
+      setRules(siteRules)
+      console.log(`✅ Loaded ${siteRules.length} rules for ${activeSiteId} (fresh data)`)
     } else {
       // Server-side: initialize with empty array, will be set on client
       setRules([])
     }
-  }, [activeStoreId])
+  }, [activeSiteId])
 
-  // Save to localStorage whenever rules change (store-scoped)
+  // Save to localStorage whenever rules change (site-scoped)
   useEffect(() => {
-    if (typeof window !== 'undefined' && rules.length > 0 && activeStoreId) {
+    if (typeof window !== 'undefined' && rules.length > 0 && activeSiteId) {
       const storageKey = getStorageKey('rules')
       localStorage.setItem(storageKey, JSON.stringify(rules))
     }
-  }, [rules, activeStoreId])
+  }, [rules, activeSiteId])
 
   const addRule = (ruleData: Omit<Rule, 'id' | 'createdAt' | 'updatedAt'>): Rule => {
     const newRule: Rule = {

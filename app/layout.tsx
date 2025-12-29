@@ -4,7 +4,7 @@ import { TRPCProvider } from '@/lib/trpc/Provider'
 import { AuthProvider } from '@/lib/auth'
 import { ThemeProvider } from '@/lib/theme'
 import { RoleProvider } from '@/lib/role'
-import { StoreProvider } from '@/lib/StoreContext'
+import { SiteProvider } from '@/lib/SiteContext'
 import { DeviceProvider } from '@/lib/DeviceContext'
 import { ZoneProvider } from '@/lib/ZoneContext'
 import { RuleProvider } from '@/lib/RuleContext'
@@ -47,7 +47,7 @@ export default function RootLayout({
                         <AdvancedSettingsProvider>
                           <RoleProvider>
                             <AuthProvider>
-                              <StoreProvider>
+                              <SiteProvider>
                                 <MapProvider>
                                   <DeviceProvider>
                                     <ZoneProvider>
@@ -59,7 +59,7 @@ export default function RootLayout({
                                     </ZoneProvider>
                                   </DeviceProvider>
                                 </MapProvider>
-                              </StoreProvider>
+                              </SiteProvider>
                             </AuthProvider>
                           </RoleProvider>
                         </AdvancedSettingsProvider>

@@ -17,7 +17,7 @@ import { MapViewToggle, type MapViewMode } from '@/components/shared/MapViewTogg
 import { MapUpload } from '@/components/map/MapUpload'
 import { useZones } from '@/lib/ZoneContext'
 import { useDevices } from '@/lib/DeviceContext'
-import { useStore } from '@/lib/StoreContext'
+import { useSite } from '@/lib/SiteContext'
 import { BACnetDetailsPanel } from '@/components/bacnet/BACnetDetailsPanel'
 import { initialBACnetMappings, type ControlCapability } from '@/lib/initialBACnetMappings'
 import { ResizablePanel } from '@/components/layout/ResizablePanel'
@@ -134,7 +134,7 @@ const capabilityLabels: Record<ControlCapability, { label: string; icon: any }> 
 export default function BACnetPage() {
   const { zones } = useZones()
   const { devices } = useDevices()
-  const { activeStoreId } = useStore()
+  const { activeSiteId } = useSite()
   const [mappings, setMappings] = useState<BACnetMapping[]>([])
   const [selectedMappingId, setSelectedMappingId] = useState<string | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
@@ -152,7 +152,7 @@ export default function BACnetPage() {
 
   // Helper to get store-scoped localStorage keys
   const getStorageKey = (key: string) => {
-    return activeStoreId ? `fusion_${key}_${activeStoreId}` : `fusion_${key}`
+    return activeSiteId ? `fusion_${key}_${activeSiteId}` : `fusion_${key}`
   }
 
   // Generate mappings for all zones (limit to 12)
@@ -174,7 +174,7 @@ export default function BACnetPage() {
 
   // Auto-create BACnet mappings when new zones are detected or store changes
   useEffect(() => {
-    if (!activeStoreId) return // Wait for store to be initialized
+    if (!activeSiteId) return // Wait for store to be initialized
     
     if (typeof window !== 'undefined' && zones.length > 0) {
       const storageKey = getStorageKey('bacnet_mappings')
@@ -276,7 +276,7 @@ export default function BACnetPage() {
         localStorage.removeItem(storageKey)
       }
     }
-  }, [zones.length, activeStoreId]) // Reload when store changes
+  }, [zones.length, activeSiteId]) // Reload when store changes
 
 
   const selectedMapping = zoneMappings.find(m => m.zoneId === selectedMappingId) || null
@@ -303,7 +303,7 @@ export default function BACnetPage() {
         : m
     )
     setMappings(updated)
-    if (typeof window !== 'undefined' && activeStoreId) {
+    if (typeof window !== 'undefined' && activeSiteId) {
       const storageKey = getStorageKey('bacnet_mappings')
       localStorage.setItem(storageKey, JSON.stringify(updated))
     }
@@ -329,7 +329,7 @@ export default function BACnetPage() {
           : m
       )
       setMappings(updated)
-      if (typeof window !== 'undefined' && activeStoreId) {
+      if (typeof window !== 'undefined' && activeSiteId) {
         const storageKey = getStorageKey('bacnet_mappings')
         localStorage.setItem(storageKey, JSON.stringify(updated))
       }
@@ -346,7 +346,7 @@ export default function BACnetPage() {
           : m
       )
       setMappings(updated)
-      if (typeof window !== 'undefined' && activeStoreId) {
+      if (typeof window !== 'undefined' && activeSiteId) {
         const storageKey = getStorageKey('bacnet_mappings')
         localStorage.setItem(storageKey, JSON.stringify(updated))
       }

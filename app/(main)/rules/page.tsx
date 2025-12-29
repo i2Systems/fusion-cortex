@@ -25,7 +25,7 @@ import { ResizablePanel } from '@/components/layout/ResizablePanel'
 import { useRules } from '@/lib/RuleContext'
 import { useZones } from '@/lib/ZoneContext'
 import { useDevices } from '@/lib/DeviceContext'
-import { useStore } from '@/lib/StoreContext'
+import { useSite } from '@/lib/SiteContext'
 import { Rule } from '@/lib/mockRules'
 import { useMap } from '@/lib/MapContext'
 
@@ -43,7 +43,7 @@ export default function RulesPage() {
   const { rules, addRule, updateRule, deleteRule } = useRules()
   const { zones } = useZones()
   const { devices } = useDevices()
-  const { activeStoreId } = useStore()
+  const { activeSiteId } = useSite()
 
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')

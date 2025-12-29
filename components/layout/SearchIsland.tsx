@@ -1,7 +1,7 @@
 /**
  * Search Island Component
  * 
- * Reusable floating search island with store selector.
+ * Reusable floating search island with site selector.
  * Can be positioned at top or bottom, full width or centered.
  * 
  * AI Note: Use this component for consistent search islands across pages.

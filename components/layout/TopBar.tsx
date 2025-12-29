@@ -20,7 +20,7 @@ import { useRouter } from 'next/navigation'
 
 export function TopBar() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [currentSite, setCurrentSite] = useState('Store #1234 - Main St')
+  const [currentSite, setCurrentSite] = useState('Site #1234 - Main St')
   const { unreadCount } = useNotifications()
   const router = useRouter()
 

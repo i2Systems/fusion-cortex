@@ -19,7 +19,7 @@ import { FaultDetailsPanel } from '@/components/faults/FaultDetailsPanel'
 import { ResizablePanel } from '@/components/layout/ResizablePanel'
 import { useDevices } from '@/lib/DeviceContext'
 import { useZones } from '@/lib/ZoneContext'
-import { useStore } from '@/lib/StoreContext'
+import { useSite } from '@/lib/SiteContext'
 import { Device } from '@/lib/mockData'
 import { FaultCategory, assignFaultCategory, generateFaultDescription, faultCategories } from '@/lib/faultDefinitions'
 import { trpc } from '@/lib/trpc/client'
@@ -47,7 +47,7 @@ interface Fault {
 export default function FaultsPage() {
   const { devices } = useDevices()
   const { zones } = useZones()
-  const { activeStoreId } = useStore()
+  const { activeSiteId } = useSite()
 
   // Use cached map data from context
   const { mapData } = useMap()
@@ -62,8 +62,8 @@ export default function FaultsPage() {
   
   // Fetch faults from database
   const { data: dbFaults, refetch: refetchFaults } = trpc.fault.list.useQuery(
-    { siteId: activeStoreId || '', includeResolved: false },
-    { enabled: !!activeStoreId, refetchOnWindowFocus: false }
+    { siteId: activeSiteId || '', includeResolved: false },
+    { enabled: !!activeSiteId, refetchOnWindowFocus: false }
   )
   
   // Create fault mutation

@@ -14,7 +14,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react'
 import { Device } from './mockData'
-import { useStore } from './StoreContext'
+import { useSite } from './SiteContext'
 import { trpc } from './trpc/client'
 
 interface DeviceContextType {
@@ -38,20 +38,20 @@ interface DeviceContextType {
 const DeviceContext = createContext<DeviceContextType | undefined>(undefined)
 
 export function DeviceProvider({ children }: { children: ReactNode }) {
-  const { activeStoreId, activeStore } = useStore()
+  const { activeSiteId, activeSite } = useSite()
   const [devices, setDevices] = useState<Device[]>([])
   const [history, setHistory] = useState<Device[][]>([[]])
   const [historyIndex, setHistoryIndex] = useState(0)
 
   // Ensure site exists in database
   const ensureSiteMutation = trpc.site.ensureExists.useMutation()
-  const ensuredStoreIdRef = useRef<string | null>(null)
+  const ensuredSiteIdRef = useRef<string | null>(null)
   
   // Fetch devices from database
   const { data: devicesData, refetch: refetchDevices, isLoading, error } = trpc.device.list.useQuery(
-    { siteId: activeStoreId || '', includeComponents: true },
+    { siteId: activeSiteId || '', includeComponents: true },
     { 
-      enabled: !!activeStoreId, 
+      enabled: !!activeSiteId, 
       refetchOnWindowFocus: false,
       refetchOnMount: false,
       staleTime: 5 * 60 * 1000, // 5 minutes - data is fresh for 5 minutes
@@ -107,31 +107,31 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
 
   // Ensure site exists when store changes (only once per store)
   useEffect(() => {
-    if (!activeStoreId) return
-    if (ensuredStoreIdRef.current === activeStoreId) return // Already ensured
+    if (!activeSiteId) return
+    if (ensuredSiteIdRef.current === activeSiteId) return // Already ensured
 
     // Mark as being ensured
-    ensuredStoreIdRef.current = activeStoreId
+    ensuredSiteIdRef.current = activeSiteId
 
     // Use store name from context if available, otherwise generate
-    const storeName = activeStore?.name || `Store ${activeStoreId}`
-    const storeNumber = activeStore?.storeNumber || activeStoreId.replace('store-', '')
+    const siteName = activeSite?.name || `Site ${activeSiteId}`
+    const siteNumber = activeSite?.siteNumber || activeSiteId.replace('site-', '')
 
     // Ensure site exists in database (maps store ID to site ID)
     ensureSiteMutation.mutate({
-      id: activeStoreId,
-      name: storeName,
-      storeNumber: storeNumber,
-      address: activeStore?.address,
-      city: activeStore?.city,
-      state: activeStore?.state,
-      zipCode: activeStore?.zipCode,
-      phone: activeStore?.phone,
-      manager: activeStore?.manager,
-      squareFootage: activeStore?.squareFootage,
-      openedDate: activeStore?.openedDate,
+      id: activeSiteId,
+      name: siteName,
+      storeNumber: siteNumber, // Database field is still storeNumber
+      address: activeSite?.address,
+      city: activeSite?.city,
+      state: activeSite?.state,
+      zipCode: activeSite?.zipCode,
+      phone: activeSite?.phone,
+      manager: activeSite?.manager,
+      squareFootage: activeSite?.squareFootage,
+      openedDate: activeSite?.openedDate,
     })
-  }, [activeStoreId, activeStore])
+  }, [activeSiteId, activeSite])
 
   // Update local state when data from database changes
   // Use a ref to prevent updates during user interactions
@@ -145,7 +145,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
   }, [devicesData])
 
   const addDevice = useCallback(async (device: Device) => {
-    if (!activeStoreId) return
+    if (!activeSiteId) return
 
     // Check if device already exists locally
     const exists = devices.some(d => d.id === device.id || d.serialNumber === device.serialNumber)
@@ -166,7 +166,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
       }
       
       await createDeviceMutation.mutateAsync({
-        siteId: activeStoreId,
+        siteId: activeSiteId,
         deviceId: device.deviceId,
         serialNumber: device.serialNumber,
         type: device.type,
@@ -190,7 +190,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
       // Revert optimistic update
       setDevices(prev => prev.filter(d => d.id !== device.id))
     }
-  }, [activeStoreId, devices, createDeviceMutation])
+  }, [activeSiteId, devices, createDeviceMutation])
 
   const updateDevice = useCallback(async (deviceId: string, updates: Partial<Device>) => {
     // Mark as updating to prevent refetch from overwriting
@@ -351,8 +351,8 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
   const saveDevices = useCallback(() => {
     // Devices are automatically saved to database on each mutation
     // This function is kept for backward compatibility
-    console.log(`✅ Devices are automatically saved to database for ${activeStoreId}`)
-  }, [activeStoreId])
+    console.log(`✅ Devices are automatically saved to database for ${activeSiteId}`)
+  }, [activeSiteId])
 
   return (
     <DeviceContext.Provider

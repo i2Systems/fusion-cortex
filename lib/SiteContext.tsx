@@ -1,0 +1,411 @@
+/**
+ * Site Context
+ * 
+ * Manages active site selection and site metadata.
+ * All data contexts (Device, Zone, etc.) use this to scope their data.
+ * 
+ * AI Note: This enables multi-site support with isolated data per site.
+ */
+
+'use client'
+
+import { createContext, useContext, useState, useEffect, ReactNode, useMemo, useRef } from 'react'
+import { trpc } from './trpc/client'
+
+// Site interface - matches Site model from database with additional UI fields
+export interface Site {
+  id: string
+  name: string
+  siteNumber: string
+  address?: string
+  city?: string
+  state?: string
+  zipCode?: string
+  phone?: string
+  manager?: string
+  squareFootage?: number
+  openedDate?: Date
+  imageUrl?: string
+}
+
+interface SiteContextType {
+  sites: Site[]
+  activeSiteId: string | null
+  activeSite: Site | null
+  setActiveSite: (siteId: string) => void
+  getSiteById: (siteId: string) => Site | undefined
+  addSite: (site: Omit<Site, 'id'>) => Site
+  updateSite: (siteId: string, updates: Partial<Omit<Site, 'id'>>) => void
+  removeSite: (siteId: string) => void
+}
+
+const SiteContext = createContext<SiteContextType | undefined>(undefined)
+
+// Default sites - 5 sites with realistic data
+const DEFAULT_SITES: Site[] = [
+  {
+    id: 'site-1234',
+    name: 'Site #1234 - Main St',
+    siteNumber: '1234',
+    address: '1250 Main Street',
+    city: 'Springfield',
+    state: 'IL',
+    zipCode: '62701',
+    phone: '(217) 555-0123',
+    manager: 'Sarah Johnson',
+    squareFootage: 180000,
+    openedDate: new Date('2018, 3, 15'),
+    imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&h=600&fit=crop',
+  },
+  {
+    id: 'site-2156',
+    name: 'Site #2156 - Oak Avenue',
+    siteNumber: '2156',
+    address: '3420 Oak Avenue',
+    city: 'Riverside',
+    state: 'CA',
+    zipCode: '92501',
+    phone: '(951) 555-0456',
+    manager: 'Michael Chen',
+    squareFootage: 165000,
+    openedDate: new Date('2019, 6, 22'),
+    imageUrl: 'https://images.unsplash.com/photo-1555529669-2269763671c0?w=800&h=600&fit=crop',
+  },
+  {
+    id: 'site-3089',
+    name: 'Site #3089 - Commerce Blvd',
+    siteNumber: '3089',
+    address: '789 Commerce Boulevard',
+    city: 'Austin',
+    state: 'TX',
+    zipCode: '78701',
+    phone: '(512) 555-0789',
+    manager: 'Emily Rodriguez',
+    squareFootage: 195000,
+    openedDate: new Date('2020, 1, 10'),
+    imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&h=600&fit=crop',
+  },
+  {
+    id: 'site-4421',
+    name: 'Site #4421 - River Road',
+    siteNumber: '4421',
+    address: '456 River Road',
+    city: 'Portland',
+    state: 'OR',
+    zipCode: '97201',
+    phone: '(503) 555-0321',
+    manager: 'David Kim',
+    squareFootage: 172000,
+    openedDate: new Date('2017, 9, 5'),
+    imageUrl: 'https://images.unsplash.com/photo-1555529669-2269763671c0?w=800&h=600&fit=crop',
+  },
+  {
+    id: 'site-5567',
+    name: 'Site #5567 - Park Plaza',
+    siteNumber: '5567',
+    address: '2100 Park Plaza Drive',
+    city: 'Denver',
+    state: 'CO',
+    zipCode: '80202',
+    phone: '(303) 555-0567',
+    manager: 'Jessica Martinez',
+    squareFootage: 188000,
+    openedDate: new Date('2021, 4, 18'),
+    imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&h=600&fit=crop',
+  },
+]
+
+export function SiteProvider({ children }: { children: ReactNode }) {
+  // Fetch sites from database
+  const { data: sitesData, refetch: refetchSites } = trpc.site.list.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  })
+
+  // Ensure default sites exist in database
+  const ensureSiteMutations = trpc.site.ensureExists.useMutation({
+    onSuccess: () => {
+      // Only refetch if we're not already refetching
+      setTimeout(() => {
+        refetchSites()
+      }, 500)
+    },
+  })
+
+  // Track which sites we've already initiated creation for
+  const ensuredSitesRef = useRef<Set<string>>(new Set())
+
+  // Ensure all default sites exist in database on mount
+  useEffect(() => {
+    if (!sitesData) return
+
+    // Check which default sites are missing
+    DEFAULT_SITES.forEach(defaultSite => {
+      const exists = sitesData.some(site => site.id === defaultSite.id)
+      const alreadyEnsured = ensuredSitesRef.current.has(defaultSite.id)
+      
+      if (!exists && !alreadyEnsured) {
+        // Mark as being ensured to prevent duplicate calls
+        ensuredSitesRef.current.add(defaultSite.id)
+        
+        ensureSiteMutations.mutate({
+          id: defaultSite.id,
+          name: defaultSite.name,
+          storeNumber: defaultSite.siteNumber, // Database field is still storeNumber
+          address: defaultSite.address,
+          city: defaultSite.city,
+          state: defaultSite.state,
+          zipCode: defaultSite.zipCode,
+          phone: defaultSite.phone,
+          manager: defaultSite.manager,
+          squareFootage: defaultSite.squareFootage,
+          openedDate: defaultSite.openedDate,
+        })
+      } else if (exists) {
+        // Site exists, mark as ensured
+        ensuredSitesRef.current.add(defaultSite.id)
+      }
+    })
+  }, [sitesData]) // Removed ensureSiteMutations from deps - it's stable
+
+  // Merge database sites with default site metadata
+  const sites = useMemo<Site[]>(() => {
+    if (!sitesData) return DEFAULT_SITES
+
+    // Map database sites to Site interface, merging with default metadata
+    return sitesData.map(site => {
+      const defaultSite = DEFAULT_SITES.find(ds => ds.id === site.id)
+      if (defaultSite) {
+        // Merge database data with default metadata (database takes precedence)
+        return {
+          id: site.id,
+          name: site.name,
+          siteNumber: site.storeNumber || defaultSite.siteNumber, // Map storeNumber to siteNumber
+          address: site.address ?? defaultSite.address,
+          city: site.city ?? defaultSite.city,
+          state: site.state ?? defaultSite.state,
+          zipCode: site.zipCode ?? defaultSite.zipCode,
+          phone: site.phone ?? defaultSite.phone,
+          manager: site.manager ?? defaultSite.manager,
+          squareFootage: site.squareFootage ?? defaultSite.squareFootage,
+          openedDate: site.openedDate ?? defaultSite.openedDate,
+          imageUrl: (site as any).imageUrl ?? defaultSite.imageUrl,
+        }
+      } else {
+        // New site from database (not in defaults)
+        return {
+          id: site.id,
+          name: site.name,
+          siteNumber: site.storeNumber || '', // Map storeNumber to siteNumber
+          address: site.address ?? undefined,
+          city: site.city ?? undefined,
+          state: site.state ?? undefined,
+          zipCode: site.zipCode ?? undefined,
+          phone: site.phone ?? undefined,
+          manager: site.manager ?? undefined,
+          squareFootage: site.squareFootage ?? undefined,
+          openedDate: site.openedDate ?? undefined,
+          imageUrl: (site as any).imageUrl ?? undefined,
+        }
+      }
+    })
+  }, [sitesData])
+
+  const [activeSiteId, setActiveSiteId] = useState<string | null>(null)
+
+  // Track if we've initialized the active site
+  const hasInitializedSite = useRef(false)
+
+  // Load active site from localStorage and validate against database
+  useEffect(() => {
+    if (typeof window !== 'undefined' && sites.length > 0) {
+      const savedSiteId = localStorage.getItem('fusion_active_site_id')
+      
+      // If we have a saved site ID, check if it exists
+      if (savedSiteId) {
+        // Check if the saved site ID exists in database sites
+        const siteExists = sites.some(s => s.id === savedSiteId)
+        if (siteExists) {
+          setActiveSiteId(savedSiteId)
+          hasInitializedSite.current = true
+        } else {
+          // Stored ID is invalid or not yet loaded
+          // Check if it's a temporary ID (site-timestamp format)
+          const isTemporaryId = savedSiteId.startsWith('site-') && /^site-\d+$/.test(savedSiteId)
+          
+          if (isTemporaryId) {
+            // Temporary ID - this means a new site was just created
+            // The database will have the real ID, so use the most recently created site
+            // (assuming it's the last one in the list, or we can find it by name/siteNumber)
+            const mostRecentSite = sites[sites.length - 1]
+            if (mostRecentSite) {
+              setActiveSiteId(mostRecentSite.id)
+              hasInitializedSite.current = true
+            }
+          } else {
+            // Real ID that doesn't exist - site was deleted or ID changed
+            // Fall back to first site
+            const firstSiteId = sites[0]?.id
+            if (firstSiteId) {
+              setActiveSiteId(firstSiteId)
+              hasInitializedSite.current = true
+            }
+          }
+        }
+      } else if (!hasInitializedSite.current) {
+        // No saved site and we haven't initialized yet, default to first site
+        const firstSiteId = sites[0]?.id
+        if (firstSiteId) {
+          setActiveSiteId(firstSiteId)
+          hasInitializedSite.current = true
+        }
+      }
+    }
+  }, [sites])
+
+  // Sites are now stored in database, no need to save to localStorage
+  // Only save active site ID
+
+  // Save active site to localStorage when it changes
+  // Only save if it's a valid site ID (not a temporary one starting with 'site-' and timestamp)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && activeSiteId) {
+      // Don't save temporary IDs - only save real database IDs
+      // Real IDs are either from DEFAULT_SITES or are cuid format (24 chars, starts with 'c')
+      // Temporary IDs are like 'site-1234567890' (long numeric timestamp)
+      const isTemporaryId = activeSiteId.startsWith('site-') && /^site-\d+$/.test(activeSiteId)
+      if (!isTemporaryId) {
+        localStorage.setItem('fusion_active_site_id', activeSiteId)
+      }
+    }
+  }, [activeSiteId])
+
+  const setActiveSite = (siteId: string) => {
+    // Allow setting active site without strict validation
+    // This handles the case where a new site was just added
+    // and the state hasn't updated yet
+    setActiveSiteId(siteId)
+  }
+
+  const activeSite = activeSiteId 
+    ? sites.find(s => s.id === activeSiteId) || null
+    : null
+
+  const getSiteById = (siteId: string): Site | undefined => {
+    return sites.find(s => s.id === siteId)
+  }
+
+  // Create site mutation
+  const createSiteMutation = trpc.site.create.useMutation({
+    onSuccess: (newSite) => {
+      refetchSites()
+      // If we just created a site and it's not in our sites yet, 
+      // wait for refetch to complete, then set it as active
+      // The refetch will update the sites list, and we'll handle the active site in the useEffect
+    },
+  })
+
+  // Update site mutation
+  const updateSiteMutation = trpc.site.update.useMutation({
+    onSuccess: () => {
+      refetchSites()
+    },
+  })
+
+  const addSite = (siteData: Omit<Site, 'id'>): Site => {
+    // Create optimistically with a temporary ID
+    // The actual ID will come from the database when the mutation completes
+    const tempId = `site-${Date.now()}`
+    const newSite: Site = {
+      ...siteData,
+      id: tempId,
+    }
+    
+    // Create in database - the mutation will refetch sites and update the site list
+    // The database will generate the actual ID (cuid)
+    createSiteMutation.mutate({
+      name: siteData.name,
+      storeNumber: siteData.siteNumber, // Database field is still storeNumber
+      address: siteData.address,
+      city: siteData.city,
+      state: siteData.state,
+      zipCode: siteData.zipCode,
+      phone: siteData.phone,
+      manager: siteData.manager,
+      squareFootage: siteData.squareFootage,
+      openedDate: siteData.openedDate,
+    })
+    
+    // Return the temporary site - it will be replaced when sites are refetched
+    // Don't save this temp ID to localStorage - wait for the real one
+    return newSite
+  }
+
+  const updateSite = (siteId: string, updates: Partial<Omit<Site, 'id'>>) => {
+    // Update in database (fire and forget for now)
+    // Note: imageUrl is stored client-side, not in database
+    const { imageUrl, ...dbUpdates } = updates
+    updateSiteMutation.mutate({
+      id: siteId,
+      name: dbUpdates.name,
+      storeNumber: dbUpdates.siteNumber, // Database field is still storeNumber
+      address: dbUpdates.address,
+      city: dbUpdates.city,
+      state: dbUpdates.state,
+      zipCode: dbUpdates.zipCode,
+      phone: dbUpdates.phone,
+      manager: dbUpdates.manager,
+      squareFootage: dbUpdates.squareFootage,
+      openedDate: dbUpdates.openedDate,
+      // Don't pass imageUrl - it's stored client-side
+    })
+  }
+
+  const removeSite = (siteId: string) => {
+    // Note: Site deletion would need to be added to the site router
+    // For now, we'll just prevent removal of default sites
+    const isDefault = DEFAULT_SITES.some(ds => ds.id === siteId)
+    if (isDefault) {
+      console.warn('Cannot remove default sites')
+      return
+    }
+    
+    // If removing active site, switch to first remaining site
+    if (activeSiteId === siteId) {
+      const remainingSites = sites.filter(s => s.id !== siteId)
+      if (remainingSites.length > 0) {
+        setActiveSiteId(remainingSites[0].id)
+      }
+    }
+    
+    // TODO: Add delete mutation to site router
+    console.warn('Site deletion not yet implemented in database')
+  }
+
+  return (
+    <SiteContext.Provider
+      value={{
+        sites,
+        activeSiteId,
+        activeSite,
+        setActiveSite,
+        getSiteById,
+        addSite,
+        updateSite,
+        removeSite,
+      }}
+    >
+      {children}
+    </SiteContext.Provider>
+  )
+}
+
+export function useSite() {
+  const context = useContext(SiteContext)
+  if (context === undefined) {
+    throw new Error('useSite must be used within a SiteProvider')
+  }
+  return context
+}
+

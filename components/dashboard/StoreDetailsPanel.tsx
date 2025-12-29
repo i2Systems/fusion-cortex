@@ -1,17 +1,17 @@
 /**
- * Store Details Panel Component
+ * Site Details Panel Component
  * 
- * Right-side panel showing comprehensive details about a selected store.
+ * Right-side panel showing comprehensive details about a selected site.
  * Displays metrics, faults, warranties, zones, rules, and recent activity.
  * 
- * AI Note: This panel appears when a store card is selected on the dashboard.
+ * AI Note: This panel appears when a site card is selected on the dashboard.
  */
 
 'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Store, useStore } from '@/lib/StoreContext'
+import { Site, useSite } from '@/lib/SiteContext'
 import { Device } from '@/lib/mockData'
 import { Zone } from '@/lib/ZoneContext'
 import { Rule } from '@/lib/mockRules'
@@ -43,8 +43,8 @@ import {
   Edit2
 } from 'lucide-react'
 
-interface StoreDetailsPanelProps {
-  store: Store | null
+interface SiteDetailsPanelProps {
+  site: Site | null
   devices: Device[]
   zones: Zone[]
   rules: Rule[]
@@ -63,14 +63,14 @@ interface StoreDetailsPanelProps {
   offlineDevices: number
   missingDevices: number
   onAddSite?: () => void
-  onEditSite?: (store: Store) => void
-  onRemoveSite?: (storeId: string) => void
+  onEditSite?: (site: Site) => void
+  onRemoveSite?: (siteId: string) => void
   onImportSites?: () => void
   onExportSites?: () => void
 }
 
-export function StoreDetailsPanel({
-  store,
+export function SiteDetailsPanel({
+  site,
   devices,
   zones,
   rules,
@@ -87,54 +87,54 @@ export function StoreDetailsPanel({
   onRemoveSite,
   onImportSites,
   onExportSites,
-}: StoreDetailsPanelProps) {
+}: SiteDetailsPanelProps) {
   const router = useRouter()
-  const { setActiveStore, stores } = useStore()
-  const [storeImageUrl, setStoreImageUrl] = useState<string | null>(null)
+  const { setActiveSite, sites } = useSite()
+  const [siteImageUrl, setSiteImageUrl] = useState<string | null>(null)
   const [imageKey, setImageKey] = useState(0) // Force re-render on update
 
-  // Load store image from client storage
+  // Load site image from client storage
   useEffect(() => {
-    const loadStoreImage = async () => {
-      if (!store?.id) {
-        setStoreImageUrl(null)
+    const loadSiteImage = async () => {
+      if (!site?.id) {
+        setSiteImageUrl(null)
         return
       }
 
-      console.log(`🖼️ Loading image for store: ${store.id}`)
+      console.log(`🖼️ Loading image for site: ${site.id}`)
       try {
         const { getSiteImage } = await import('@/lib/libraryUtils')
-        const image = await getSiteImage(store.id)
+        const image = await getSiteImage(site.id)
         if (image) {
-          console.log(`✅ Loaded image for store ${store.id}`)
-          setStoreImageUrl(image)
+          console.log(`✅ Loaded image for site ${site.id}`)
+          setSiteImageUrl(image)
         } else {
-          console.log(`📷 No image found for store ${store.id}, using default`)
-          setStoreImageUrl(null)
+          console.log(`📷 No image found for site ${site.id}, using default`)
+          setSiteImageUrl(null)
         }
       } catch (error) {
-        console.error(`❌ Failed to load store image for ${store.id}:`, error)
-        setStoreImageUrl(null)
+        console.error(`❌ Failed to load site image for ${site.id}:`, error)
+        setSiteImageUrl(null)
       }
     }
 
-    loadStoreImage()
+    loadSiteImage()
 
     // Listen for site image updates
     const handleSiteImageUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ siteId: string }>
       // Handle both specific siteId events and general events
-      if (!customEvent.detail || customEvent.detail?.siteId === store?.id) {
-        console.log(`🔄 Site image updated event received for ${store?.id}`)
+      if (!customEvent.detail || customEvent.detail?.siteId === site?.id) {
+        console.log(`🔄 Site image updated event received for ${site?.id}`)
         setImageKey(prev => prev + 1) // Force re-render
-        loadStoreImage() // Reload image
+        loadSiteImage() // Reload image
       }
     }
     window.addEventListener('siteImageUpdated', handleSiteImageUpdate)
     return () => window.removeEventListener('siteImageUpdated', handleSiteImageUpdate)
-  }, [store?.id])
+  }, [site?.id])
 
-  if (!store) {
+  if (!site) {
     return (
       <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
         <div className="flex-1 flex flex-col">
@@ -184,7 +184,7 @@ export function StoreDetailsPanel({
   }
 
   const handleNavigate = (path: string) => {
-    setActiveStore(store.id)
+    setActiveSite(site.id)
     router.push(path)
   }
 
@@ -225,14 +225,14 @@ export function StoreDetailsPanel({
   return (
     <div className="w-full h-full bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden">
       <div className="flex-1 overflow-auto p-6 space-y-6">
-      {/* Store Header */}
+      {/* Site Header */}
       <div>
-        {/* Store Image */}
-        {storeImageUrl && (
+        {/* Site Image */}
+        {siteImageUrl && (
           <div className="mb-4 rounded-lg overflow-hidden aspect-video bg-[var(--color-surface-subtle)]">
             <img
-              src={storeImageUrl}
-              alt={store.name}
+              src={siteImageUrl}
+              alt={site.name}
               className="w-full h-full object-cover"
               onError={(e) => {
                 // Hide image on error
@@ -242,20 +242,20 @@ export function StoreDetailsPanel({
           </div>
         )}
         <div className="flex items-start justify-between mb-2">
-          <h2 className="text-xl font-bold text-[var(--color-text)]">{store.name}</h2>
+          <h2 className="text-xl font-bold text-[var(--color-text)]">{site.name}</h2>
           <div className="flex items-center gap-1 flex-shrink-0">
             <button
-              onClick={() => onEditSite?.(store)}
+              onClick={() => onEditSite?.(site)}
               className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
               title="Edit site"
             >
               <Edit2 size={14} className="text-[var(--color-text-muted)]" />
             </button>
-            {stores.length > 1 && (
+            {sites.length > 1 && (
               <button
                 onClick={() => {
-                  if (confirm(`Are you sure you want to remove "${store.name}"? This will delete all associated data.`)) {
-                    onRemoveSite?.(store.id)
+                  if (confirm(`Are you sure you want to remove "${site.name}"? This will delete all associated data.`)) {
+                    onRemoveSite?.(site.id)
                   }
                 }}
                 className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
@@ -267,28 +267,28 @@ export function StoreDetailsPanel({
           </div>
         </div>
         <div className="space-y-2 text-sm text-[var(--color-text-muted)]">
-          {store.address && (
+          {site.address && (
             <div className="flex items-center gap-2">
               <MapPin size={14} />
-              <span>{store.address}, {store.city}, {store.state} {store.zipCode}</span>
+              <span>{site.address}, {site.city}, {site.state} {site.zipCode}</span>
             </div>
           )}
-          {store.phone && (
+          {site.phone && (
             <div className="flex items-center gap-2">
               <Phone size={14} />
-              <span>{store.phone}</span>
+              <span>{site.phone}</span>
             </div>
           )}
-          {store.manager && (
+          {site.manager && (
             <div className="flex items-center gap-2">
               <User size={14} />
-              <span>Manager: {store.manager}</span>
+              <span>Manager: {site.manager}</span>
             </div>
           )}
-          {store.squareFootage && (
+          {site.squareFootage && (
             <div className="flex items-center gap-2">
               <Map size={14} />
-              <span>{store.squareFootage.toLocaleString()} sq ft</span>
+              <span>{site.squareFootage.toLocaleString()} sq ft</span>
             </div>
           )}
         </div>

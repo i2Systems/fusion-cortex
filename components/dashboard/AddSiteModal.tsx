@@ -11,20 +11,20 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { X, Building2, MapPin, Phone, User, Calendar, Hash, Image as ImageIcon, Upload, Trash2 } from 'lucide-react'
-import { Store } from '@/lib/StoreContext'
+import { Site } from '@/lib/SiteContext'
 
 interface AddSiteModalProps {
   isOpen: boolean
   onClose: () => void
-  onAdd: (siteData: Omit<Store, 'id'>) => void
-  onEdit?: (storeId: string, updates: Partial<Omit<Store, 'id'>>) => void
-  editingStore?: Store | null
+  onAdd: (siteData: Omit<Site, 'id'>) => void
+  onEdit?: (siteId: string, updates: Partial<Omit<Site, 'id'>>) => void
+  editingSite?: Site | null
 }
 
-export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: AddSiteModalProps) {
+export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: AddSiteModalProps) {
   const [formData, setFormData] = useState({
     name: '',
-    storeNumber: '',
+    siteNumber: '',
     address: '',
     city: '',
     state: '',
@@ -75,11 +75,11 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
     const loadSiteImage = async () => {
       if (!isOpen) return
       
-      if (editingStore) {
+      if (editingSite) {
         // Load client-side stored image
         try {
           const { getSiteImage } = await import('@/lib/libraryUtils')
-          const image = await getSiteImage(editingStore.id)
+          const image = await getSiteImage(editingSite.id)
           setCurrentImage(image)
         } catch (error) {
           console.error('Failed to load site image:', error)
@@ -95,27 +95,27 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
     // Listen for site image updates
     const handleSiteImageUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ siteId: string }>
-      if (editingStore && customEvent.detail?.siteId === editingStore.id) {
+      if (editingSite && customEvent.detail?.siteId === editingSite.id) {
         loadSiteImage()
       }
     }
     window.addEventListener('siteImageUpdated', handleSiteImageUpdate)
     return () => window.removeEventListener('siteImageUpdated', handleSiteImageUpdate)
-  }, [editingStore, isOpen])
+  }, [editingSite, isOpen])
 
   // Populate form when editing
   useEffect(() => {
-    if (editingStore) {
+    if (editingSite) {
       setFormData({
-        name: editingStore.name || '',
-        storeNumber: editingStore.storeNumber || '',
-        address: editingStore.address || '',
-        city: editingStore.city || '',
-        state: editingStore.state || '',
-        zipCode: editingStore.zipCode || '',
-        phone: editingStore.phone || '',
-        manager: editingStore.manager || '',
-        squareFootage: editingStore.squareFootage?.toString() || '',
+        name: editingSite.name || '',
+        siteNumber: editingSite.siteNumber || '',
+        address: editingSite.address || '',
+        city: editingSite.city || '',
+        state: editingSite.state || '',
+        zipCode: editingSite.zipCode || '',
+        phone: editingSite.phone || '',
+        manager: editingSite.manager || '',
+        squareFootage: editingSite.squareFootage?.toString() || '',
         imageUrl: '', // Don't use imageUrl from store - load from client storage
       })
       setPreviewImage(null) // Reset preview when editing
@@ -123,7 +123,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
       // Reset form for new site
       setFormData({
         name: '',
-        storeNumber: '',
+        siteNumber: '',
         address: '',
         city: '',
         state: '',
@@ -136,7 +136,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
       setPreviewImage(null)
       setCurrentImage(null)
     }
-  }, [editingStore, isOpen])
+  }, [editingSite, isOpen])
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -193,24 +193,24 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
     try {
       const { setSiteImage, getSiteImage } = await import('@/lib/libraryUtils')
       
-      if (editingStore) {
-        // Save for existing store - ensure site exists in database first
-        console.log(`Saving image for existing store: ${editingStore.id}`)
+      if (editingSite) {
+        // Save for existing site - ensure site exists in database first
+        console.log(`Saving image for existing site: ${editingSite.id}`)
         
         // CRITICAL: Ensure site exists in database before saving image
         try {
           const ensureInput = encodeURIComponent(JSON.stringify({
-            id: editingStore.id,
-            name: editingStore.name,
-            storeNumber: editingStore.storeNumber || '',
-            address: editingStore.address || '',
-            city: editingStore.city || '',
-            state: editingStore.state || '',
-            zipCode: editingStore.zipCode || '',
-            phone: editingStore.phone || '',
-            manager: editingStore.manager || '',
-            squareFootage: editingStore.squareFootage || 0,
-            openedDate: editingStore.openedDate ? new Date(editingStore.openedDate).toISOString() : new Date().toISOString(),
+            id: editingSite.id,
+            name: editingSite.name,
+            storeNumber: editingSite.siteNumber || '', // Database field is still storeNumber
+            address: editingSite.address || '',
+            city: editingSite.city || '',
+            state: editingSite.state || '',
+            zipCode: editingSite.zipCode || '',
+            phone: editingSite.phone || '',
+            manager: editingSite.manager || '',
+            squareFootage: editingSite.squareFootage || 0,
+            openedDate: editingSite.openedDate ? new Date(editingSite.openedDate).toISOString() : new Date().toISOString(),
           }))
           const ensureResponse = await fetch(`/api/trpc/site.ensureExists?batch=1&input=${ensureInput}`, {
             method: 'POST',
@@ -235,7 +235,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
         
         // Now save the image (setSiteImage will try database first, then client storage)
         console.log('💾 Calling setSiteImage...')
-        await setSiteImage(editingStore.id, previewImage)
+        await setSiteImage(editingSite.id, previewImage)
         console.log('✅ setSiteImage completed')
         
         // Wait a bit for the save to complete and event to dispatch
@@ -243,7 +243,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
         
         // Reload the image to display (try database first, then client storage)
         console.log('🔍 Retrieving saved image...')
-        const savedImage = await getSiteImage(editingStore.id)
+        const savedImage = await getSiteImage(editingSite.id)
         if (savedImage) {
           console.log('✅ Image saved and retrieved successfully')
           setCurrentImage(savedImage)
@@ -254,7 +254,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
           setPreviewImage(null)
           // Trigger a reload by dispatching event again
           setTimeout(() => {
-            window.dispatchEvent(new CustomEvent('siteImageUpdated', { detail: { siteId: editingStore.id } }))
+            window.dispatchEvent(new CustomEvent('siteImageUpdated', { detail: { siteId: editingSite.id } }))
           }, 500)
         }
       } else {
@@ -287,10 +287,10 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
   const handleRemoveImage = async () => {
     if (!confirm('Remove image?')) return
     
-    if (editingStore) {
+    if (editingSite) {
       try {
         const { removeSiteImage } = await import('@/lib/libraryUtils')
-        await removeSiteImage(editingStore.id)
+        await removeSiteImage(editingSite.id)
         setCurrentImage(null)
       } catch (error) {
         console.error('Failed to remove site image:', error)
@@ -312,16 +312,16 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
       return
     }
     
-    if (!formData.storeNumber.trim()) {
-      alert('Store number is required')
+    if (!formData.siteNumber.trim()) {
+      alert('Site number is required')
       return
     }
 
     // Site images are stored client-side (localStorage/IndexedDB), NOT in database
     // So we don't pass imageUrl to the database
-    const siteData: Omit<Store, 'id'> = {
+    const siteData: Omit<Site, 'id'> = {
       name: formData.name.trim(),
-      storeNumber: formData.storeNumber.trim(),
+      siteNumber: formData.siteNumber.trim(),
       address: formData.address.trim(),
       city: formData.city.trim(),
       state: formData.state.trim(),
@@ -334,7 +334,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
     }
     
     // Save image client-side if we have one (for new sites)
-    if (previewImage && !editingStore) {
+    if (previewImage && !editingSite) {
       try {
         // Image will be saved after site creation in the callback
         // Store preview temporarily
@@ -344,8 +344,8 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
       }
     }
 
-    if (editingStore && onEdit) {
-      onEdit(editingStore.id, siteData)
+    if (editingSite && onEdit) {
+      onEdit(editingSite.id, siteData)
     } else {
       onAdd(siteData)
     }
@@ -373,10 +373,10 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
             </div>
             <div>
               <h2 className="text-lg font-semibold text-[var(--color-text)]">
-                {editingStore ? 'Edit Site' : 'Add New Site'}
+                {editingSite ? 'Edit Site' : 'Add New Site'}
               </h2>
               <p className="text-xs text-[var(--color-text-muted)]">
-                {editingStore ? 'Update site information' : 'Enter site details to add a new location'}
+                {editingSite ? 'Update site information' : 'Enter site details to add a new location'}
               </p>
             </div>
           </div>
@@ -401,24 +401,24 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Store #1234 - Main St"
+                placeholder="e.g., Site #1234 - Main St"
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
                 required
               />
             </div>
           </div>
 
-          {/* Store Number */}
+          {/* Site Number */}
           <div>
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
-              Store Number *
+              Site Number *
             </label>
             <div className="relative">
               <Hash size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
               <input
                 type="text"
-                value={formData.storeNumber}
-                onChange={(e) => setFormData({ ...formData, storeNumber: e.target.value })}
+                value={formData.siteNumber}
+                onChange={(e) => setFormData({ ...formData, siteNumber: e.target.value })}
                 placeholder="e.g., 1234"
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
                 required
@@ -505,7 +505,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
           {/* Manager */}
           <div>
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
-              Store Manager
+              Site Manager
             </label>
             <div className="relative">
               <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
@@ -534,10 +534,10 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
             />
           </div>
 
-          {/* Store Image Upload */}
+          {/* Site Image Upload */}
           <div>
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
-              Store Image
+              Site Image
             </label>
             <div className="space-y-3">
               {/* Image Preview */}
@@ -545,7 +545,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
                 <div className="relative aspect-video w-full rounded-lg bg-[var(--color-surface-subtle)] overflow-hidden border border-[var(--color-border-subtle)]">
                   <img
                     src={displayImage}
-                    alt="Store preview"
+                    alt="Site preview"
                     className="w-full h-full object-cover"
                   />
                   {/* Image Controls - Lower Left */}
@@ -616,7 +616,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
                     className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-subtle)] border-2 border-dashed border-[var(--color-border-subtle)] hover:border-[var(--color-primary)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Upload size={18} />
-                    {isUploading ? 'Uploading...' : 'Upload Store Image'}
+                    {isUploading ? 'Uploading...' : 'Upload Site Image'}
                   </button>
                 </div>
               )}
@@ -645,7 +645,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingStore }: A
             className="px-6 py-2 rounded-lg bg-[var(--color-primary)] text-white text-sm font-medium hover:bg-[var(--color-primary)]/90 transition-colors flex items-center gap-2"
           >
             <Building2 size={16} />
-            {editingStore ? 'Save Changes' : 'Add Site'}
+            {editingSite ? 'Save Changes' : 'Add Site'}
           </button>
         </div>
       </div>

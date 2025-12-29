@@ -11,7 +11,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react'
 import { Device } from './mockData'
-import { useStore } from './StoreContext'
+import { useSite } from './SiteContext'
 import { trpc } from './trpc/client'
 
 export interface Zone {
@@ -56,18 +56,18 @@ function pointInPolygon(point: { x: number; y: number }, polygon: Array<{ x: num
 }
 
 export function ZoneProvider({ children }: { children: ReactNode }) {
-  const { activeStoreId, activeStore } = useStore()
+  const { activeSiteId, activeSite } = useSite()
   const [zones, setZones] = useState<Zone[]>([])
 
   // Ensure site exists in database
   const ensureSiteMutation = trpc.site.ensureExists.useMutation()
-  const ensuredStoreIdRef = useRef<string | null>(null)
+  const ensuredSiteIdRef = useRef<string | null>(null)
 
   // Fetch zones from database
   const { data: zonesData, refetch: refetchZones } = trpc.zone.list.useQuery(
-    { siteId: activeStoreId || '' },
+    { siteId: activeSiteId || '' },
     { 
-      enabled: !!activeStoreId, 
+      enabled: !!activeSiteId, 
       refetchOnWindowFocus: false,
       refetchOnMount: false,
       staleTime: 5 * 60 * 1000, // 5 minutes
@@ -101,32 +101,32 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
     },
   })
 
-  // Ensure site exists when store changes (only once per store)
+  // Ensure site exists when site changes (only once per site)
   useEffect(() => {
-    if (!activeStoreId) return
-    if (ensuredStoreIdRef.current === activeStoreId) return // Already ensured
+    if (!activeSiteId) return
+    if (ensuredSiteIdRef.current === activeSiteId) return // Already ensured
 
     // Mark as being ensured
-    ensuredStoreIdRef.current = activeStoreId
+    ensuredSiteIdRef.current = activeSiteId
 
-    // Use store name from context if available, otherwise generate
-    const storeName = activeStore?.name || `Store ${activeStoreId}`
-    const storeNumber = activeStore?.storeNumber || activeStoreId.replace('store-', '')
+    // Use site name from context if available, otherwise generate
+    const siteName = activeSite?.name || `Site ${activeSiteId}`
+    const siteNumber = activeSite?.siteNumber || activeSiteId.replace('site-', '')
 
     ensureSiteMutation.mutate({
-      id: activeStoreId,
-      name: storeName,
-      storeNumber: storeNumber,
-      address: activeStore?.address,
-      city: activeStore?.city,
-      state: activeStore?.state,
-      zipCode: activeStore?.zipCode,
-      phone: activeStore?.phone,
-      manager: activeStore?.manager,
-      squareFootage: activeStore?.squareFootage,
-      openedDate: activeStore?.openedDate,
+      id: activeSiteId,
+      name: siteName,
+      storeNumber: siteNumber, // Database field is still storeNumber
+      address: activeSite?.address,
+      city: activeSite?.city,
+      state: activeSite?.state,
+      zipCode: activeSite?.zipCode,
+      phone: activeSite?.phone,
+      manager: activeSite?.manager,
+      squareFootage: activeSite?.squareFootage,
+      openedDate: activeSite?.openedDate,
     })
-  }, [activeStoreId, activeStore])
+  }, [activeSiteId, activeSite])
 
   // Update local state when data from database changes
   // Only update if we have valid data - don't clear zones on error
@@ -151,8 +151,8 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
 
 
   const addZone = useCallback(async (zoneData: Omit<Zone, 'id' | 'createdAt' | 'updatedAt'>): Promise<Zone> => {
-    if (!activeStoreId) {
-      throw new Error('No active store')
+    if (!activeSiteId) {
+      throw new Error('No active site')
     }
 
     // Optimistically create zone
@@ -166,7 +166,7 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
 
     try {
       const result = await createZoneMutation.mutateAsync({
-        siteId: activeStoreId,
+        siteId: activeSiteId,
         name: zoneData.name,
         color: zoneData.color,
         description: zoneData.description,
@@ -194,7 +194,7 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
       setZones(prev => prev.filter(z => z.id !== tempZone.id))
       throw error
     }
-  }, [activeStoreId, createZoneMutation])
+  }, [activeSiteId, createZoneMutation])
 
   const updateZone = useCallback(async (zoneId: string, updates: Partial<Zone>) => {
     // Optimistically update UI
@@ -294,8 +294,8 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
   const saveZones = useCallback(async () => {
     // Zones are automatically saved to database on each mutation
     // This function is kept for backward compatibility
-    console.log(`✅ Zones are automatically saved to database for ${activeStoreId}`)
-  }, [activeStoreId])
+    console.log(`✅ Zones are automatically saved to database for ${activeSiteId}`)
+  }, [activeSiteId])
 
   const isZonesSaved = useCallback((): boolean => {
     // Zones are always saved to database, so always return true

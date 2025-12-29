@@ -4,14 +4,14 @@
  * Provides cached map data (images and vector data) across all pages.
  * Prevents reloading the same map data when switching between pages.
  * 
- * AI Note: This context caches map data in memory per store, so switching
+ * AI Note: This context caches map data in memory per site, so switching
  * pages doesn't require re-fetching from IndexedDB.
  */
 
 'use client'
 
 import { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react'
-import { useStore } from './StoreContext'
+import { useSite } from './SiteContext'
 import { loadLocations } from './locationStorage'
 import type { ExtractedVectorData } from './pdfVectorExtractor'
 
@@ -31,13 +31,13 @@ interface MapContextType {
 const MapContext = createContext<MapContextType | undefined>(undefined)
 
 export function MapProvider({ children }: { children: ReactNode }) {
-  const { activeStoreId } = useStore()
+  const { activeSiteId } = useSite()
   const [mapCache, setMapCache] = useState<Record<string, MapData>>({})
   const [isLoading, setIsLoading] = useState(false)
 
-  // Load map data for current store
-  const loadMapData = useCallback(async (storeId: string | null, forceRefresh = false) => {
-    if (!storeId || typeof window === 'undefined') {
+  // Load map data for current site
+  const loadMapData = useCallback(async (siteId: string | null, forceRefresh = false) => {
+    if (!siteId || typeof window === 'undefined') {
       return {
         mapImageUrl: null,
         vectorData: null,
@@ -47,15 +47,15 @@ export function MapProvider({ children }: { children: ReactNode }) {
     }
 
     // Check cache first (unless forcing refresh)
-    if (!forceRefresh && mapCache[storeId]) {
-      return mapCache[storeId]
+    if (!forceRefresh && mapCache[siteId]) {
+      return mapCache[siteId]
     }
 
     setIsLoading(true)
     
     try {
       // Load locations from shared storage
-      const locations = await loadLocations(storeId)
+      const locations = await loadLocations(siteId)
       if (locations.length === 0) {
         const emptyData: MapData = {
           mapImageUrl: null,
@@ -63,7 +63,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
           mapUploaded: false,
           isLoading: false,
         }
-        setMapCache(prev => ({ ...prev, [storeId]: emptyData }))
+        setMapCache(prev => ({ ...prev, [siteId]: emptyData }))
         setIsLoading(false)
         return emptyData
       }
@@ -72,10 +72,10 @@ export function MapProvider({ children }: { children: ReactNode }) {
       const location = locations[0]
 
       // Load data from IndexedDB if storageKey exists
-      if (location.storageKey && storeId) {
+      if (location.storageKey && siteId) {
         try {
           const { getVectorData } = await import('@/lib/indexedDB')
-          const stored = await getVectorData(storeId, location.storageKey)
+          const stored = await getVectorData(siteId, location.storageKey)
           if (stored) {
             const mapData: MapData = {
               mapImageUrl: stored.data || null,
@@ -83,11 +83,11 @@ export function MapProvider({ children }: { children: ReactNode }) {
               mapUploaded: true,
               isLoading: false,
             }
-            setMapCache(prev => ({ ...prev, [storeId]: mapData }))
+            setMapCache(prev => ({ ...prev, [siteId]: mapData }))
             setIsLoading(false)
             return mapData
           } else {
-            console.warn(`No data found in IndexedDB for store ${storeId}, key ${location.storageKey}`)
+            console.warn(`No data found in IndexedDB for site ${siteId}, key ${location.storageKey}`)
           }
         } catch (e) {
           console.error('Failed to load location data from IndexedDB:', e)
@@ -98,7 +98,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
       // Fallback to direct data from location
       if (location.imageUrl) {
         // Check if it's an IndexedDB reference
-        if (location.imageUrl.startsWith('indexeddb:') && storeId) {
+        if (location.imageUrl.startsWith('indexeddb:') && siteId) {
           try {
             const { getImageDataUrl } = await import('@/lib/indexedDB')
             const imageId = location.imageUrl.replace('indexeddb:', '')
@@ -110,7 +110,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
                 mapUploaded: true,
                 isLoading: false,
               }
-              setMapCache(prev => ({ ...prev, [storeId]: mapData }))
+              setMapCache(prev => ({ ...prev, [siteId]: mapData }))
               setIsLoading(false)
               return mapData
             } else {
@@ -127,7 +127,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
             mapUploaded: true,
             isLoading: false,
           }
-          setMapCache(prev => ({ ...prev, [storeId]: mapData }))
+          setMapCache(prev => ({ ...prev, [siteId]: mapData }))
           setIsLoading(false)
           return mapData
         }
@@ -140,13 +140,13 @@ export function MapProvider({ children }: { children: ReactNode }) {
           mapUploaded: true,
           isLoading: false,
         }
-        setMapCache(prev => ({ ...prev, [storeId]: mapData }))
+        setMapCache(prev => ({ ...prev, [siteId]: mapData }))
         setIsLoading(false)
         return mapData
       }
 
       // Check for old localStorage format (backward compatibility)
-      const imageKey = `fusion_map-image-url_${storeId}`
+      const imageKey = `fusion_map-image-url_${siteId}`
       try {
         const { loadMapImage } = await import('@/lib/indexedDB')
         const imageUrl = await loadMapImage(imageKey)
@@ -157,7 +157,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
             mapUploaded: true,
             isLoading: false,
           }
-          setMapCache(prev => ({ ...prev, [storeId]: mapData }))
+          setMapCache(prev => ({ ...prev, [siteId]: mapData }))
           setIsLoading(false)
           return mapData
         }
@@ -172,7 +172,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
         mapUploaded: false,
         isLoading: false,
       }
-      setMapCache(prev => ({ ...prev, [storeId]: emptyData }))
+      setMapCache(prev => ({ ...prev, [siteId]: emptyData }))
       setIsLoading(false)
       return emptyData
     } catch (error) {
@@ -183,25 +183,25 @@ export function MapProvider({ children }: { children: ReactNode }) {
         mapUploaded: false,
         isLoading: false,
       }
-      setMapCache(prev => ({ ...prev, [storeId]: errorData }))
+      setMapCache(prev => ({ ...prev, [siteId]: errorData }))
       setIsLoading(false)
       return errorData
     }
   }, [])
 
-  // Load map data when store changes
+  // Load map data when site changes
   useEffect(() => {
-    if (activeStoreId) {
+    if (activeSiteId) {
       // Only load if not already cached
-      if (!mapCache[activeStoreId]) {
-        loadMapData(activeStoreId, false)
+      if (!mapCache[activeSiteId]) {
+        loadMapData(activeSiteId, false)
       }
     }
-  }, [activeStoreId, loadMapData])
+  }, [activeSiteId, loadMapData])
 
   // Get current map data
   const mapData = useMemo(() => {
-    if (!activeStoreId) {
+    if (!activeSiteId) {
       return {
         mapImageUrl: null,
         vectorData: null,
@@ -210,7 +210,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    const cached = mapCache[activeStoreId]
+    const cached = mapCache[activeSiteId]
     if (cached) {
       return { ...cached, isLoading }
     }
@@ -221,16 +221,16 @@ export function MapProvider({ children }: { children: ReactNode }) {
       mapUploaded: false,
       isLoading,
     }
-  }, [activeStoreId, mapCache, isLoading])
+  }, [activeSiteId, mapCache, isLoading])
 
   // Refresh map data (force reload)
   const refreshMapData = useCallback(async () => {
-    if (activeStoreId) {
+    if (activeSiteId) {
       setIsLoading(true)
       // Force reload (bypasses cache)
-      await loadMapData(activeStoreId, true)
+      await loadMapData(activeSiteId, true)
     }
-  }, [activeStoreId, loadMapData])
+  }, [activeSiteId, loadMapData])
 
   // Clear all map cache
   const clearMapCache = useCallback(() => {

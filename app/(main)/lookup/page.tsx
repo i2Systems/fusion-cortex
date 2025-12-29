@@ -20,7 +20,7 @@ import { ResizablePanel } from '@/components/layout/ResizablePanel'
 import { MapUpload } from '@/components/map/MapUpload'
 import { useDevices } from '@/lib/DeviceContext'
 import { useZones } from '@/lib/ZoneContext'
-import { useStore } from '@/lib/StoreContext'
+import { useSite } from '@/lib/SiteContext'
 import { ComponentModal } from '@/components/shared/ComponentModal'
 import { ManualDeviceEntry } from '@/components/discovery/ManualDeviceEntry'
 import { Component, Device, DeviceType } from '@/lib/mockData'
@@ -49,7 +49,7 @@ const ZoneCanvas = dynamic(() => import('@/components/map/ZoneCanvas').then(mod 
 export default function LookupPage() {
   const { devices, addDevice } = useDevices()
   const { zones } = useZones()
-  const { activeStoreId } = useStore()
+  const { activeSiteId } = useSite()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)

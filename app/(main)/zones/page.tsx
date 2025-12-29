@@ -22,7 +22,7 @@ import { MapFiltersPanel, type MapFilters } from '@/components/map/MapFiltersPan
 import { MapViewToggle, MapViewMode } from '@/components/shared/MapViewToggle'
 import { useDevices } from '@/lib/DeviceContext'
 import { useZones } from '@/lib/ZoneContext'
-import { useStore } from '@/lib/StoreContext'
+import { useSite } from '@/lib/SiteContext'
 import { useRole } from '@/lib/role'
 import { trpc } from '@/lib/trpc/client'
 import { isFixtureType } from '@/lib/deviceUtils'
@@ -44,7 +44,7 @@ import { ZONE_COLORS } from '@/lib/zoneColors'
 export default function ZonesPage() {
   const { devices, updateMultipleDevices, saveDevices } = useDevices()
   const { zones, addZone, updateZone, deleteZone, getDevicesInZone, syncZoneDeviceIds, saveZones, isZonesSaved } = useZones()
-  const { activeStoreId } = useStore()
+  const { activeSiteId } = useSite()
   const { role } = useRole()
   
   // tRPC mutations for database persistence
@@ -95,8 +95,8 @@ export default function ZonesPage() {
     // Map clearing is handled in the map page
     await refreshMapData()
     setSelectedZone(null)
-    if (typeof window !== 'undefined' && activeStoreId) {
-      const imageKey = activeStoreId ? `fusion_map-image-url_${activeStoreId}` : 'map-image-url'
+    if (typeof window !== 'undefined' && activeSiteId) {
+      const imageKey = activeSiteId ? `fusion_map-image-url_${activeSiteId}` : 'map-image-url'
       const vectorKey = `${imageKey}_vector`
       
       // Delete from localStorage
@@ -106,7 +106,7 @@ export default function ZonesPage() {
       // Delete from IndexedDB
       try {
         const { deleteVectorData } = await import('@/lib/indexedDB')
-        await deleteVectorData(activeStoreId, vectorKey)
+        await deleteVectorData(activeSiteId, vectorKey)
       } catch (e) {
         console.warn('Failed to delete vector data from IndexedDB:', e)
       }
@@ -471,7 +471,7 @@ export default function ZonesPage() {
                 onDeleteZone={handleDeleteZone}
                 canDelete={!!selectedZone}
                 onSave={async () => {
-                  if (!activeStoreId) {
+                  if (!activeSiteId) {
                     alert('No active store selected')
                     return
                   }
@@ -483,9 +483,9 @@ export default function ZonesPage() {
                   saveDevices()
                   
                   // Mark BACnet mappings as saved too (they're already in localStorage)
-                  if (typeof window !== 'undefined' && activeStoreId) {
-                    const bacnetKey = activeStoreId ? `fusion_bacnet_mappings_${activeStoreId}` : 'fusion_bacnet_mappings'
-                    const bacnetSavedKey = activeStoreId ? `fusion_bacnet_mappings_saved_${activeStoreId}` : 'fusion_bacnet_mappings_saved'
+                  if (typeof window !== 'undefined' && activeSiteId) {
+                    const bacnetKey = activeSiteId ? `fusion_bacnet_mappings_${activeSiteId}` : 'fusion_bacnet_mappings'
+                    const bacnetSavedKey = activeSiteId ? `fusion_bacnet_mappings_saved_${activeSiteId}` : 'fusion_bacnet_mappings_saved'
                     const bacnetMappings = localStorage.getItem(bacnetKey)
                     if (bacnetMappings) {
                       localStorage.setItem(bacnetSavedKey, 'true')
@@ -496,7 +496,7 @@ export default function ZonesPage() {
                   let dbSaveSuccess = false
                   try {
                     await saveZonesMutation.mutateAsync({
-                      siteId: activeStoreId,
+                      siteId: activeSiteId,
                       zones: zones.map(zone => ({
                         id: zone.id,
                         name: zone.name,

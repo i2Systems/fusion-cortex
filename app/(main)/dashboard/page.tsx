@@ -1,9 +1,9 @@
 /**
  * Dashboard / Home Page
  * 
- * Multi-store overview showing all stores in a grid.
+ * Multi-site overview showing all sites in a grid.
  * Each card provides a summary with key metrics, faults, warranties, and map status.
- * Clicking a card switches to that store and navigates to relevant pages.
+ * Clicking a card switches to that site and navigates to relevant pages.
  * 
  * AI Note: This dashboard provides a high-level view across all stores,
  * allowing users to quickly identify issues and dive into specific stores.
@@ -15,9 +15,9 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { ResizablePanel } from '@/components/layout/ResizablePanel'
-import { StoreDetailsPanel } from '@/components/dashboard/StoreDetailsPanel'
+import { SiteDetailsPanel } from '@/components/dashboard/StoreDetailsPanel'
 import { AddSiteModal } from '@/components/dashboard/AddSiteModal'
-import { useStore, Store } from '@/lib/StoreContext'
+import { useSite, Site } from '@/lib/SiteContext'
 import { useDevices } from '@/lib/DeviceContext'
 import { useZones } from '@/lib/ZoneContext'
 import { useRules } from '@/lib/RuleContext'
@@ -49,9 +49,9 @@ import {
   ArrowDown
 } from 'lucide-react'
 
-interface StoreSummary {
-  storeId: string
-  storeName: string
+interface SiteSummary {
+  siteId: string
+  siteName: string
   totalDevices: number
   onlineDevices: number
   offlineDevices: number
@@ -71,26 +71,26 @@ interface StoreSummary {
   needsAttention: boolean
 }
 
-// Store Image Card Component (loads from client storage)
-function StoreImageCard({ storeId }: { storeId: string }) {
+// Site Image Card Component (loads from client storage)
+function SiteImageCard({ siteId }: { siteId: string }) {
   const [displayUrl, setDisplayUrl] = useState<string | null>(null)
   const [imageKey, setImageKey] = useState(0) // Force re-render on update
 
   useEffect(() => {
     const loadImage = async () => {
-      console.log(`🖼️ Loading image for site: ${storeId}`)
+      console.log(`🖼️ Loading image for site: ${siteId}`)
       try {
         const { getSiteImage } = await import('@/lib/libraryUtils')
-        const image = await getSiteImage(storeId)
+        const image = await getSiteImage(siteId)
         if (image) {
-          console.log(`✅ Loaded image for site ${storeId}`)
+          console.log(`✅ Loaded image for site ${siteId}`)
           setDisplayUrl(image)
         } else {
-          console.log(`📷 No image found for site ${storeId}, using default`)
+          console.log(`📷 No image found for site ${siteId}, using default`)
           setDisplayUrl(null)
         }
       } catch (error) {
-        console.error(`❌ Failed to load store image for ${storeId}:`, error)
+        console.error(`❌ Failed to load site image for ${siteId}:`, error)
         setDisplayUrl(null)
       }
     }
@@ -101,22 +101,22 @@ function StoreImageCard({ storeId }: { storeId: string }) {
     const handleSiteImageUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ siteId: string }>
       // Handle both specific siteId events and general events
-      if (!customEvent.detail || customEvent.detail?.siteId === storeId) {
-        console.log(`🔄 Site image updated event received for ${storeId}`)
+      if (!customEvent.detail || customEvent.detail?.siteId === siteId) {
+        console.log(`🔄 Site image updated event received for ${siteId}`)
         setImageKey(prev => prev + 1) // Force re-render
         loadImage() // Reload image
       }
     }
     window.addEventListener('siteImageUpdated', handleSiteImageUpdate)
     return () => window.removeEventListener('siteImageUpdated', handleSiteImageUpdate)
-  }, [storeId])
+  }, [siteId])
 
   return (
     <div className="flex-shrink-0 w-24 h-24 rounded-lg bg-gradient-to-br from-[var(--color-primary-soft)]/20 to-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] flex items-center justify-center relative overflow-hidden">
       {displayUrl ? (
         <img
           src={displayUrl}
-          alt="Store"
+          alt="Site"
           className="w-full h-full object-cover"
           onError={(e) => {
             e.currentTarget.style.display = 'none'
@@ -138,58 +138,58 @@ function StoreImageCard({ storeId }: { storeId: string }) {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { stores, activeStoreId, setActiveStore, activeStore, addStore, updateStore, removeStore } = useStore()
+  const { sites, activeSiteId, setActiveSite, activeSite, addSite, updateSite, removeSite } = useSite()
   const { devices } = useDevices()
   const { zones } = useZones()
   const { rules } = useRules()
   const trpcUtils = trpc.useUtils()
-  const [storeSummaries, setStoreSummaries] = useState<StoreSummary[]>([])
+  const [siteSummaries, setSiteSummaries] = useState<SiteSummary[]>([])
   const [showAddSiteModal, setShowAddSiteModal] = useState(false)
-  const [editingStore, setEditingStore] = useState<Store | null>(null)
+  const [editingSite, setEditingSite] = useState<Site | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   
-  // Initialize selectedStoreId - ensure it's never null when stores exist
-  const getInitialSelectedStoreId = (): string => {
-    if (activeStoreId) return activeStoreId
-    if (stores.length > 0) return stores[0].id
+  // Initialize selectedSiteId - ensure it's never null when sites exist
+  const getInitialSelectedSiteId = (): string => {
+    if (activeSiteId) return activeSiteId
+    if (sites.length > 0) return sites[0].id
     return ''
   }
   
-  const [selectedStoreId, setSelectedStoreId] = useState<string>(() => getInitialSelectedStoreId())
+  const [selectedSiteId, setSelectedSiteId] = useState<string>(() => getInitialSelectedSiteId())
   
-  // Ensure at least one store is always selected
+  // Ensure at least one site is always selected
   useEffect(() => {
-    if (stores.length === 0) return
+    if (sites.length === 0) return
     
-    // If activeStoreId is set, sync selectedStoreId with it
-    if (activeStoreId) {
-      setSelectedStoreId(activeStoreId)
+    // If activeSiteId is set, sync selectedSiteId with it
+    if (activeSiteId) {
+      setSelectedSiteId(activeSiteId)
       return
     }
     
-    // If no activeStoreId but we have stores, select the first one
-    // This ensures a store is always selected
-    const firstStoreId = stores[0].id
-    setActiveStore(firstStoreId)
-    setSelectedStoreId(firstStoreId)
-  }, [activeStoreId, stores, setActiveStore])
+    // If no activeSiteId but we have sites, select the first one
+    // This ensures a site is always selected
+    const firstSiteId = sites[0].id
+    setActiveSite(firstSiteId)
+    setSelectedSiteId(firstSiteId)
+  }, [activeSiteId, sites, setActiveSite])
   
-  // Fallback: ensure selectedStoreId is never empty when stores exist
+  // Fallback: ensure selectedSiteId is never empty when sites exist
   useEffect(() => {
-    if (stores.length > 0 && (!selectedStoreId || selectedStoreId === '')) {
-      const storeToSelect = activeStoreId || stores[0].id
-      setSelectedStoreId(storeToSelect)
-      if (!activeStoreId) {
-        setActiveStore(storeToSelect)
+    if (sites.length > 0 && (!selectedSiteId || selectedSiteId === '')) {
+      const siteToSelect = activeSiteId || sites[0].id
+      setSelectedSiteId(siteToSelect)
+      if (!activeSiteId) {
+        setActiveSite(siteToSelect)
       }
     }
-  }, [stores, selectedStoreId, activeStoreId, setActiveStore])
+  }, [sites, selectedSiteId, activeSiteId, setActiveSite])
 
-  // Fetch devices, zones, and faults for all stores - create queries dynamically
+  // Fetch devices, zones, and faults for all sites - create queries dynamically
   // Note: We'll fetch data in the useEffect to avoid hook rule violations
-  const [storeDevicesMap, setStoreDevicesMap] = useState<Record<string, Device[]>>({})
-  const [storeZonesMap, setStoreZonesMap] = useState<Record<string, Zone[]>>({})
-  const [storeFaultsMap, setStoreFaultsMap] = useState<Record<string, Array<{
+  const [siteDevicesMap, setSiteDevicesMap] = useState<Record<string, Device[]>>({})
+  const [siteZonesMap, setSiteZonesMap] = useState<Record<string, Zone[]>>({})
+  const [siteFaultsMap, setSiteFaultsMap] = useState<Record<string, Array<{
     deviceId: string
     deviceName: string
     faultType: FaultCategory
@@ -197,12 +197,12 @@ export default function DashboardPage() {
     location: string
   }>>>({})
   
-  // Refetch devices, zones, and faults when stores change or when we need to refresh
+  // Refetch devices, zones, and faults when sites change or when we need to refresh
   useEffect(() => {
-    if (stores.length === 0) return
+    if (sites.length === 0) return
     
-    // Fetch all data for all stores using tRPC utils
-    const fetchAllStoreData = async () => {
+    // Fetch all data for all sites using tRPC utils
+    const fetchAllSiteData = async () => {
       const devicesMap: Record<string, Device[]> = {}
       const zonesMap: Record<string, Zone[]> = {}
       const faultsMap: Record<string, Array<{
@@ -214,20 +214,20 @@ export default function DashboardPage() {
       }>> = {}
       
       await Promise.all(
-        stores.map(async (store) => {
+        sites.map(async (site) => {
           try {
             // Fetch devices
             const devices = await trpcUtils.device.list.fetch({
-              siteId: store.id,
+              siteId: site.id,
               includeComponents: true,
             })
-            devicesMap[store.id] = devices || []
+            devicesMap[site.id] = devices || []
             
             // Fetch zones
             const zones = await trpcUtils.zone.list.fetch({
-              siteId: store.id,
+              siteId: site.id,
             })
-            zonesMap[store.id] = (zones || []).map(zone => ({
+            zonesMap[site.id] = (zones || []).map(zone => ({
               ...zone,
               description: zone.description ?? undefined,
               polygon: zone.polygon ?? [],
@@ -235,7 +235,7 @@ export default function DashboardPage() {
             
             // Fetch faults
             const faults = await trpcUtils.fault.list.fetch({
-              siteId: store.id,
+              siteId: site.id,
               includeResolved: false,
             })
             
@@ -250,42 +250,42 @@ export default function DashboardPage() {
                 location: device?.location || 'Unknown',
               }
             })
-            faultsMap[store.id] = criticalFaults
+            faultsMap[site.id] = criticalFaults
           } catch (error) {
-            console.error(`Failed to fetch data for store ${store.id}:`, error)
-            devicesMap[store.id] = []
-            zonesMap[store.id] = []
-            faultsMap[store.id] = []
+            console.error(`Failed to fetch data for site ${site.id}:`, error)
+            devicesMap[site.id] = []
+            zonesMap[site.id] = []
+            faultsMap[site.id] = []
           }
         })
       )
       
-      setStoreDevicesMap(devicesMap)
-      setStoreZonesMap(zonesMap)
-      setStoreFaultsMap(faultsMap)
+      setSiteDevicesMap(devicesMap)
+      setSiteZonesMap(zonesMap)
+      setSiteFaultsMap(faultsMap)
     }
     
-    fetchAllStoreData()
+    fetchAllSiteData()
     
     // Set up interval to refetch every 30 seconds
-    const interval = setInterval(fetchAllStoreData, 30000)
+    const interval = setInterval(fetchAllSiteData, 30000)
     
     return () => clearInterval(interval)
-  }, [stores, trpcUtils])
+  }, [sites, trpcUtils])
 
-  // Load data for all stores
+  // Load data for all sites
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    const summaries: StoreSummary[] = stores.map((store) => {
+    const summaries: SiteSummary[] = sites.map((site) => {
       // Get devices, zones, and faults from state (fetched from database)
-      const devices: Device[] = storeDevicesMap[store.id] || []
-      const zones: Zone[] = storeZonesMap[store.id] || []
-      const criticalFaults = storeFaultsMap[store.id] || []
+      const devices: Device[] = siteDevicesMap[site.id] || []
+      const zones: Zone[] = siteZonesMap[site.id] || []
+      const criticalFaults = siteFaultsMap[site.id] || []
       
       // Check map status from localStorage (for backward compatibility)
       // TODO: Could also check location storage, but for now we'll use localStorage
-      const mapImageKey = `fusion_map-image-url_${store.id}`
+      const mapImageKey = `fusion_map-image-url_${site.id}`
       const mapUploaded = typeof window !== 'undefined' ? !!localStorage.getItem(mapImageKey) : false
 
       // Calculate stats
@@ -324,7 +324,7 @@ export default function DashboardPage() {
         })
       })
 
-      // Determine if store needs attention
+      // Determine if site needs attention
       const needsAttention = 
         criticalFaults.length > 0 || 
         warrantiesExpiring > 0 || 
@@ -333,8 +333,8 @@ export default function DashboardPage() {
         healthPercentage < 90
 
       return {
-        storeId: store.id,
-        storeName: store.name,
+        siteId: site.id,
+        siteName: site.name,
         totalDevices: devices.length,
         onlineDevices,
         offlineDevices: offlineDevices.length,
@@ -348,37 +348,37 @@ export default function DashboardPage() {
       }
     })
 
-    setStoreSummaries(summaries)
-  }, [stores, storeDevicesMap, storeZonesMap, storeFaultsMap])
+    setSiteSummaries(summaries)
+  }, [sites, siteDevicesMap, siteZonesMap, siteFaultsMap])
 
-  const handleStoreClick = (storeId: string, targetPage?: string) => {
-    setActiveStore(storeId)
-    setSelectedStoreId(storeId)
+  const handleSiteClick = (siteId: string, targetPage?: string) => {
+    setActiveSite(siteId)
+    setSelectedSiteId(siteId)
     if (targetPage) {
       router.push(targetPage)
     }
-    // Don't navigate by default - just select the store
+    // Don't navigate by default - just select the site
   }
 
   // Site management handlers
   const handleAddSite = useCallback(() => {
-    setEditingStore(null)
+    setEditingSite(null)
     setShowAddSiteModal(true)
   }, [])
 
-  const handleEditSite = useCallback((store: Store) => {
-    setEditingStore(store)
+  const handleEditSite = useCallback((site: Site) => {
+    setEditingSite(site)
     setShowAddSiteModal(true)
   }, [])
 
-  const handleRemoveSite = useCallback((storeId: string) => {
-    removeStore(storeId)
+  const handleRemoveSite = useCallback((siteId: string) => {
+    removeSite(siteId)
     // Re-calculate summaries after removal
-    setStoreSummaries(prev => prev.filter(s => s.storeId !== storeId))
-  }, [removeStore])
+    setSiteSummaries(prev => prev.filter(s => s.siteId !== siteId))
+  }, [removeSite])
 
-  const handleAddSiteSubmit = useCallback(async (siteData: Omit<Store, 'id'>) => {
-    const newStore = addStore(siteData)
+  const handleAddSiteSubmit = useCallback(async (siteData: Omit<Site, 'id'>) => {
+    const newSite = addSite(siteData)
     
     // If there's a temp image stored, move it to the new site ID
     // The AddSiteModal should have stored it with a temp ID in formData.imageUrl
@@ -387,12 +387,12 @@ export default function DashboardPage() {
         const { getSiteImage, setSiteImage, removeSiteImage } = await import('@/lib/libraryUtils')
         const tempImage = await getSiteImage(siteData.imageUrl)
         if (tempImage) {
-          // Wait a bit for the store to be created and get a real ID
+          // Wait a bit for the site to be created and get a real ID
           setTimeout(async () => {
-            // Get the actual store ID from the stores list
-            const actualStore = stores.find(s => s.name === newStore.name && s.storeNumber === newStore.storeNumber)
-            if (actualStore && siteData.imageUrl) {
-              await setSiteImage(actualStore.id, tempImage)
+            // Get the actual site ID from the sites list
+            const actualSite = sites.find(s => s.name === newSite.name && s.siteNumber === newSite.siteNumber)
+            if (actualSite && siteData.imageUrl) {
+              await setSiteImage(actualSite.id, tempImage)
               await removeSiteImage(siteData.imageUrl) // Clean up temp
             }
           }, 1000)
@@ -402,16 +402,16 @@ export default function DashboardPage() {
       }
     }
     
-    setActiveStore(newStore.id)
-    setSelectedStoreId(newStore.id)
+    setActiveSite(newSite.id)
+    setSelectedSiteId(newSite.id)
     setShowAddSiteModal(false)
-  }, [addStore, setActiveStore, stores])
+  }, [addSite, setActiveSite, sites])
 
-  const handleEditSiteSubmit = useCallback((storeId: string, updates: Partial<Omit<Store, 'id'>>) => {
-    updateStore(storeId, updates)
+  const handleEditSiteSubmit = useCallback((siteId: string, updates: Partial<Omit<Site, 'id'>>) => {
+    updateSite(siteId, updates)
     setShowAddSiteModal(false)
-    setEditingStore(null)
-  }, [updateStore])
+    setEditingSite(null)
+  }, [updateSite])
 
   const handleImportSites = useCallback(() => {
     // Create a hidden file input
@@ -435,10 +435,10 @@ export default function DashboardPage() {
           
           let count = 0
           importedSites.forEach((site: any) => {
-            if (site.name && site.storeNumber) {
-              addStore({
+            if (site.name && (site.siteNumber || site.storeNumber)) {
+              addSite({
                 name: site.name,
-                storeNumber: site.storeNumber,
+                siteNumber: site.siteNumber || site.storeNumber, // Support both for backward compatibility
                 address: site.address || '',
                 city: site.city || '',
                 state: site.state || '',
@@ -460,18 +460,18 @@ export default function DashboardPage() {
       reader.readAsText(file)
     }
     input.click()
-  }, [addStore])
+  }, [addSite])
 
   const handleExportSites = useCallback(() => {
-    if (stores.length === 0) {
+    if (sites.length === 0) {
       alert('No sites to export')
       return
     }
     
     // Export as JSON
-    const exportData = stores.map(s => ({
+    const exportData = sites.map(s => ({
       name: s.name,
-      storeNumber: s.storeNumber,
+      siteNumber: s.siteNumber,
       address: s.address,
       city: s.city,
       state: s.state,
@@ -489,24 +489,24 @@ export default function DashboardPage() {
     link.download = `sites-${new Date().toISOString().split('T')[0]}.json`
     link.click()
     URL.revokeObjectURL(url)
-  }, [stores])
+  }, [sites])
 
-  // Filter store summaries based on search query
-  const filteredStoreSummaries = useMemo(() => {
-    if (!searchQuery.trim()) return storeSummaries
+  // Filter site summaries based on search query
+  const filteredSiteSummaries = useMemo(() => {
+    if (!searchQuery.trim()) return siteSummaries
     
     const query = searchQuery.toLowerCase().trim()
-    return storeSummaries.filter(summary => {
-      const store = stores.find(s => s.id === summary.storeId)
-      if (!store) return false
+    return siteSummaries.filter(summary => {
+      const site = sites.find(s => s.id === summary.siteId)
+      if (!site) return false
       
-      // Search in store name, store number, city, state, manager, device count, zone count
+      // Search in site name, site number, city, state, manager, device count, zone count
       const searchableText = [
-        store.name,
-        store.storeNumber,
-        store.city,
-        store.state,
-        store.manager,
+        site.name,
+        site.siteNumber,
+        site.city,
+        site.state,
+        site.manager,
         String(summary.totalDevices),
         String(summary.totalZones),
         String(summary.healthPercentage),
@@ -514,34 +514,34 @@ export default function DashboardPage() {
       
       return searchableText.includes(query)
     })
-  }, [storeSummaries, searchQuery, stores])
+  }, [siteSummaries, searchQuery, sites])
 
-  // Get detailed data for selected store
-  const selectedStoreSummary = useMemo(() => {
-    return storeSummaries.find(s => s.storeId === selectedStoreId) || null
-  }, [storeSummaries, selectedStoreId])
+  // Get detailed data for selected site
+  const selectedSiteSummary = useMemo(() => {
+    return siteSummaries.find(s => s.siteId === selectedSiteId) || null
+  }, [siteSummaries, selectedSiteId])
 
-  // Load detailed data for selected store from database
-  const [selectedStoreData, setSelectedStoreData] = useState<{
+  // Load detailed data for selected site from database
+  const [selectedSiteData, setSelectedSiteData] = useState<{
     devices: Device[]
     zones: Zone[]
     rules: Rule[]
   }>({ devices: [], zones: [], rules: [] })
 
   useEffect(() => {
-    if (!selectedStoreId) return
+    if (!selectedSiteId) return
 
     // Use data from state maps (fetched from database)
-    const devices = storeDevicesMap[selectedStoreId] || []
-    const zones = storeZonesMap[selectedStoreId] || []
+    const devices = siteDevicesMap[selectedSiteId] || []
+    const zones = siteZonesMap[selectedSiteId] || []
     
-    // Fetch rules for the selected store
+    // Fetch rules for the selected site
     const fetchRules = async () => {
       try {
         const rules = await trpcUtils.rule.list.fetch({
-          siteId: selectedStoreId,
+          siteId: selectedSiteId,
         })
-        setSelectedStoreData({
+        setSelectedSiteData({
           devices,
           zones,
           rules: (rules || []).map(rule => ({
@@ -555,8 +555,8 @@ export default function DashboardPage() {
           })),
         })
       } catch (error) {
-        console.error(`Failed to fetch rules for store ${selectedStoreId}:`, error)
-        setSelectedStoreData({
+        console.error(`Failed to fetch rules for site ${selectedSiteId}:`, error)
+        setSelectedSiteData({
           devices,
           zones,
           rules: [],
@@ -565,7 +565,7 @@ export default function DashboardPage() {
     }
     
     fetchRules()
-  }, [selectedStoreId, storeDevicesMap, storeZonesMap, trpcUtils])
+  }, [selectedSiteId, siteDevicesMap, siteZonesMap, trpcUtils])
 
   const getHealthColor = (percentage: number) => {
     if (percentage >= 95) return 'var(--color-success)'
@@ -581,24 +581,24 @@ export default function DashboardPage() {
 
   // Calculate dashboard insights with trends
   const dashboardInsight = useMemo(() => {
-    if (storeSummaries.length === 0) return null
+    if (siteSummaries.length === 0) return null
 
-    const totalDevices = storeSummaries.reduce((sum, s) => sum + s.totalDevices, 0)
-    const totalOnline = storeSummaries.reduce((sum, s) => sum + s.onlineDevices, 0)
+    const totalDevices = siteSummaries.reduce((sum, s) => sum + s.totalDevices, 0)
+    const totalOnline = siteSummaries.reduce((sum, s) => sum + s.onlineDevices, 0)
     const avgHealth = Math.round(
-      storeSummaries.reduce((sum, s) => sum + s.healthPercentage, 0) / storeSummaries.length
+      siteSummaries.reduce((sum, s) => sum + s.healthPercentage, 0) / siteSummaries.length
     )
-    const storesNeedingAttention = storeSummaries.filter(s => s.needsAttention).length
-    const totalCriticalFaults = storeSummaries.reduce((sum, s) => sum + s.criticalFaults.length, 0)
+    const sitesNeedingAttention = siteSummaries.filter(s => s.needsAttention).length
+    const totalCriticalFaults = siteSummaries.reduce((sum, s) => sum + s.criticalFaults.length, 0)
 
     // Simulate trend data (in production, this would come from historical data)
-    // Mock: Calculate "improving" stores (health > 95% or recently improved)
-    const improvingStores = storeSummaries.filter(s => s.healthPercentage >= 95).length
-    const decliningStores = storeSummaries.filter(s => s.healthPercentage < 85).length
+    // Mock: Calculate "improving" sites (health > 95% or recently improved)
+    const improvingSites = siteSummaries.filter(s => s.healthPercentage >= 95).length
+    const decliningSites = siteSummaries.filter(s => s.healthPercentage < 85).length
     
-    // Calculate health trend (simulate by comparing stores above/below thresholds)
-    const healthTrend = improvingStores > decliningStores ? 'improving' : improvingStores < decliningStores ? 'declining' : 'stable'
-    const healthDelta = improvingStores - decliningStores
+    // Calculate health trend (simulate by comparing sites above/below thresholds)
+    const healthTrend = improvingSites > decliningSites ? 'improving' : improvingSites < decliningSites ? 'declining' : 'stable'
+    const healthDelta = improvingSites - decliningSites
 
     // Calculate device online rate trend (simulate)
     const onlineRate = totalDevices > 0 ? (totalOnline / totalDevices) * 100 : 100
@@ -614,9 +614,9 @@ export default function DashboardPage() {
         delta: healthDelta,
         label: 'Health Trend',
         description: healthTrend === 'improving' 
-          ? `${improvingStores} stores improving`
+          ? `${improvingSites} sites improving`
           : healthTrend === 'declining'
-          ? `${decliningStores} stores declining`
+          ? `${decliningSites} sites declining`
           : 'Health stable',
       },
       onlineRate: {
@@ -627,7 +627,7 @@ export default function DashboardPage() {
         description: `${totalOnline}/${totalDevices} devices online`,
       },
     }
-  }, [storeSummaries])
+  }, [siteSummaries])
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
@@ -637,69 +637,69 @@ export default function DashboardPage() {
           position="top" 
           fullWidth={true}
           title="Dashboard"
-          subtitle="Multi-store overview"
-          placeholder="Search stores, devices, or type 'view devices' or 'view zones'..."
+          subtitle="Multi-site overview"
+          placeholder="Search sites, devices, or type 'view devices' or 'view zones'..."
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
         />
       </div>
 
-      {/* Main Content: Store Cards + Details Panel */}
+      {/* Main Content: Site Cards + Details Panel */}
       <div 
         className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" 
         style={{ overflow: 'visible' }}
       >
-        {/* Store Cards - Left Side */}
+        {/* Site Cards - Left Side */}
         <div className="flex-1 min-w-0 flex flex-col overflow-auto">
-          {/* Store Cards Grid - Responsive */}
+          {/* Site Cards Grid - Responsive */}
           <div className="flex-1 min-h-0">
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
-          {filteredStoreSummaries.map((summary) => {
-            const store = stores.find(s => s.id === summary.storeId)
+          {filteredSiteSummaries.map((summary) => {
+            const site = sites.find(s => s.id === summary.siteId)
             return (
             <div
-              key={summary.storeId}
+              key={summary.siteId}
               className={`fusion-card cursor-pointer transition-all hover:border-[var(--color-primary)]/50 hover:shadow-[var(--shadow-strong)] flex flex-row gap-4 ${
-                summary.storeId === selectedStoreId 
+                summary.siteId === selectedSiteId 
                   ? 'border-[var(--color-primary)]/50 bg-[var(--color-primary-soft)]/10 ring-2 ring-[var(--color-primary)]/20' 
                   : ''
-              } ${summary.needsAttention && summary.storeId !== selectedStoreId ? 'ring-2 ring-[var(--color-warning)]/30' : ''}`}
-              onClick={() => handleStoreClick(summary.storeId)}
+              } ${summary.needsAttention && summary.siteId !== selectedSiteId ? 'ring-2 ring-[var(--color-warning)]/30' : ''}`}
+              onClick={() => handleSiteClick(summary.siteId)}
             >
-              {/* Store Image - Top Left */}
-              <StoreImageCard storeId={summary.storeId} />
+              {/* Site Image - Top Left */}
+              <SiteImageCard siteId={summary.siteId} />
 
               {/* Card Content - Right Side */}
               <div className="flex-1 min-w-0 flex flex-col">
-                {/* Store Header */}
+                {/* Site Header */}
                 <div className="mb-3">
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <h3 className="text-base font-semibold text-[var(--color-text)] truncate">
-                      {summary.storeName}
+                      {summary.siteName}
                     </h3>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {getHealthIcon(summary.healthPercentage, 18)}
               <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleStoreClick(summary.storeId, '/map')
+                          handleSiteClick(summary.siteId, '/map')
                         }}
                         className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]/10 transition-colors"
-                        title="Explore Store"
+                        title="Explore Site"
                       >
                         <Search size={14} />
                       </button>
                 </div>
                   </div>
-                  {store && (
+                  {site && (
                     <div className="text-xs text-[var(--color-text-muted)]">
                       <div className="flex items-center gap-1 mb-0.5">
                         <MapPin size={10} />
-                        <span className="truncate">{store.city}, {store.state}</span>
+                        <span className="truncate">{site.city}, {site.state}</span>
                       </div>
-                      {store.manager && (
+                      {site.manager && (
                         <div className="text-[var(--color-text-soft)] truncate">
-                          {store.manager}
+                          {site.manager}
                         </div>
                       )}
                     </div>
@@ -734,7 +734,7 @@ export default function DashboardPage() {
                       className="px-2 py-1 rounded-md bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 cursor-pointer hover:bg-[var(--color-danger)]/15 transition-colors flex items-center gap-1.5"
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleStoreClick(summary.storeId, '/faults')
+                        handleSiteClick(summary.siteId, '/faults')
                       }}
                     >
                       <AlertTriangle size={12} className="text-[var(--color-danger)] flex-shrink-0" />
@@ -774,31 +774,31 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick Stats Summary - Pushed to Bottom */}
-          {storeSummaries.length > 0 && (
+          {siteSummaries.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-5 gap-x-4 gap-y-2 mt-auto pt-6 flex-shrink-0">
             <div className="fusion-card">
-              <div className="text-xs text-[var(--color-text-muted)] mb-1">Total Stores</div>
+              <div className="text-xs text-[var(--color-text-muted)] mb-1">Total Sites</div>
               <div className="text-2xl font-bold text-[var(--color-text)]">
-                {storeSummaries.length}
+                {siteSummaries.length}
               </div>
             </div>
             <div className="fusion-card">
               <div className="text-xs text-[var(--color-text-muted)] mb-1">Total Devices</div>
               <div className="text-2xl font-bold text-[var(--color-text)]">
-                {storeSummaries.reduce((sum, s) => sum + s.totalDevices, 0).toLocaleString()}
+                {siteSummaries.reduce((sum, s) => sum + s.totalDevices, 0).toLocaleString()}
               </div>
             </div>
             <div className="fusion-card">
-              <div className="text-xs text-[var(--color-text-muted)] mb-1">Stores Needing Attention</div>
+              <div className="text-xs text-[var(--color-text-muted)] mb-1">Sites Needing Attention</div>
               <div className="text-2xl font-bold text-[var(--color-warning)]">
-                {storeSummaries.filter(s => s.needsAttention).length}
+                {siteSummaries.filter(s => s.needsAttention).length}
               </div>
             </div>
             <div className="fusion-card">
               <div className="text-xs text-[var(--color-text-muted)] mb-1">Avg. Health</div>
               <div className="text-2xl font-bold text-[var(--color-success)]">
                 {Math.round(
-                  storeSummaries.reduce((sum, s) => sum + s.healthPercentage, 0) / storeSummaries.length
+                  siteSummaries.reduce((sum, s) => sum + s.healthPercentage, 0) / siteSummaries.length
                 )}%
               </div>
             </div>
@@ -851,8 +851,8 @@ export default function DashboardPage() {
           )}
           </div>
 
-        {/* Store Details Panel - Right Side */}
-        {selectedStoreId && (
+        {/* Site Details Panel - Right Side */}
+        {selectedSiteId && (
           <ResizablePanel
             defaultWidth={384}
             minWidth={320}
@@ -860,19 +860,19 @@ export default function DashboardPage() {
             collapseThreshold={200}
             storageKey="dashboard_panel"
           >
-            <StoreDetailsPanel
-              store={activeStore || (selectedStoreId ? stores.find(s => s.id === selectedStoreId) : stores[0]) || null}
-              devices={selectedStoreData.devices}
-              zones={selectedStoreData.zones}
-              rules={selectedStoreData.rules}
-              criticalFaults={selectedStoreSummary?.criticalFaults || []}
-              warrantiesExpiring={selectedStoreSummary?.warrantiesExpiring || 0}
-              warrantiesExpired={selectedStoreSummary?.warrantiesExpired || 0}
-              mapUploaded={selectedStoreSummary?.mapUploaded || false}
-              healthPercentage={selectedStoreSummary?.healthPercentage || 100}
-              onlineDevices={selectedStoreSummary?.onlineDevices || 0}
-              offlineDevices={selectedStoreSummary?.offlineDevices || 0}
-              missingDevices={(selectedStoreSummary?.totalDevices || 0) - (selectedStoreSummary?.onlineDevices || 0) - (selectedStoreSummary?.offlineDevices || 0)}
+            <SiteDetailsPanel
+              site={activeSite || (selectedSiteId ? sites.find(s => s.id === selectedSiteId) : sites[0]) || null}
+              devices={selectedSiteData.devices}
+              zones={selectedSiteData.zones}
+              rules={selectedSiteData.rules}
+              criticalFaults={selectedSiteSummary?.criticalFaults || []}
+              warrantiesExpiring={selectedSiteSummary?.warrantiesExpiring || 0}
+              warrantiesExpired={selectedSiteSummary?.warrantiesExpired || 0}
+              mapUploaded={selectedSiteSummary?.mapUploaded || false}
+              healthPercentage={selectedSiteSummary?.healthPercentage || 100}
+              onlineDevices={selectedSiteSummary?.onlineDevices || 0}
+              offlineDevices={selectedSiteSummary?.offlineDevices || 0}
+              missingDevices={(selectedSiteSummary?.totalDevices || 0) - (selectedSiteSummary?.onlineDevices || 0) - (selectedSiteSummary?.offlineDevices || 0)}
               onAddSite={handleAddSite}
               onEditSite={handleEditSite}
               onRemoveSite={handleRemoveSite}
@@ -888,11 +888,11 @@ export default function DashboardPage() {
         isOpen={showAddSiteModal}
         onClose={() => {
           setShowAddSiteModal(false)
-          setEditingStore(null)
+          setEditingSite(null)
         }}
         onAdd={handleAddSiteSubmit}
         onEdit={handleEditSiteSubmit}
-        editingStore={editingStore}
+        editingSite={editingSite}
       />
     </div>
   )

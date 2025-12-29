@@ -12,7 +12,7 @@
 
 import { Upload, Map as MapIcon, Loader2, AlertCircle } from 'lucide-react'
 import { useState, useRef } from 'react'
-import { useStore } from '@/lib/StoreContext'
+import { useSite } from '@/lib/SiteContext'
 import { pdfToImage, isPdfFile } from '@/lib/pdfUtils'
 import { extractVectorData, isVectorPDF, type ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 import { storeVectorData, storeImage } from '@/lib/indexedDB'
@@ -24,7 +24,7 @@ interface MapUploadProps {
 }
 
 export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
-  const { activeStoreId } = useStore()
+  const { activeSiteId } = useSite()
   const { enableSVGExtraction } = useAdvancedSettings()
   const [isDragging, setIsDragging] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -32,9 +32,9 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Helper to get store-scoped localStorage key
+  // Helper to get site-scoped localStorage key
   const getStorageKey = () => {
-    return activeStoreId ? `fusion_map-image-url_${activeStoreId}` : 'map-image-url'
+    return activeSiteId ? `fusion_map-image-url_${activeSiteId}` : 'map-image-url'
   }
 
   const handleFileSelect = async (file: File) => {
@@ -101,15 +101,15 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
                 // Store vector data in IndexedDB (handles large datasets that exceed localStorage limits)
                 setProcessingStatus('Saving vector data (this may take a moment for large files)...')
                 try {
-                  if (activeStoreId) {
-                    await storeVectorData(activeStoreId, vectorData, vectorKey)
+                  if (activeSiteId) {
+                    await storeVectorData(activeSiteId, vectorData, vectorKey)
                   } else {
                     // Fallback to localStorage for small datasets if no store ID
                     const jsonString = JSON.stringify(vectorData)
                     if (jsonString.length < 4 * 1024 * 1024) { // 4MB limit
                       localStorage.setItem(vectorKey, jsonString)
                     } else {
-                      throw new Error('Vector data too large for localStorage. Please select a store.')
+                      throw new Error('Vector data too large for localStorage. Please select a site.')
                     }
                   }
                 } catch (storageError: unknown) {
@@ -194,7 +194,7 @@ setProcessingStatus('Creating preview image...')
       const storageKey = getStorageKey()
       const IMAGE_SIZE_THRESHOLD = 100000 // ~100KB - store larger images in IndexedDB
       
-      if (base64String.length > IMAGE_SIZE_THRESHOLD && activeStoreId) {
+      if (base64String.length > IMAGE_SIZE_THRESHOLD && activeSiteId) {
         // Large image - store in IndexedDB
         try {
           // Convert base64 to Blob
@@ -203,7 +203,7 @@ setProcessingStatus('Creating preview image...')
           
           // Store in IndexedDB
           const imageId = await storeImage(
-            activeStoreId,
+            activeSiteId,
             blob,
             file.name,
             blob.type || 'image/png'
@@ -232,12 +232,12 @@ setProcessingStatus('Creating preview image...')
           onMapUpload(base64String)
         } catch (error) {
           // If localStorage fails, try IndexedDB as fallback
-          if (activeStoreId && base64String.length > 0) {
+          if (activeSiteId && base64String.length > 0) {
             try {
               const response = await fetch(base64String)
               const blob = await response.blob()
               const imageId = await storeImage(
-                activeStoreId,
+                activeSiteId,
                 blob,
                 file.name,
                 blob.type || 'image/png'
