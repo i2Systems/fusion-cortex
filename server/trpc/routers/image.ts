@@ -325,9 +325,44 @@ export const imageRouter = router({
           lastError = error
           console.error(`Error saving library image to database (attempt ${attempt + 1}):`, error)
           
+          // Handle missing column error (imageUrl column doesn't exist)
+          if (error.code === 'P2022' && error.meta?.column === 'LibraryImage.imageUrl') {
+            console.warn('⚠️ [SERVER] imageUrl column missing in LibraryImage table, attempting to add it...')
+            try {
+              // First check if table exists, if not create it
+              await prisma.$executeRaw`
+                CREATE TABLE IF NOT EXISTS "LibraryImage" (
+                  "id" TEXT NOT NULL,
+                  "libraryId" TEXT NOT NULL,
+                  "imageUrl" TEXT,
+                  "mimeType" TEXT NOT NULL DEFAULT 'image/jpeg',
+                  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  "updatedAt" TIMESTAMP(3) NOT NULL,
+                  CONSTRAINT "LibraryImage_pkey" PRIMARY KEY ("id")
+                )
+              `
+              // Add the imageUrl column if it doesn't exist
+              await prisma.$executeRaw`ALTER TABLE "LibraryImage" ADD COLUMN IF NOT EXISTS "imageUrl" TEXT`
+              // Create indexes if they don't exist
+              await prisma.$executeRaw`
+                CREATE UNIQUE INDEX IF NOT EXISTS "LibraryImage_libraryId_key" ON "LibraryImage"("libraryId")
+              `
+              await prisma.$executeRaw`
+                CREATE INDEX IF NOT EXISTS "LibraryImage_libraryId_idx" ON "LibraryImage"("libraryId")
+              `
+              console.log('✅ [SERVER] Added imageUrl column to LibraryImage table')
+              // Retry the upsert
+              if (attempt < MAX_RETRIES - 1) continue
+            } catch (addColumnError: any) {
+              console.error('❌ [SERVER] Failed to add imageUrl column to LibraryImage table:', addColumnError)
+              if (attempt < MAX_RETRIES - 1) continue
+              throw new Error('Database schema update required. Please run migrations.')
+            }
+          }
+          
           // Handle table doesn't exist error
           if (error.code === 'P2021' || error.message?.includes('does not exist') || error.message?.includes('LibraryImage')) {
-            console.warn('LibraryImage table missing, attempting to create it...')
+            console.warn('⚠️ [SERVER] LibraryImage table missing, attempting to create it...')
             try {
               await prisma.$executeRaw`
                 CREATE TABLE IF NOT EXISTS "LibraryImage" (
@@ -346,10 +381,11 @@ export const imageRouter = router({
               await prisma.$executeRaw`
                 CREATE INDEX IF NOT EXISTS "LibraryImage_libraryId_idx" ON "LibraryImage"("libraryId")
               `
+              console.log('✅ [SERVER] Created LibraryImage table')
               // Retry the upsert
               if (attempt < MAX_RETRIES - 1) continue
             } catch (createTableError) {
-              console.error('Failed to create LibraryImage table:', createTableError)
+              console.error('❌ [SERVER] Failed to create LibraryImage table:', createTableError)
               if (attempt < MAX_RETRIES - 1) continue
               throw new Error('Database schema update required. Please run migrations or visit /api/migrate-library-images')
             }
