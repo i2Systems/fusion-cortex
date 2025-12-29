@@ -266,23 +266,15 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
           // Continue anyway - client storage will work
         }
         
-        // Determine mime type
-        const isPNG = previewImage.startsWith('data:image/png')
-        const mimeType = isPNG ? 'image/png' : 'image/jpeg'
-        
-        // Try to save to database first using tRPC mutation
+        // Use utility function which handles compression and size limits
+        // This will compress the image aggressively to avoid 414 errors
         try {
-          console.log('💾 Attempting to save to database via tRPC...')
-          await saveSiteImageMutation.mutateAsync({
-            siteId: editingSite.id,
-            imageData: previewImage,
-            mimeType,
-          })
-          console.log('✅ Image saved to database via tRPC')
-        } catch (dbError: any) {
-          console.warn('⚠️ Failed to save to database via tRPC, trying utility function:', dbError.message)
-          // Fallback to utility function (which will try direct API call, then client storage)
+          console.log('💾 Attempting to save to database via utility function (with compression)...')
           await setSiteImage(editingSite.id, previewImage, utils.client as any)
+          console.log('✅ Image saved via utility function')
+        } catch (saveError: any) {
+          console.error('❌ Failed to save image:', saveError.message)
+          alert(`Failed to save image: ${saveError.message}`)
         }
         
         // Wait a bit for the save to complete and event to dispatch

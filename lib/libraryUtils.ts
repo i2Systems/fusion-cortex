@@ -176,8 +176,9 @@ function getCustomImageSync(libraryId: string): string | null {
 /**
  * Compress image by reducing quality/size
  * Preserves original format (PNG/JPEG) to maintain transparency
+ * More aggressive compression to avoid 414 URI_TOO_LONG errors
  */
-async function compressImage(base64String: string, maxWidth: number = 800, quality: number = 0.8): Promise<string> {
+async function compressImage(base64String: string, maxWidth: number = 600, quality: number = 0.7, maxSizeBytes: number = 500000): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image()
     img.onload = () => {
@@ -185,7 +186,7 @@ async function compressImage(base64String: string, maxWidth: number = 800, quali
       let width = img.width
       let height = img.height
       
-      // Scale down if too large
+      // Scale down if too large (more aggressive)
       if (width > maxWidth) {
         height = (height * maxWidth) / width
         width = maxWidth
@@ -202,15 +203,47 @@ async function compressImage(base64String: string, maxWidth: number = 800, quali
         const isPNG = base64String.startsWith('data:image/png') || base64String.includes('image/png')
         const isJPEG = base64String.startsWith('data:image/jpeg') || base64String.startsWith('data:image/jpg') || base64String.includes('image/jpeg') || base64String.includes('image/jpg')
         
-        // Preserve PNG format for transparency, use JPEG for photos
+        // Try compression with quality, reducing quality if still too large
+        let compressed: string
+        let currentQuality = quality
+        
+        // For PNG, try to compress, but if too large, convert to JPEG
         if (isPNG) {
-          const compressed = canvas.toDataURL('image/png')
-          resolve(compressed)
+          compressed = canvas.toDataURL('image/png')
+          // If PNG is too large, convert to JPEG
+          if (compressed.length > maxSizeBytes) {
+            console.log(`PNG too large (${compressed.length} bytes), converting to JPEG...`)
+            compressed = canvas.toDataURL('image/jpeg', currentQuality)
+          }
         } else {
-          // Default to JPEG for photos and other formats
-          const compressed = canvas.toDataURL('image/jpeg', quality)
-          resolve(compressed)
+          // For JPEG, start with quality and reduce if needed
+          compressed = canvas.toDataURL('image/jpeg', currentQuality)
         }
+        
+        // If still too large, reduce quality further
+        let attempts = 0
+        while (compressed.length > maxSizeBytes && attempts < 5 && currentQuality > 0.3) {
+          currentQuality -= 0.1
+          compressed = canvas.toDataURL('image/jpeg', currentQuality)
+          attempts++
+          console.log(`Image still too large (${compressed.length} bytes), reducing quality to ${currentQuality}...`)
+        }
+        
+        // If still too large after quality reduction, scale down more
+        if (compressed.length > maxSizeBytes && width > 400) {
+          const scaleFactor = Math.sqrt(maxSizeBytes / compressed.length)
+          width = Math.max(400, Math.floor(width * scaleFactor))
+          height = Math.floor((height * width) / img.width)
+          
+          canvas.width = width
+          canvas.height = height
+          ctx.drawImage(img, 0, 0, width, height)
+          compressed = canvas.toDataURL('image/jpeg', 0.5)
+          console.log(`Rescaled to ${width}x${height}, new size: ${compressed.length} bytes`)
+        }
+        
+        console.log(`✅ Compressed image: ${compressed.length} bytes (${(compressed.length / 1024).toFixed(1)} KB)`)
+        resolve(compressed)
       } else {
         resolve(base64String) // Fallback to original
       }
@@ -227,32 +260,36 @@ export async function setCustomImage(libraryId: string, imageUrl: string, trpcCl
   if (typeof window === 'undefined') return
   
   try {
-    // Compress image first to reduce size
-    const compressedImage = await compressImage(imageUrl)
+    // Compress image first to reduce size (aggressive compression to avoid 414 errors)
+    const compressedImage = await compressImage(imageUrl, 600, 0.7, 500000) // Max 500KB
+    console.log(`Compressed library image size: ${compressedImage.length} chars (${(compressedImage.length / 1024).toFixed(1)} KB)`)
     
-    // Determine mime type
-    const isPNG = compressedImage.startsWith('data:image/png')
-    const mimeType = isPNG ? 'image/png' : 'image/jpeg'
+    // Check if compressed image is still too large for HTTP requests
+    const MAX_REQUEST_SIZE = 500000 // 500KB
+    if (compressedImage.length > MAX_REQUEST_SIZE) {
+      console.warn(`⚠️ Compressed library image still too large (${compressedImage.length} bytes), using client storage only`)
+      // Skip database save, go straight to client storage
+    } else {
+      // Determine mime type
+      const isPNG = compressedImage.startsWith('data:image/png')
+      const mimeType = isPNG ? 'image/png' : 'image/jpeg'
 
-    // METHOD 1: Try to save to Supabase database first (primary storage)
-    try {
-      if (trpcClient) {
-        console.log('💾 Attempting to save library image to Supabase database...')
-        await trpcClient.image.saveLibraryImage.mutateAsync({
-          libraryId,
-          imageData: compressedImage,
-          mimeType,
-        })
-        console.log('✅ Library image saved to Supabase database')
-      } else {
-        // Try direct API call for mutation (POST with batch format)
-        try {
-          console.log('💾 Attempting to save library image to Supabase database (direct API call)...')
-          // tRPC batch format for mutations: POST with JSON body
-          const response = await fetch(`/api/trpc/image.saveLibraryImage?batch=1`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+      // METHOD 1: Try to save to Supabase database first (primary storage)
+      try {
+        if (trpcClient) {
+          console.log('💾 Attempting to save library image to Supabase database...')
+          await trpcClient.image.saveLibraryImage.mutateAsync({
+            libraryId,
+            imageData: compressedImage,
+            mimeType,
+          })
+          console.log('✅ Library image saved to Supabase database')
+        } else {
+          // Try direct API call for mutation (POST with batch format)
+          try {
+            console.log('💾 Attempting to save library image to Supabase database (direct API call)...')
+            // tRPC batch format for mutations: POST with JSON body
+            const requestBody = JSON.stringify({
               "0": {
                 json: {
                   libraryId,
@@ -260,8 +297,18 @@ export async function setCustomImage(libraryId: string, imageUrl: string, trpcCl
                   mimeType,
                 },
               },
-            }),
-          })
+            })
+            
+            // Check request body size
+            if (requestBody.length > MAX_REQUEST_SIZE) {
+              throw new Error('Request body too large (414 URI_TOO_LONG)')
+            }
+            
+            const response = await fetch(`/api/trpc/image.saveLibraryImage?batch=1`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: requestBody,
+            })
           if (response.ok) {
             const result = await response.json()
             if (Array.isArray(result) && result[0]?.result?.data) {
@@ -275,14 +322,23 @@ export async function setCustomImage(libraryId: string, imageUrl: string, trpcCl
             const errorText = await response.text()
             throw new Error(`API returned ${response.status}: ${errorText.substring(0, 200)}`)
           }
-        } catch (apiError: any) {
-          console.warn('⚠️ Failed to save library image to database via API, using client storage:', apiError.message)
-          // Continue to client storage fallback
+          } catch (apiError: any) {
+            if (apiError.message?.includes('414') || apiError.message?.includes('URI_TOO_LONG')) {
+              console.warn('⚠️ Library image too large for database (414 error), using client storage only')
+            } else {
+              console.warn('⚠️ Failed to save library image to database via API, using client storage:', apiError.message)
+            }
+            // Continue to client storage fallback
+          }
         }
+      } catch (dbError: any) {
+        if (dbError.message?.includes('414') || dbError.message?.includes('URI_TOO_LONG')) {
+          console.warn('⚠️ Library image too large for database (414 error), using client storage only')
+        } else {
+          console.warn('⚠️ Failed to save to database, using client storage as fallback:', dbError.message)
+        }
+        // Continue to client storage fallback
       }
-    } catch (dbError: any) {
-      console.warn('⚠️ Failed to save to database, using client storage as fallback:', dbError.message)
-      // Continue to client storage fallback
     }
     
     // METHOD 2: Also save to client storage as backup (IndexedDB or localStorage)
@@ -565,38 +621,48 @@ export async function setSiteImage(siteId: string, imageUrl: string, trpcClient?
   console.log(`📸 Saving site image for ${siteId}, size: ${imageUrl.length} chars`)
   
   try {
-    // Compress image first
+    // Compress image first (aggressive compression to avoid 414 errors)
     console.log('Compressing image...')
-    const compressedImage = await compressImage(imageUrl)
-    console.log(`Compressed size: ${compressedImage.length} chars`)
+    const compressedImage = await compressImage(imageUrl, 600, 0.7, 500000) // Max 500KB
+    console.log(`Compressed size: ${compressedImage.length} chars (${(compressedImage.length / 1024).toFixed(1)} KB)`)
 
-    // Determine mime type
-    const isPNG = compressedImage.startsWith('data:image/png')
-    const mimeType = isPNG ? 'image/png' : 'image/jpeg'
-
-    // METHOD 1: Try to save to Supabase database first (primary storage)
-    if (trpcClient) {
-      try {
-        console.log('💾 Attempting to save to Supabase database...')
-        await trpcClient.image.saveSiteImage.mutateAsync({
-          siteId,
-          imageData: compressedImage,
-          mimeType,
-        })
-        console.log('✅ Site image saved to Supabase database')
-      } catch (dbError: any) {
-        console.warn('⚠️ Failed to save to database, using client storage as fallback:', dbError.message)
-        // Continue to client storage fallback
-      }
+    // Check if compressed image is still too large for HTTP requests (avoid 414 errors)
+    // Most servers have URL length limits around 8KB-32KB, but POST body can be larger
+    // However, to be safe, we'll limit to 500KB for the entire request body
+    const MAX_REQUEST_SIZE = 500000 // 500KB
+    if (compressedImage.length > MAX_REQUEST_SIZE) {
+      console.warn(`⚠️ Compressed image still too large (${compressedImage.length} bytes), using client storage only`)
+      // Skip database save, go straight to client storage
     } else {
-      // Try direct API call for mutation (POST with batch format)
-      try {
-        console.log('💾 Attempting to save to Supabase database (direct API call)...')
-        // tRPC batch format for mutations: POST with JSON body
-        const response = await fetch(`/api/trpc/image.saveSiteImage?batch=1`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+      // Determine mime type
+      const isPNG = compressedImage.startsWith('data:image/png')
+      const mimeType = isPNG ? 'image/png' : 'image/jpeg'
+
+      // METHOD 1: Try to save to Supabase database first (primary storage)
+      if (trpcClient) {
+        try {
+          console.log('💾 Attempting to save to Supabase database...')
+          await trpcClient.image.saveSiteImage.mutateAsync({
+            siteId,
+            imageData: compressedImage,
+            mimeType,
+          })
+          console.log('✅ Site image saved to Supabase database')
+        } catch (dbError: any) {
+          // Check for 414 error specifically
+          if (dbError.message?.includes('414') || dbError.message?.includes('URI_TOO_LONG')) {
+            console.warn('⚠️ Image too large for database (414 error), using client storage only')
+          } else {
+            console.warn('⚠️ Failed to save to database, using client storage as fallback:', dbError.message)
+          }
+          // Continue to client storage fallback
+        }
+      } else {
+        // Try direct API call for mutation (POST with batch format)
+        try {
+          console.log('💾 Attempting to save to Supabase database (direct API call)...')
+          // tRPC batch format for mutations: POST with JSON body
+          const requestBody = JSON.stringify({
             "0": {
               json: {
                 siteId,
@@ -604,8 +670,18 @@ export async function setSiteImage(siteId: string, imageUrl: string, trpcClient?
                 mimeType,
               },
             },
-          }),
-        })
+          })
+          
+          // Check request body size
+          if (requestBody.length > MAX_REQUEST_SIZE) {
+            throw new Error('Request body too large (414 URI_TOO_LONG)')
+          }
+          
+          const response = await fetch(`/api/trpc/image.saveSiteImage?batch=1`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: requestBody,
+          })
         if (response.ok) {
           const result = await response.json()
           if (Array.isArray(result) && result[0]?.result?.data) {
@@ -615,13 +691,24 @@ export async function setSiteImage(siteId: string, imageUrl: string, trpcClient?
           } else {
             throw new Error('Invalid response format')
           }
-        } else {
-          const errorText = await response.text()
-          throw new Error(`API returned ${response.status}: ${errorText.substring(0, 200)}`)
+          } else {
+            const errorText = await response.text()
+            const errorMsg = `API returned ${response.status}: ${errorText.substring(0, 200)}`
+            // Check for 414 specifically
+            if (response.status === 414 || errorText.includes('URI_TOO_LONG')) {
+              console.warn('⚠️ Image too large for database (414 URI_TOO_LONG), using client storage only')
+            } else {
+              throw new Error(errorMsg)
+            }
+          }
+        } catch (apiError: any) {
+          if (apiError.message?.includes('414') || apiError.message?.includes('URI_TOO_LONG')) {
+            console.warn('⚠️ Image too large for database (414 error), using client storage only')
+          } else {
+            console.warn('⚠️ Failed to save to database via API, using client storage:', apiError.message)
+          }
+          // Continue to client storage fallback
         }
-      } catch (apiError: any) {
-        console.warn('⚠️ Failed to save to database via API, using client storage:', apiError.message)
-        // Continue to client storage fallback
       }
     }
 
