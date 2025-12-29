@@ -274,13 +274,28 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
           // Continue anyway - client storage will work
         }
         
-        // Use utility function which handles compression and size limits
-        // This will compress the image aggressively to avoid 414 errors
+        // Use the mutation hook directly (same pattern as components, but using React hooks)
         try {
-          console.log('💾 Attempting to save to database via utility function (with compression)...')
+          console.log('💾 Attempting to save to database via mutation hook...')
           console.log('   Preview image size:', previewImage.length, 'chars')
-          await setSiteImage(editingSite.id, previewImage, utils.client as any)
-          console.log('✅ Image saved via utility function')
+          
+          // Compress the image first (same as components do)
+          const { compressImage } = await import('@/lib/libraryUtils')
+          const compressedImage = await compressImage(previewImage, 600, 0.7, 500000)
+          console.log(`   Compressed size: ${compressedImage.length} chars (${(compressedImage.length / 1024).toFixed(1)} KB)`)
+          
+          // Use the mutation hook directly - this is the React way (components use direct fetch, but mutation hook is better)
+          await saveSiteImageMutation.mutateAsync({
+            siteId: editingSite.id,
+            imageData: compressedImage,
+            mimeType: compressedImage.startsWith('data:image/png') ? 'image/png' : 'image/jpeg',
+          })
+          console.log('✅ Image saved via mutation hook')
+          
+          // Also save to client storage as backup (like components do)
+          const { setSiteImage } = await import('@/lib/libraryUtils')
+          await setSiteImage(editingSite.id, compressedImage) // Without trpcClient - will use direct fetch as fallback
+          console.log('✅ Image also saved to client storage as backup')
         } catch (saveError: any) {
           console.error('❌ Failed to save image:', saveError)
           alert(`Failed to save image: ${saveError.message || 'Unknown error'}`)
