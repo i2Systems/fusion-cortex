@@ -93,8 +93,6 @@ async function getCustomImage(libraryId: string, trpcClient?: any): Promise<stri
   console.log(`🔍 Loading custom image for libraryId: ${libraryId}`)
   
   // METHOD 1: Try to load from Supabase database first (primary source)
-  // Only use tRPC client if provided (from React hooks in components)
-  // Direct fetch calls don't work well with tRPC's superjson transformer
   try {
     if (trpcClient && libraryId && libraryId.length > 0) {
       const dbImage = await trpcClient.image.getLibraryImage.query({ libraryId })
@@ -104,9 +102,27 @@ async function getCustomImage(libraryId: string, trpcClient?: any): Promise<stri
       } else {
         console.log(`ℹ️ No database image found for ${libraryId}`)
       }
+    } else {
+      // Try direct API call if trpcClient not provided
+      // Use GET request for tRPC queries
+      try {
+        const input = encodeURIComponent(JSON.stringify({ libraryId }))
+        const response = await fetch(`/api/trpc/image.getLibraryImage?input=${input}`)
+        if (response.ok) {
+          const result = await response.json()
+          if (result?.result?.data) {
+            const dbImage = result.result.data
+            if (dbImage) {
+              console.log(`✅ Loaded library image from database via API for ${libraryId}`)
+              return dbImage
+            }
+          }
+        }
+      } catch (apiError: any) {
+        // Silently fail - will fallback to client storage
+        console.log(`ℹ️ Direct API call failed for ${libraryId}, trying client storage`)
+      }
     }
-    // Skip direct API calls - they require complex tRPC format handling
-    // Components should use tRPC hooks directly for database access
   } catch (dbError: any) {
     console.warn(`⚠️ Failed to load from database for ${libraryId}, trying client storage:`, dbError.message)
   }
@@ -519,8 +535,6 @@ export async function getSiteImage(siteId: string, retries: number = 3, trpcClie
   console.log(`🔍 Loading site image for siteId: ${siteId}`)
   
   // METHOD 1: Try to load from Supabase database first (primary source)
-  // Only use tRPC client if provided (from React hooks in components)
-  // Direct fetch calls don't work well with tRPC's superjson transformer
   try {
     if (trpcClient && siteId && siteId.length > 0) {
       const dbImage = await trpcClient.image.getSiteImage.query({ siteId })
@@ -530,9 +544,27 @@ export async function getSiteImage(siteId: string, retries: number = 3, trpcClie
       } else {
         console.log(`ℹ️ No database image found for ${siteId}`)
       }
+    } else {
+      // Try direct API call if trpcClient not provided
+      // Use GET request for tRPC queries
+      try {
+        const input = encodeURIComponent(JSON.stringify({ siteId }))
+        const response = await fetch(`/api/trpc/image.getSiteImage?input=${input}`)
+        if (response.ok) {
+          const result = await response.json()
+          if (result?.result?.data) {
+            const dbImage = result.result.data
+            if (dbImage) {
+              console.log(`✅ Loaded site image from database via API for ${siteId}`)
+              return dbImage
+            }
+          }
+        }
+      } catch (apiError: any) {
+        // Silently fail - will fallback to client storage
+        console.log(`ℹ️ Direct API call failed for ${siteId}, trying client storage`)
+      }
     }
-    // Skip direct API calls - they require complex tRPC format handling
-    // Components should use tRPC hooks directly for database access
   } catch (dbError: any) {
     console.warn(`⚠️ Failed to load from database for ${siteId}, trying client storage:`, dbError.message)
   }
