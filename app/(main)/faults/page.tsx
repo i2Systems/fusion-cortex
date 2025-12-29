@@ -470,7 +470,7 @@ export default function FaultsPage() {
       return time >= last48h && time < last24h
     })
     const newFaultsDelta = newFaults24h.length - newFaultsPrevious24h.length
-    const newFaultsTrend = newFaultsDelta > 0 ? 'up' : newFaultsDelta < 0 ? 'down' : 'stable'
+    const newFaultsTrend: 'up' | 'down' | 'stable' = newFaultsDelta > 0 ? 'up' : newFaultsDelta < 0 ? 'down' : 'stable'
     
     // Insight 2: Trending Category (category with most new faults in last 24h)
     const categoryNewCounts: Record<FaultCategory, number> = {
@@ -539,7 +539,7 @@ export default function FaultsPage() {
       criticalFaults: {
         count: criticalCount,
         delta: criticalDelta,
-        trend: criticalDelta > 0 ? 'up' : criticalDelta < 0 ? 'down' : 'stable',
+        trend: (criticalDelta > 0 ? 'up' : criticalDelta < 0 ? 'down' : 'stable') as 'up' | 'down' | 'stable',
         label: 'Critical Priority',
         description: `${criticalCount} faults older than 6 hours`,
       },
