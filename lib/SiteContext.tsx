@@ -362,12 +362,28 @@ export function SiteProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  // Delete site mutation
+  const deleteSiteMutation = trpc.site.delete.useMutation({
+    onSuccess: () => {
+      refetchSites()
+    },
+    onError: (error) => {
+      console.error('Failed to delete site:', error)
+      alert(`Failed to delete site: ${error.message}`)
+    },
+  })
+
   const removeSite = (siteId: string) => {
-    // Note: Site deletion would need to be added to the site router
-    // For now, we'll just prevent removal of default sites
+    // Prevent removal of default sites
     const isDefault = DEFAULT_SITES.some(ds => ds.id === siteId)
     if (isDefault) {
       console.warn('Cannot remove default sites')
+      alert('Cannot remove default sites')
+      return
+    }
+
+    // Confirm deletion
+    if (!confirm(`Are you sure you want to delete this site? This will also delete all devices, zones, rules, and other data associated with this site.`)) {
       return
     }
     
@@ -376,11 +392,13 @@ export function SiteProvider({ children }: { children: ReactNode }) {
       const remainingSites = sites.filter(s => s.id !== siteId)
       if (remainingSites.length > 0) {
         setActiveSiteId(remainingSites[0].id)
+      } else {
+        setActiveSiteId(null)
       }
     }
     
-    // TODO: Add delete mutation to site router
-    console.warn('Site deletion not yet implemented in database')
+    // Delete from database
+    deleteSiteMutation.mutate({ id: siteId })
   }
 
   return (

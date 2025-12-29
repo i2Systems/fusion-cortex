@@ -402,6 +402,107 @@ export const siteRouter = router({
       throw new Error(`Failed to ensure site exists after ${MAX_RETRIES} retries.`)
     }),
 
+  // Delete site and all related data (cascade delete)
+  delete: publicProcedure
+    .input(z.object({
+      id: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      try {
+        // First check if site exists
+        const site = await prisma.site.findUnique({
+          where: { id: input.id },
+          select: { id: true },
+        })
+
+        if (!site) {
+          throw new Error(`Site with ID ${input.id} not found in database`)
+        }
+
+        // Delete related data first (cascade order matters)
+        // Note: Prisma should handle cascades if foreign keys are set up correctly,
+        // but we'll do explicit deletes to be safe
+        
+        // First, get all zones for this site to delete related rules and mappings
+        const zones = await prisma.zone.findMany({
+          where: { siteId: input.id },
+          select: { id: true },
+        })
+        const zoneIds = zones.map(z => z.id)
+
+        // Delete rules associated with zones in this site
+        if (zoneIds.length > 0) {
+          await prisma.rule.deleteMany({
+            where: { zoneId: { in: zoneIds } },
+          })
+        }
+
+        // Delete BACnet mappings (cascade will handle this, but explicit for clarity)
+        if (zoneIds.length > 0) {
+          await prisma.bACnetMapping.deleteMany({
+            where: { zoneId: { in: zoneIds } },
+          })
+        }
+
+        // Delete zone devices (junction table) - cascade will handle this via zones
+        // but explicit delete for clarity
+        if (zoneIds.length > 0) {
+          await prisma.zoneDevice.deleteMany({
+            where: {
+              zoneId: { in: zoneIds },
+            },
+          })
+        }
+
+        // Delete devices (and their components via cascade)
+        await prisma.device.deleteMany({
+          where: { siteId: input.id },
+        })
+
+        // Delete zones (this will cascade delete BACnetMappings and ZoneDevices)
+        await prisma.zone.deleteMany({
+          where: { siteId: input.id },
+        })
+
+        // Finally delete the site
+        await prisma.site.delete({
+          where: { id: input.id },
+        })
+
+        return { success: true, deletedId: input.id }
+      } catch (error: any) {
+        console.error('Error in site.delete:', {
+          message: error.message,
+          code: error.code,
+          meta: error.meta,
+          stack: error.stack,
+          input: input,
+        })
+
+        // Handle "record not found" errors
+        if (error.code === 'P2025' || error.message?.includes('Record to delete does not exist') || error.message?.includes('not found')) {
+          throw new Error(`Site with ID ${input.id} not found in database`)
+        }
+
+        // Handle foreign key constraint violations
+        if (error.code === 'P2003' || error.message?.includes('Foreign key constraint')) {
+          throw new Error(`Cannot delete site: Related data still exists. Please delete related devices, zones, and rules first.`)
+        }
+
+        // Handle database connection errors
+        if (error.message?.includes('Can\'t reach database') || 
+            error.message?.includes('P1001') ||
+            error.message?.includes('Authentication failed') ||
+            error.code === 'P1001' ||
+            error.code === 'P1000') {
+          throw new Error('Database connection failed. Please check your DATABASE_URL environment variable.')
+        }
+
+        // Re-throw with more context
+        throw new Error(`Failed to delete site: ${error.message || 'Unknown error'}`)
+      }
+    }),
+
   // Note: Seeding endpoint removed because Next.js cannot resolve TypeScript files
   // in the scripts/ directory at runtime. Use the npm script instead:
   // npm run db:seed
