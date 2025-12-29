@@ -12,7 +12,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { skipToken } from '@tanstack/react-query'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { ResizablePanel } from '@/components/layout/ResizablePanel'
@@ -109,20 +109,32 @@ function SiteImageCard({ siteId }: { siteId: string }) {
     }
   )
 
-  // Log query state for debugging
+  // Log query state for debugging (only when state actually changes)
+  const prevStateRef = useRef<{ isLoading: boolean; hasData: boolean; isError: boolean } | null>(null)
   useEffect(() => {
     if (isValidSiteId && siteId) {
-      console.log(`🔍 [CLIENT] Query state for ${siteId}:`, {
-        enabled: isValidSiteId && !!siteId && siteId.trim().length > 0,
+      const currentState = {
         isLoading: isDbLoading,
-        isError: isDbError,
         hasData: !!dbImage,
-        dataLength: dbImage?.length,
-        error: dbError?.message,
-        queryInput: queryInput === skipToken ? 'skipToken' : queryInput,
-      })
+        isError: isDbError,
+      }
+      // Only log if state changed
+      if (!prevStateRef.current || 
+          prevStateRef.current.isLoading !== currentState.isLoading ||
+          prevStateRef.current.hasData !== currentState.hasData ||
+          prevStateRef.current.isError !== currentState.isError) {
+        console.log(`🔍 [CLIENT] Query state for ${siteId}:`, {
+          enabled: isValidSiteId && !!siteId && siteId.trim().length > 0,
+          isLoading: isDbLoading,
+          isError: isDbError,
+          hasData: !!dbImage,
+          dataLength: dbImage?.length,
+          error: dbError?.message,
+        })
+        prevStateRef.current = currentState
+      }
     }
-  }, [siteId, isDbLoading, isDbError, dbImage, dbError, isValidSiteId, queryInput])
+  }, [siteId, isDbLoading, isDbError, dbImage, dbError, isValidSiteId])
 
   useEffect(() => {
     const loadImage = async () => {

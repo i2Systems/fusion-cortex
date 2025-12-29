@@ -28,7 +28,31 @@ export const imageRouter = router({
             await new Promise(resolve => setTimeout(resolve, 200 * attempt))
           }
           
-          console.log(`💾 Saving site image to database for ${input.siteId}, size: ${input.imageData.length} chars`)
+          console.log(`💾 [SERVER] Saving site image to database for ${input.siteId}, size: ${input.imageData.length} chars (${(input.imageData.length / 1024).toFixed(1)} KB)`)
+          
+          // First ensure site exists
+          const siteExists = await prisma.site.findUnique({
+            where: { id: input.siteId },
+            select: { id: true },
+          })
+          
+          if (!siteExists) {
+            console.warn(`⚠️ [SERVER] Site ${input.siteId} does not exist, cannot save image. Creating site first...`)
+            // Try to create a minimal site record
+            try {
+              await prisma.site.create({
+                data: {
+                  id: input.siteId,
+                  name: `Site ${input.siteId}`,
+                  storeNumber: input.siteId.replace('site-', '').replace('store-', ''),
+                },
+              })
+              console.log(`✅ [SERVER] Created site ${input.siteId} for image storage`)
+            } catch (createError: any) {
+              console.error(`❌ [SERVER] Failed to create site ${input.siteId}:`, createError.message)
+              throw new Error(`Site ${input.siteId} does not exist and could not be created: ${createError.message}`)
+            }
+          }
           
           // Update site with imageUrl
           const site = await prisma.site.update({
@@ -36,7 +60,7 @@ export const imageRouter = router({
             data: { imageUrl: input.imageData },
           })
           
-          console.log(`✅ Site image saved to database for ${input.siteId}`)
+          console.log(`✅ [SERVER] Site image saved to database for ${input.siteId}`)
           return { success: true, siteId: input.siteId }
         } catch (error: any) {
           lastError = error
@@ -101,15 +125,22 @@ export const imageRouter = router({
           })
           
           if (!siteExists) {
-            console.log(`⚠️ [SERVER] Site ${input.siteId} does not exist in database`)
+            // Log available sites for debugging (only first 10 to avoid spam)
+            const availableSites = await prisma.site.findMany({ 
+              select: { id: true }, 
+              take: 10 
+            }).catch(() => [])
+            console.log(`⚠️ [SERVER] Site ${input.siteId} does not exist in database. Available sites:`, 
+              availableSites.map(s => s.id)
+            )
             return null
           }
           
-          if (siteExists.imageUrl) {
+          if (siteExists.imageUrl && siteExists.imageUrl.trim().length > 0) {
             console.log(`✅ [SERVER] Found image in database for ${input.siteId}, length: ${siteExists.imageUrl.length}`)
             return siteExists.imageUrl
           } else {
-            console.log(`ℹ️ [SERVER] Site ${input.siteId} exists but has no imageUrl (null or empty)`)
+            console.log(`ℹ️ [SERVER] Site ${input.siteId} exists but imageUrl is ${siteExists.imageUrl === null ? 'null' : 'empty'}`)
             return null
           }
         } catch (error: any) {
