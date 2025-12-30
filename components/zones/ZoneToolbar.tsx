@@ -114,7 +114,7 @@ export function ZoneToolbar({
                 onClick={() => handleToolClick(tool)}
                 disabled={isDisabled}
                 className={`
-                  flex items-center gap-2 px-3 py-2 rounded-lg
+                  flex items-center justify-center gap-2 px-2 md:px-3 py-2 rounded-lg
                   transition-all duration-200
                   ${isActive 
                     ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)] shadow-[var(--shadow-glow-primary)]' 
@@ -126,7 +126,7 @@ export function ZoneToolbar({
                 title={tool.description}
               >
                 <Icon size={16} className={isActive ? 'opacity-100' : 'opacity-70'} />
-                <span className="text-sm font-medium whitespace-nowrap">{tool.label}</span>
+                <span className="hidden md:inline text-sm font-medium whitespace-nowrap">{tool.label}</span>
               </button>
             )
           })}
@@ -138,11 +138,11 @@ export function ZoneToolbar({
         {/* Save Button */}
         <button
           onClick={() => onSave?.()}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-text-on-primary)] hover:bg-[var(--color-primary-hover)] transition-all duration-200 shadow-[var(--shadow-soft)]"
+          className="flex items-center justify-center gap-2 px-3 md:px-4 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-text-on-primary)] hover:bg-[var(--color-primary-hover)] transition-all duration-200 shadow-[var(--shadow-soft)]"
           title="Save zone layout to system (prevents automatic resets)"
         >
           <Save size={16} />
-          <span className="text-sm font-medium whitespace-nowrap">Save Layout</span>
+          <span className="hidden md:inline text-sm font-medium whitespace-nowrap">Save Layout</span>
         </button>
     </div>
   )

@@ -33,16 +33,17 @@ export function ViewToggle({ currentView, onViewChange }: ViewToggleProps) {
             key={view.id}
             onClick={() => onViewChange(view.id)}
             className={`
-              flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200
+              flex items-center justify-center gap-1.5 px-2 md:px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200
               ${
                 isActive
                   ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-soft)]'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
               }
             `}
+            title={view.label}
           >
             <Icon size={14} />
-            <span>{view.label}</span>
+            <span className="hidden md:inline">{view.label}</span>
           </button>
         )
       })}

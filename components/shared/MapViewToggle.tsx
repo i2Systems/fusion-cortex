@@ -21,30 +21,32 @@ export function MapViewToggle({ currentView, onViewChange }: MapViewToggleProps)
       <button
         onClick={() => onViewChange('list')}
         className={`
-          flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200
+          flex items-center justify-center gap-1.5 px-2 md:px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200
           ${
             currentView === 'list'
               ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-soft)]'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
           }
         `}
+        title="List View"
       >
         <List size={14} />
-        <span>List</span>
+        <span className="hidden md:inline">List</span>
       </button>
       <button
         onClick={() => onViewChange('map')}
         className={`
-          flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200
+          flex items-center justify-center gap-1.5 px-2 md:px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200
           ${
             currentView === 'map'
               ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-soft)]'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
           }
         `}
+        title="Map View"
       >
         <Map size={14} />
-        <span>Map</span>
+        <span className="hidden md:inline">Map</span>
       </button>
     </div>
   )

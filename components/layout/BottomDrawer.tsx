@@ -106,7 +106,7 @@ export function BottomDrawer({ children }: BottomDrawerProps) {
   return (
     <div
       className={`
-        fixed bottom-0 left-20 right-0
+        fixed bottom-0 left-0 md:left-20 right-0
         bg-[var(--color-surface)] backdrop-blur-xl border-t border-[var(--color-border-subtle)] 
         transition-all duration-300 ease-out
         ${isExpanded ? 'h-64' : 'h-12'}
@@ -116,21 +116,21 @@ export function BottomDrawer({ children }: BottomDrawerProps) {
       {/* Drawer Header - Always visible */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full h-12 flex items-center justify-between px-6 hover:bg-[var(--color-surface-subtle)] transition-colors"
+        className="w-full h-12 flex items-center justify-between px-4 md:px-6 hover:bg-[var(--color-surface-subtle)] transition-colors"
       >
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-[var(--color-text)]">
+        <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
+          <span className="text-sm font-medium text-[var(--color-text)] whitespace-nowrap">
             Status
           </span>
           {/* Page-specific status */}
           {pageStatus && (
-            <span className="text-xs text-[var(--color-text-muted)]">
+            <span className="text-xs text-[var(--color-text-muted)] truncate hidden sm:inline">
               {pageStatus}
             </span>
           )}
           {unreadCount > 0 && (
-            <span className="text-xs text-[var(--color-primary)]">
-              • {unreadCount} new notification{unreadCount !== 1 ? 's' : ''}
+            <span className="text-xs text-[var(--color-primary)] whitespace-nowrap">
+              • {unreadCount} new{unreadCount !== 1 ? 's' : ''}
             </span>
           )}
         </div>
@@ -159,7 +159,7 @@ export function BottomDrawer({ children }: BottomDrawerProps) {
                         <div
                           key={notification.id}
                           className={`
-                            w-64 flex-shrink-0 p-3 rounded-lg border transition-all cursor-pointer group
+                            w-56 sm:w-64 flex-shrink-0 p-3 rounded-lg border transition-all cursor-pointer group
                             ${notification.read 
                               ? 'bg-[var(--color-surface-subtle)] border-[var(--color-border-subtle)]' 
                               : 'bg-[var(--color-primary-soft)] border-[var(--color-primary)]/40'

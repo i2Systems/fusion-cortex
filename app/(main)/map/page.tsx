@@ -897,7 +897,7 @@ export default function MapPage() {
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island - In flow */}
-      <div className="flex-shrink-0 px-[20px] pt-4 pb-3 relative">
+      <div className="flex-shrink-0 page-padding-x pt-3 md:pt-4 pb-2 md:pb-3 relative">
         <SearchIsland 
           position="top" 
           fullWidth={true}
@@ -924,7 +924,7 @@ export default function MapPage() {
       </div>
 
       {/* Main Content: Map + Table Panel */}
-      <div className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" style={{ overflow: 'visible' }}>
+      <div className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pb-12 md:pb-14" style={{ overflow: 'visible' }}>
         {/* Map Canvas - Left Side */}
         <div className="flex-1 relative min-w-0" style={{ overflow: 'visible', minHeight: 0 }}>
           {/* Map Toolbar - Top center (hidden for Manager and Technician) */}
@@ -949,18 +949,18 @@ export default function MapPage() {
                 <button
                   onClick={handleDetectLights}
                   disabled={isDetectingLights}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-[var(--shadow-soft)]"
-                  title="Auto-detect light fixtures from the map"
+                  className="flex items-center justify-center gap-2 px-3 md:px-4 py-2 rounded-lg bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-[var(--shadow-soft)]"
+                  title={isDetectingLights ? 'Detecting lights...' : detectedLightsCount !== null ? `Detect Lights (${detectedLightsCount} found)` : 'Auto-detect light fixtures from the map'}
                 >
                   {isDetectingLights ? (
                     <>
                       <Loader2 size={18} className="animate-spin" />
-                      <span className="text-sm font-medium">Detecting...</span>
+                      <span className="hidden md:inline text-sm font-medium">Detecting...</span>
                     </>
                   ) : (
                     <>
                       <Lightbulb size={18} />
-                      <span className="text-sm font-medium">
+                      <span className="hidden md:inline text-sm font-medium">
                         {detectedLightsCount !== null ? `Detect Lights (${detectedLightsCount} found)` : 'Detect Lights'}
                       </span>
                     </>
@@ -970,11 +970,11 @@ export default function MapPage() {
               <div className="pointer-events-auto">
                 <button
                   onClick={handleClearMap}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--color-surface)] backdrop-blur-xl border border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-danger)] transition-all duration-200 shadow-[var(--shadow-soft)]"
+                  className="flex items-center justify-center gap-2 px-3 md:px-4 py-2 rounded-lg bg-[var(--color-surface)] backdrop-blur-xl border border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-danger)] transition-all duration-200 shadow-[var(--shadow-soft)]"
                   title="Clear map and show upload"
                 >
                   <X size={18} />
-                  <span className="text-sm font-medium">Clear</span>
+                  <span className="hidden md:inline text-sm font-medium">Clear</span>
                 </button>
               </div>
             </div>

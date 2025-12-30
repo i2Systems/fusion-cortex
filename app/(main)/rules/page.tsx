@@ -232,7 +232,7 @@ export default function RulesPage() {
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island - In flow */}
-      <div className="flex-shrink-0 px-[20px] pt-4 pb-3">
+      <div className="flex-shrink-0 page-padding-x pt-3 md:pt-4 pb-2 md:pb-3">
         <SearchIsland 
           position="top" 
           fullWidth={true}
@@ -251,7 +251,7 @@ export default function RulesPage() {
 
       {/* Main Content: Rules List/Map + Details Panel */}
       <div 
-        className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" 
+        className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pb-12 md:pb-14" 
         style={{ overflow: 'visible' }}
         onClick={handleMainContentClick}
       >
@@ -272,7 +272,7 @@ export default function RulesPage() {
                 <button
                   onClick={() => setShowRules(!showRules)}
                   className={`
-                    px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200
+                    px-2 md:px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200
                     ${
                       showRules
                         ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-soft)]'
@@ -281,12 +281,13 @@ export default function RulesPage() {
                   `}
                   title="Show/Hide Rules"
                 >
-                  Rules
+                  <span className="hidden sm:inline">Rules</span>
+                  <span className="sm:hidden">R</span>
                 </button>
                 <button
                   onClick={() => setShowOverrides(!showOverrides)}
                   className={`
-                    px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200
+                    px-2 md:px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200
                     ${
                       showOverrides
                         ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-soft)]'
@@ -295,12 +296,13 @@ export default function RulesPage() {
                   `}
                   title="Show/Hide Overrides"
                 >
-                  Overrides
+                  <span className="hidden sm:inline">Overrides</span>
+                  <span className="sm:hidden">O</span>
                 </button>
                 <button
                   onClick={() => setShowSchedules(!showSchedules)}
                   className={`
-                    px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200
+                    px-2 md:px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200
                     ${
                       showSchedules
                         ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-soft)]'
@@ -309,16 +311,19 @@ export default function RulesPage() {
                   `}
                   title="Show/Hide Schedules"
                 >
-                  Schedules
+                  <span className="hidden sm:inline">Schedules</span>
+                  <span className="sm:hidden">S</span>
                 </button>
               </div>
               
             {selectedZoneName && viewMode === 'map' && (
               <button
                 onClick={() => setSelectedZoneName(null)}
-                className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+                className="text-xs md:text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors px-2 py-1 rounded-md hover:bg-[var(--color-surface-subtle)]"
+                title="Clear zone filter"
               >
-                Clear filter
+                <span className="hidden sm:inline">Clear filter</span>
+                <span className="sm:hidden">Clear</span>
               </button>
             )}
             </div>

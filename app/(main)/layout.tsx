@@ -35,14 +35,14 @@ export default function MainLayout({
           {/* Main Working Surface + Right Panel */}
           <div className="flex flex-1 min-h-0 relative">
             {/* Primary Content Area */}
-            <main className="flex-1 overflow-hidden relative flex flex-col">
+            <main className="flex-1 overflow-hidden relative flex flex-col min-w-0">
               <PageTitle />
               <div className="flex-1 min-h-0 overflow-visible">
                 {children}
               </div>
             </main>
             
-            {/* Right Context Panel - Slide-in */}
+            {/* Right Context Panel - Slide-in, overlay on mobile/tablet */}
             <ContextPanel />
           </div>
           

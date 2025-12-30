@@ -297,16 +297,17 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
             ) : (
               <Square size={16} />
             )}
-            <span>{allSelected ? 'Deselect All' : 'Select All'}</span>
+            <span className="hidden md:inline">{allSelected ? 'Deselect All' : 'Select All'}</span>
           </button>
           {selectedDeviceIds.size > 0 && (
             <button
               onClick={handleDeleteSelected}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-[var(--color-danger-soft)] hover:bg-[var(--color-danger)] text-[var(--color-danger)] hover:text-white transition-colors border border-[var(--color-danger)]"
+              className="flex items-center justify-center gap-1.5 px-2 md:px-3 py-1.5 text-sm rounded-lg bg-[var(--color-danger-soft)] hover:bg-[var(--color-danger)] text-[var(--color-danger)] hover:text-white transition-colors border border-[var(--color-danger)]"
               title={`Delete ${selectedDeviceIds.size} selected device${selectedDeviceIds.size > 1 ? 's' : ''}`}
             >
               <Trash2 size={16} />
-              <span>Delete ({selectedDeviceIds.size})</span>
+              <span className="hidden md:inline">Delete ({selectedDeviceIds.size})</span>
+              <span className="md:hidden">{selectedDeviceIds.size}</span>
             </button>
           )}
         </div>

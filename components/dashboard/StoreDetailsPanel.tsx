@@ -185,45 +185,46 @@ export function SiteDetailsPanel({
 
   if (!site) {
     return (
-      <div className="w-96 min-w-[20rem] max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
+      <div className="w-full md:w-96 md:min-w-[20rem] md:max-w-[32rem] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden flex-shrink-0 h-full">
         <div className="flex-1 flex flex-col">
           {/* Empty State Content */}
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-[var(--color-surface-subtle)] flex items-center justify-center">
-              <Building2 size={40} className="text-[var(--color-text-muted)]" />
+          <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-8 text-center">
+            <div className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-3 md:mb-4 rounded-full bg-[var(--color-surface-subtle)] flex items-center justify-center">
+              <Building2 size={32} className="md:w-10 md:h-10 text-[var(--color-text-muted)]" />
             </div>
-            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-2">
+            <h3 className="text-base md:text-lg font-semibold text-[var(--color-text)] mb-2">
               No Site Selected
             </h3>
-            <p className="text-sm text-[var(--color-text-muted)]">
+            <p className="text-xs md:text-sm text-[var(--color-text-muted)] px-4">
               Select a site from the dashboard to view detailed information
             </p>
           </div>
 
           {/* Action Buttons Bar */}
-          <div className="p-4 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)]">
+          <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)]">
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={onAddSite}
-                className="px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center gap-2"
+                className="px-3 md:px-4 py-1.5 md:py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-xs md:text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center gap-1.5 md:gap-2"
               >
-                <Plus size={16} />
-                Add Site
+                <Plus size={14} className="md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Add Site</span>
+                <span className="sm:hidden">Add</span>
               </button>
               <div className="flex-1" />
               <button
                 onClick={onImportSites}
-                className="px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-border-strong)] transition-all flex items-center gap-2"
+                className="px-3 md:px-4 py-1.5 md:py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-xs md:text-sm text-[var(--color-text)] hover:border-[var(--color-border-strong)] transition-all flex items-center gap-1.5 md:gap-2"
               >
-                <Upload size={16} />
-                Import
+                <Upload size={14} className="md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Import</span>
               </button>
               <button
                 onClick={onExportSites}
-                className="px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-border-strong)] transition-all flex items-center gap-2"
+                className="px-3 md:px-4 py-1.5 md:py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-xs md:text-sm text-[var(--color-text)] hover:border-[var(--color-border-strong)] transition-all flex items-center gap-1.5 md:gap-2"
               >
-                <Download size={16} />
-                Export
+                <Download size={14} className="md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Export</span>
               </button>
             </div>
           </div>
@@ -273,7 +274,7 @@ export function SiteDetailsPanel({
 
   return (
     <div className="w-full h-full bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)] overflow-hidden">
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Site Header */}
       <div>
         {/* Site Image */}
@@ -301,13 +302,13 @@ export function SiteDetailsPanel({
                 opacity: 0.6,
               }}
             >
-              <Building2 size={16} className="text-[var(--color-text-soft)] flex-shrink-0" />
-              <span className="text-xl font-bold text-[var(--color-text)]">
+              <Building2 size={14} className="md:w-4 md:h-4 text-[var(--color-text-soft)] flex-shrink-0" />
+              <span className="text-lg md:text-xl font-bold text-[var(--color-text)] truncate">
                 {activeSiteId ? sites.find(s => s.id === activeSiteId)?.name || site?.name : site?.name || 'Select a site'}
               </span>
               <ChevronDown 
-                size={16} 
-                className={`text-[var(--color-text-soft)] transition-transform duration-200 flex-shrink-0 ${
+                size={14}
+                className={`md:w-4 md:h-4 text-[var(--color-text-soft)] transition-transform duration-200 flex-shrink-0 ${
                   isSiteDropdownOpen ? 'rotate-180' : ''
                 }`}
               />
@@ -382,28 +383,28 @@ export function SiteDetailsPanel({
             )}
           </div>
         </div>
-        <div className="space-y-2 text-sm text-[var(--color-text-muted)]">
+        <div className="space-y-1.5 md:space-y-2 text-xs md:text-sm text-[var(--color-text-muted)]">
           {site.address && (
-            <div className="flex items-center gap-2">
-              <MapPin size={14} />
-              <span>{site.address}, {site.city}, {site.state} {site.zipCode}</span>
+            <div className="flex items-center gap-1.5 md:gap-2">
+              <MapPin size={12} className="md:w-3.5 md:h-3.5 flex-shrink-0" />
+              <span className="break-words">{site.address}, {site.city}, {site.state} {site.zipCode}</span>
             </div>
           )}
           {site.phone && (
-            <div className="flex items-center gap-2">
-              <Phone size={14} />
+            <div className="flex items-center gap-1.5 md:gap-2">
+              <Phone size={12} className="md:w-3.5 md:h-3.5 flex-shrink-0" />
               <span>{site.phone}</span>
             </div>
           )}
           {site.manager && (
-            <div className="flex items-center gap-2">
-              <User size={14} />
+            <div className="flex items-center gap-1.5 md:gap-2">
+              <User size={12} className="md:w-3.5 md:h-3.5 flex-shrink-0" />
               <span>Manager: {site.manager}</span>
             </div>
           )}
           {site.squareFootage && (
-            <div className="flex items-center gap-2">
-              <Map size={14} />
+            <div className="flex items-center gap-1.5 md:gap-2">
+              <Map size={12} className="md:w-3.5 md:h-3.5 flex-shrink-0" />
               <span>{site.squareFootage.toLocaleString()} sq ft</span>
             </div>
           )}
@@ -411,18 +412,18 @@ export function SiteDetailsPanel({
       </div>
 
       {/* Health Status */}
-      <div className="p-4 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)]">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Activity size={18} />
-            <span className="font-semibold text-[var(--color-text)]">System Health</span>
+      <div className="p-3 md:p-4 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)]">
+        <div className="flex items-center justify-between mb-2 md:mb-3">
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <Activity size={16} className="md:w-[18px] md:h-[18px] flex-shrink-0" />
+            <span className="text-sm md:text-base font-semibold text-[var(--color-text)]">System Health</span>
           </div>
           {getHealthIcon(healthPercentage)}
         </div>
-        <div className="text-3xl font-bold mb-2" style={{ color: getHealthColor(healthPercentage) }}>
+        <div className="text-2xl md:text-3xl font-bold mb-2" style={{ color: getHealthColor(healthPercentage) }}>
           {healthPercentage}%
         </div>
-        <div className="grid grid-cols-3 gap-2 text-xs">
+        <div className="grid grid-cols-3 gap-1.5 md:gap-2 text-xs">
           <div>
             <div className="text-[var(--color-text-muted)]">Online</div>
             <div className="font-semibold text-[var(--color-success)]">{onlineDevices}</div>
@@ -439,22 +440,22 @@ export function SiteDetailsPanel({
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="p-3 rounded-lg bg-[var(--color-surface-subtle)]">
-          <div className="text-xs text-[var(--color-text-muted)] mb-1">Total Devices</div>
-          <div className="text-xl font-bold text-[var(--color-text)]">{devices.length}</div>
+      <div className="grid grid-cols-2 gap-2 md:gap-3">
+        <div className="p-2.5 md:p-3 rounded-lg bg-[var(--color-surface-subtle)]">
+          <div className="text-xs text-[var(--color-text-muted)] mb-0.5 md:mb-1">Total Devices</div>
+          <div className="text-lg md:text-xl font-bold text-[var(--color-text)]">{devices.length}</div>
         </div>
-        <div className="p-3 rounded-lg bg-[var(--color-surface-subtle)]">
-          <div className="text-xs text-[var(--color-text-muted)] mb-1">Zones</div>
-          <div className="text-xl font-bold text-[var(--color-text)]">{zones.length}</div>
+        <div className="p-2.5 md:p-3 rounded-lg bg-[var(--color-surface-subtle)]">
+          <div className="text-xs text-[var(--color-text-muted)] mb-0.5 md:mb-1">Zones</div>
+          <div className="text-lg md:text-xl font-bold text-[var(--color-text)]">{zones.length}</div>
         </div>
-        <div className="p-3 rounded-lg bg-[var(--color-surface-subtle)]">
-          <div className="text-xs text-[var(--color-text-muted)] mb-1">Rules</div>
-          <div className="text-xl font-bold text-[var(--color-text)]">{rules.length}</div>
+        <div className="p-2.5 md:p-3 rounded-lg bg-[var(--color-surface-subtle)]">
+          <div className="text-xs text-[var(--color-text-muted)] mb-0.5 md:mb-1">Rules</div>
+          <div className="text-lg md:text-xl font-bold text-[var(--color-text)]">{rules.length}</div>
         </div>
-        <div className="p-3 rounded-lg bg-[var(--color-surface-subtle)]">
-          <div className="text-xs text-[var(--color-text-muted)] mb-1">Map Status</div>
-          <div className="text-sm font-semibold flex items-center gap-1">
+        <div className="p-2.5 md:p-3 rounded-lg bg-[var(--color-surface-subtle)]">
+          <div className="text-xs text-[var(--color-text-muted)] mb-0.5 md:mb-1">Map Status</div>
+          <div className="text-xs md:text-sm font-semibold flex items-center gap-1">
             {mapUploaded ? (
               <>
                 <CheckCircle2 size={14} className="text-[var(--color-success)]" />
@@ -595,55 +596,59 @@ export function SiteDetailsPanel({
         <div className="space-y-2">
           <button
             onClick={() => handleNavigate('/map')}
-            className="w-full fusion-button fusion-button-primary text-left justify-start text-sm"
+            className="w-full fusion-button fusion-button-primary text-left justify-start text-xs md:text-sm"
           >
-            <Map size={16} />
-            View Map
+            <Map size={14} className="md:w-4 md:h-4" />
+            <span className="hidden sm:inline">View Map</span>
+            <span className="sm:hidden">Map</span>
           </button>
           <button
             onClick={() => handleNavigate('/zones')}
-            className="w-full fusion-button text-left justify-start text-sm"
+            className="w-full fusion-button text-left justify-start text-xs md:text-sm"
             style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text)' }}
           >
-            <Layers size={16} />
-            Manage Zones
+            <Layers size={14} className="md:w-4 md:h-4" />
+            <span className="hidden sm:inline">Manage Zones</span>
+            <span className="sm:hidden">Zones</span>
           </button>
           <button
             onClick={() => handleNavigate('/rules')}
-            className="w-full fusion-button text-left justify-start text-sm"
+            className="w-full fusion-button text-left justify-start text-xs md:text-sm"
             style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text)' }}
           >
-            <Workflow size={16} />
-            Configure Rules
+            <Workflow size={14} className="md:w-4 md:h-4" />
+            <span className="hidden sm:inline">Configure Rules</span>
+            <span className="sm:hidden">Rules</span>
           </button>
         </div>
       </div>
       </div>
 
       {/* Action Buttons Bar */}
-      <div className="p-4 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] flex-shrink-0">
+      <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] flex-shrink-0">
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={onAddSite}
-            className="px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center gap-2"
+            className="px-3 md:px-4 py-1.5 md:py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-xs md:text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center gap-1.5 md:gap-2"
           >
-            <Plus size={16} />
-            Add Site
+            <Plus size={14} className="md:w-4 md:h-4" />
+            <span className="hidden sm:inline">Add Site</span>
+            <span className="sm:hidden">Add</span>
           </button>
           <div className="flex-1" />
           <button
             onClick={onImportSites}
-            className="px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-border-strong)] transition-all flex items-center gap-2"
+            className="px-3 md:px-4 py-1.5 md:py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-xs md:text-sm text-[var(--color-text)] hover:border-[var(--color-border-strong)] transition-all flex items-center gap-1.5 md:gap-2"
           >
-            <Upload size={16} />
-            Import
+            <Upload size={14} className="md:w-4 md:h-4" />
+            <span className="hidden sm:inline">Import</span>
           </button>
           <button
             onClick={onExportSites}
-            className="px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-border-strong)] transition-all flex items-center gap-2"
+            className="px-3 md:px-4 py-1.5 md:py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-xs md:text-sm text-[var(--color-text)] hover:border-[var(--color-border-strong)] transition-all flex items-center gap-1.5 md:gap-2"
           >
-            <Download size={16} />
-            Export
+            <Download size={14} className="md:w-4 md:h-4" />
+            <span className="hidden sm:inline">Export</span>
           </button>
         </div>
       </div>

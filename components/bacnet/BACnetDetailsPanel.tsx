@@ -228,8 +228,8 @@ export function BACnetDetailsPanel({
   return (
     <div className="flex flex-col h-full">
       {/* Data-Dense Header */}
-      <div className="p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)]">
-        <div className="flex items-start gap-3 mb-3">
+      <div className="p-3 md:p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)]">
+        <div className="flex items-start gap-2 md:gap-3 mb-2 md:mb-3">
           {/* Zone Image/Icon */}
           <div className="w-16 h-16 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border-subtle)] flex items-center justify-center flex-shrink-0 shadow-[var(--shadow-soft)]">
             <Layers size={32} className="text-[var(--color-primary)]" />
@@ -299,10 +299,10 @@ export function BACnetDetailsPanel({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-2">
+      <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-4 md:space-y-6 pb-2">
         {/* Status */}
         <div>
-          <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">Connection Status</h4>
+          <h4 className="text-xs md:text-sm font-semibold text-[var(--color-text)] mb-2 md:mb-3">Connection Status</h4>
           <div className="p-3 rounded-lg border border-[var(--color-border-subtle)]">
             <div className={getStatusTokenClass(mapping.status)}>
             {getStatusIcon(mapping.status)}
@@ -446,19 +446,20 @@ export function BACnetDetailsPanel({
       </div>
 
       {/* Actions Footer */}
-      <div className="p-4 border-t border-[var(--color-border-subtle)] space-y-2 flex-shrink-0">
+      <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] space-y-2 flex-shrink-0">
         {isEditing ? (
           <>
             <button
               onClick={handleSave}
-              className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+              className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
             >
-              <Save size={16} />
-              Save Changes
+              <Save size={14} className="md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Save Changes</span>
+              <span className="sm:hidden">Save</span>
             </button>
             <button
               onClick={handleCancel}
-              className="w-full fusion-button"
+              className="w-full fusion-button text-xs md:text-sm"
               style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text-muted)' }}
             >
               Cancel
@@ -469,10 +470,11 @@ export function BACnetDetailsPanel({
             <button
               onClick={onTestConnection}
               disabled={mapping.status === 'not-assigned'}
-              className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <RefreshCw size={16} />
-              Test Connection
+              <RefreshCw size={14} className="md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Test Connection</span>
+              <span className="sm:hidden">Test</span>
             </button>
             {mapping.status === 'error' && (
               <button

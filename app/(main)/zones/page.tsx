@@ -383,7 +383,7 @@ export default function ZonesPage() {
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island - In flow */}
-      <div className="flex-shrink-0 px-[20px] pt-4 pb-3 relative">
+      <div className="flex-shrink-0 page-padding-x pt-3 md:pt-4 pb-2 md:pb-3 relative">
         <div className="flex items-center justify-between gap-3 mb-3">
           <MapViewToggle currentView={viewMode} onViewChange={setViewMode} />
         </div>
@@ -432,7 +432,7 @@ export default function ZonesPage() {
 
       {/* Main Content: Map/List + Zones Panel */}
       <div 
-        className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" 
+        className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pb-12 md:pb-14" 
         style={{ overflow: 'visible' }}
         onClick={handleMainContentClick}
       >

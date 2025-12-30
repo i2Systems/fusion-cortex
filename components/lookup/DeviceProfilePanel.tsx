@@ -9,7 +9,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Image, Calendar, Thermometer, Shield, Package, MapPin, Radio, Battery, Wifi, WifiOff, CheckCircle2, AlertCircle, XCircle, QrCode, AlertTriangle, ExternalLink, Plus, Upload, Download, Info } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -20,9 +20,11 @@ import { assignFaultCategory, generateFaultDescription, faultCategories } from '
 import { useDevices } from '@/lib/DeviceContext'
 import { isFixtureType } from '@/lib/deviceUtils'
 import { getDeviceLibraryUrl, getDeviceImage, getDeviceImageAsync } from '@/lib/libraryUtils'
+import { SelectSwitcher } from '@/components/shared/SelectSwitcher'
 
 interface DeviceProfilePanelProps {
   device: Device | null
+  onDeviceSelect?: (device: Device | null) => void
   onComponentClick?: (component: Component, parentDevice: Device) => void
   onManualEntry?: () => void
   onQRScan?: () => void
@@ -33,16 +35,23 @@ interface DeviceProfilePanelProps {
 // Device Icon Component with image support
 function DeviceIcon({ deviceType }: { deviceType: string }) {
   const [imageError, setImageError] = useState(false)
-  const [imageKey, setImageKey] = useState(0) // Force re-render when images update
   const [deviceImage, setDeviceImage] = useState<string | null>(null)
+  const [imageKey, setImageKey] = useState(0) // For forcing image reload when needed
+  const currentImageRef = useRef<string | null>(null)
 
   // Load device image (database first, then client storage, then default)
   useEffect(() => {
+    let isMounted = true
+    
     const loadImage = async () => {
       // Try sync first (for localStorage images)
       const syncImage = getDeviceImage(deviceType as DeviceType)
       if (syncImage && !syncImage.startsWith('https://images.unsplash.com')) {
-        setDeviceImage(syncImage)
+        if (isMounted && currentImageRef.current !== syncImage) {
+          currentImageRef.current = syncImage
+          setDeviceImage(syncImage)
+          setImageError(false)
+        }
         return
       }
       
@@ -50,11 +59,19 @@ function DeviceIcon({ deviceType }: { deviceType: string }) {
       try {
         const asyncImage = await getDeviceImageAsync(deviceType as DeviceType)
         if (asyncImage && !asyncImage.startsWith('https://images.unsplash.com')) {
-          setDeviceImage(asyncImage)
+          if (isMounted && currentImageRef.current !== asyncImage) {
+            currentImageRef.current = asyncImage
+            setDeviceImage(asyncImage)
+            setImageError(false)
+          }
           return
         } else if (asyncImage) {
           // Default image
-          setDeviceImage(asyncImage)
+          if (isMounted && currentImageRef.current !== asyncImage) {
+            currentImageRef.current = asyncImage
+            setDeviceImage(asyncImage)
+            setImageError(false)
+          }
           return
         }
       } catch (error) {
@@ -63,22 +80,48 @@ function DeviceIcon({ deviceType }: { deviceType: string }) {
       
       // Fallback to sync default
       const defaultImage = getDeviceImage(deviceType as DeviceType)
-      setDeviceImage(defaultImage)
+      if (isMounted && currentImageRef.current !== defaultImage) {
+        currentImageRef.current = defaultImage
+        setDeviceImage(defaultImage)
+        setImageError(false)
+      }
     }
     
     loadImage()
-  }, [deviceType, imageKey])
+    
+    return () => {
+      isMounted = false
+    }
+  }, [deviceType])
   
-  // Listen for library image updates
+  // Listen for library image updates - only reload if image actually changed
   useEffect(() => {
-    const handleImageUpdate = () => {
-      // Force re-render by updating key - this will cause image to reload
-      setImageKey(prev => prev + 1)
-      setImageError(false) // Reset error state in case new image loads
+    const handleImageUpdate = async () => {
+      // Reload the image to check if it changed
+      const syncImage = getDeviceImage(deviceType as DeviceType)
+      if (syncImage && syncImage !== currentImageRef.current) {
+        currentImageRef.current = syncImage
+        setDeviceImage(syncImage)
+        setImageError(false)
+        setImageKey(prev => prev + 1) // Only update key when image actually changes
+        return
+      }
+      
+      try {
+        const asyncImage = await getDeviceImageAsync(deviceType as DeviceType)
+        if (asyncImage && asyncImage !== currentImageRef.current) {
+          currentImageRef.current = asyncImage
+          setDeviceImage(asyncImage)
+          setImageError(false)
+          setImageKey(prev => prev + 1) // Only update key when image actually changes
+        }
+      } catch (error) {
+        // Ignore errors on update
+      }
     }
     window.addEventListener('libraryImageUpdated', handleImageUpdate)
     return () => window.removeEventListener('libraryImageUpdated', handleImageUpdate)
-  }, [])
+  }, [deviceType])
 
   const showImage = deviceImage && !imageError
 
@@ -116,7 +159,7 @@ function DeviceIcon({ deviceType }: { deviceType: string }) {
   )
 }
 
-export function DeviceProfilePanel({ device, onComponentClick, onManualEntry, onQRScan, onImport, onExport }: DeviceProfilePanelProps) {
+export function DeviceProfilePanel({ device, onDeviceSelect, onComponentClick, onManualEntry, onQRScan, onImport, onExport }: DeviceProfilePanelProps) {
   const router = useRouter()
   const { devices } = useDevices()
   
@@ -138,36 +181,40 @@ export function DeviceProfilePanel({ device, onComponentClick, onManualEntry, on
           </div>
 
           {/* Action Buttons Bar */}
-          <div className="p-4 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)]">
+          <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)]">
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={onManualEntry}
-                className="px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center gap-2"
+                className="px-2 md:px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center justify-center gap-2"
+                title="Add Device Manually"
               >
                 <Plus size={16} />
-                Add Device Manually
+                <span className="hidden md:inline">Add Device Manually</span>
               </button>
               <button
                 onClick={onQRScan}
-                className="px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center gap-2"
+                className="px-2 md:px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center justify-center gap-2"
+                title="Scan QR Code"
               >
                 <QrCode size={16} />
-                Scan QR Code
+                <span className="hidden md:inline">Scan QR Code</span>
               </button>
               <div className="flex-1" />
               <button
                 onClick={onImport}
-                className="px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-border-strong)] transition-all flex items-center gap-2"
+                className="px-2 md:px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-border-strong)] transition-all flex items-center justify-center gap-2"
+                title="Import List"
               >
                 <Upload size={16} />
-                Import List
+                <span className="hidden md:inline">Import List</span>
               </button>
               <button
                 onClick={onExport}
-                className="px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-border-strong)] transition-all flex items-center gap-2"
+                className="px-2 md:px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-border-strong)] transition-all flex items-center justify-center gap-2"
+                title="Export"
               >
                 <Download size={16} />
-                Export
+                <span className="hidden md:inline">Export</span>
               </button>
             </div>
           </div>
@@ -260,18 +307,30 @@ export function DeviceProfilePanel({ device, onComponentClick, onManualEntry, on
   return (
     <div className="flex flex-col h-full">
       {/* Data-Dense Header */}
-      <div className="p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)]">
-        <div className="flex items-start gap-3 mb-3">
+      <div className="p-3 md:p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)]">
+        <div className="flex items-start gap-2 md:gap-3 mb-2 md:mb-3">
           {/* Device Image/Icon */}
           <DeviceIcon deviceType={device.type} />
           {/* Meta Information */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between mb-2">
+            <div className="flex items-start justify-between mb-1.5 md:mb-2">
               <div className="flex-1 min-w-0">
-                <h3 className="text-base font-bold text-[var(--color-text)] mb-0.5 truncate">
-                  {device.deviceId}
-                </h3>
-                <div className="flex items-center gap-1.5">
+                {onDeviceSelect && devices.length > 1 ? (
+                  <SelectSwitcher
+                    items={devices}
+                    selectedItem={device}
+                    onSelect={onDeviceSelect}
+                    getLabel={(d) => d.deviceId}
+                    getKey={(d) => d.id}
+                    className="mb-1"
+                    maxWidth="100%"
+                  />
+                ) : (
+                  <h3 className="text-sm md:text-base font-bold text-[var(--color-text)] mb-0.5 truncate">
+                    {device.deviceId}
+                  </h3>
+                )}
+                <div className="flex items-center gap-1 md:gap-1.5">
                   <p className="text-xs text-[var(--color-text-muted)]">
                     {getTypeLabel(device.type)}
                   </p>
@@ -295,10 +354,10 @@ export function DeviceProfilePanel({ device, onComponentClick, onManualEntry, on
               </div>
             </div>
             {/* Quick Stats */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="px-2.5 py-1.5 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)] min-w-0">
-                <div className="text-xs text-[var(--color-text-soft)] mb-0.5 whitespace-nowrap">Serial</div>
-                <div className="text-xs font-mono font-semibold text-[var(--color-text)] truncate">{device.serialNumber}</div>
+            <div className="grid grid-cols-2 gap-2 md:gap-2.5">
+              <div className="px-2 md:px-2.5 py-1 md:py-1.5 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)] min-w-0">
+                <div className="text-[10px] md:text-xs text-[var(--color-text-soft)] mb-0.5 whitespace-nowrap">Serial</div>
+                <div className="text-[10px] md:text-xs font-mono font-semibold text-[var(--color-text)] truncate">{device.serialNumber}</div>
               </div>
               {device.location && (
                 <div className="px-2.5 py-1.5 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)] min-w-0">
@@ -344,26 +403,26 @@ export function DeviceProfilePanel({ device, onComponentClick, onManualEntry, on
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-2">
+      <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-4 md:space-y-6 pb-2">
         {/* Basic Information */}
         <div>
-          <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">Basic Information</h4>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
-              <span className="text-sm text-[var(--color-text-muted)]">Serial Number</span>
-              <span className="text-sm font-mono font-medium text-[var(--color-text)]">
+          <h4 className="text-xs md:text-sm font-semibold text-[var(--color-text)] mb-2 md:mb-3">Basic Information</h4>
+          <div className="space-y-1.5 md:space-y-2">
+            <div className="flex justify-between items-center p-1.5 md:p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+              <span className="text-xs md:text-sm text-[var(--color-text-muted)]">Serial Number</span>
+              <span className="text-xs md:text-sm font-mono font-medium text-[var(--color-text)] truncate ml-2">
                 {device.serialNumber}
               </span>
             </div>
-            <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
-              <span className="text-sm text-[var(--color-text-muted)]">Device ID</span>
-              <span className="text-sm font-medium text-[var(--color-text)]">
+            <div className="flex justify-between items-center p-1.5 md:p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+              <span className="text-xs md:text-sm text-[var(--color-text-muted)]">Device ID</span>
+              <span className="text-xs md:text-sm font-medium text-[var(--color-text)] truncate ml-2">
                 {device.deviceId}
               </span>
             </div>
-            <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
-              <span className="text-sm text-[var(--color-text-muted)]">Type</span>
-              <span className="text-sm font-medium text-[var(--color-text)]">
+            <div className="flex justify-between items-center p-1.5 md:p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+              <span className="text-xs md:text-sm text-[var(--color-text-muted)]">Type</span>
+              <span className="text-xs md:text-sm font-medium text-[var(--color-text)] truncate ml-2">
                 {getTypeLabel(device.type)}
               </span>
             </div>
@@ -425,11 +484,11 @@ export function DeviceProfilePanel({ device, onComponentClick, onManualEntry, on
 
         {/* I2QR Information */}
         <div>
-          <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3 flex items-center gap-2">
-            <QrCode size={16} />
+          <h4 className="text-xs md:text-sm font-semibold text-[var(--color-text)] mb-2 md:mb-3 flex items-center gap-1.5 md:gap-2">
+            <QrCode size={14} className="md:w-4 md:h-4" />
             I2QR Information
           </h4>
-          <div className="space-y-2">
+          <div className="space-y-1.5 md:space-y-2">
             <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
               <span className="text-sm text-[var(--color-text-muted)] flex items-center gap-1">
                 <Calendar size={14} />
@@ -455,11 +514,11 @@ export function DeviceProfilePanel({ device, onComponentClick, onManualEntry, on
 
         {/* Warranty Information */}
         <div>
-          <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3 flex items-center gap-2">
-            <Shield size={16} />
+          <h4 className="text-xs md:text-sm font-semibold text-[var(--color-text)] mb-2 md:mb-3 flex items-center gap-1.5 md:gap-2">
+            <Shield size={14} className="md:w-4 md:h-4" />
             Warranty Information
           </h4>
-          <div className="space-y-2">
+          <div className="space-y-1.5 md:space-y-2">
             <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
               <span className="text-sm text-[var(--color-text-muted)] flex items-center gap-1">
                 <Shield size={14} />
@@ -501,11 +560,13 @@ export function DeviceProfilePanel({ device, onComponentClick, onManualEntry, on
                       // Navigate to i2systems.com for replacement parts
                       window.open('https://i2systems.com', '_blank')
                     }}
-                    className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+                    className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
+                    title="Request Replacement Parts"
                   >
-                    <Package size={14} />
-                    Request Replacement
-                    <ExternalLink size={12} />
+                    <Package size={12} className="md:w-3.5 md:h-3.5" />
+                    <span className="hidden md:inline">Request Replacement</span>
+                    <span className="md:hidden">Request Parts</span>
+                    <ExternalLink size={10} className="md:w-3 md:h-3" />
                   </button>
                 </div>
               </>
@@ -516,11 +577,11 @@ export function DeviceProfilePanel({ device, onComponentClick, onManualEntry, on
         {/* Device Faults */}
         {deviceFaults.length > 0 && (
           <div>
-            <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3 flex items-center gap-2">
-              <AlertTriangle size={16} className="text-[var(--color-warning)]" />
+            <h4 className="text-xs md:text-sm font-semibold text-[var(--color-text)] mb-2 md:mb-3 flex items-center gap-1.5 md:gap-2">
+              <AlertTriangle size={14} className="md:w-4 md:h-4 text-[var(--color-warning)]" />
               Active Faults
             </h4>
-            <div className="space-y-2">
+            <div className="space-y-1.5 md:space-y-2">
               {deviceFaults.map((fault, index) => {
                 const categoryInfo = faultCategories[fault.faultType as keyof typeof faultCategories]
                 return (
@@ -559,8 +620,8 @@ export function DeviceProfilePanel({ device, onComponentClick, onManualEntry, on
         {/* Components */}
         {device.components && device.components.length > 0 && (
           <div>
-            <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3 flex items-center gap-2">
-              <Package size={16} />
+            <h4 className="text-xs md:text-sm font-semibold text-[var(--color-text)] mb-2 md:mb-3 flex items-center gap-1.5 md:gap-2">
+              <Package size={14} className="md:w-4 md:h-4" />
               Components
             </h4>
             <ComponentTree 
@@ -576,15 +637,15 @@ export function DeviceProfilePanel({ device, onComponentClick, onManualEntry, on
         {/* Parts List (fallback for devices without components) */}
         {(!device.components || device.components.length === 0) && (
           <div>
-            <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3 flex items-center gap-2">
-              <Package size={16} />
+            <h4 className="text-xs md:text-sm font-semibold text-[var(--color-text)] mb-2 md:mb-3 flex items-center gap-1.5 md:gap-2">
+              <Package size={14} className="md:w-4 md:h-4" />
               Parts List
             </h4>
-            <div className="space-y-1.5">
+            <div className="space-y-1 md:space-y-1.5">
               {partsList.map((part, index) => (
                 <div
                   key={index}
-                  className="p-2 rounded-lg bg-[var(--color-surface-subtle)] text-sm text-[var(--color-text-muted)]"
+                  className="p-1.5 md:p-2 rounded-lg bg-[var(--color-surface-subtle)] text-xs md:text-sm text-[var(--color-text-muted)]"
                 >
                   {part}
                 </div>
@@ -596,17 +657,17 @@ export function DeviceProfilePanel({ device, onComponentClick, onManualEntry, on
         {/* Map Position */}
         {device.x !== undefined && device.y !== undefined && (
           <div>
-            <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">Map Position</h4>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
-                <span className="text-sm text-[var(--color-text-muted)]">X Coordinate</span>
-                <span className="text-sm font-medium text-[var(--color-text)]">
+            <h4 className="text-xs md:text-sm font-semibold text-[var(--color-text)] mb-2 md:mb-3">Map Position</h4>
+            <div className="space-y-1.5 md:space-y-2">
+              <div className="flex justify-between items-center p-1.5 md:p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+                <span className="text-xs md:text-sm text-[var(--color-text-muted)]">X Coordinate</span>
+                <span className="text-xs md:text-sm font-medium text-[var(--color-text)]">
                   {(device.x * 100).toFixed(1)}%
                 </span>
               </div>
-              <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
-                <span className="text-sm text-[var(--color-text-muted)]">Y Coordinate</span>
-                <span className="text-sm font-medium text-[var(--color-text)]">
+              <div className="flex justify-between items-center p-1.5 md:p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+                <span className="text-xs md:text-sm text-[var(--color-text-muted)]">Y Coordinate</span>
+                <span className="text-xs md:text-sm font-medium text-[var(--color-text)]">
                   {(device.y * 100).toFixed(1)}%
                 </span>
               </div>

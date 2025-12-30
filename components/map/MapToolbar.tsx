@@ -137,7 +137,7 @@ export function MapToolbar({
                 key={tool.id}
                 onClick={() => handleToolClick(tool)}
                 className={`
-                  flex items-center gap-2 px-3 py-2 rounded-lg
+                  flex items-center justify-center gap-2 px-2 md:px-3 py-2 rounded-lg
                   transition-all duration-200
                   ${isActive 
                     ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)] shadow-[var(--shadow-glow-primary)]' 
@@ -147,7 +147,7 @@ export function MapToolbar({
                 title={tool.description}
               >
                 <Icon size={16} className={isActive ? 'opacity-100' : 'opacity-70'} />
-                <span className="text-sm font-medium whitespace-nowrap">{tool.label}</span>
+                <span className="hidden md:inline text-sm font-medium whitespace-nowrap">{tool.label}</span>
               </button>
             )
           })}

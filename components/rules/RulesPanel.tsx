@@ -290,11 +290,11 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-[var(--color-border-subtle)]">
+      <div className="p-3 md:p-4 border-b border-[var(--color-border-subtle)]">
         {selectedRule && mode === 'view' ? (
           /* Data-Dense Header for Selected Rule */
-          <div className="bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)] -m-4 p-4 mb-4 border-b border-[var(--color-border-subtle)]">
-            <div className="flex items-start gap-3 mb-3">
+          <div className="bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)] -m-3 md:-m-4 p-3 md:p-4 mb-3 md:mb-4 border-b border-[var(--color-border-subtle)]">
+            <div className="flex items-start gap-2 md:gap-3 mb-2 md:mb-3">
               {/* Rule Icon */}
               {(() => {
                 const TriggerIcon = getTriggerIcon(selectedRule?.trigger)
@@ -439,7 +439,7 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-2">
+      <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-4 md:space-y-6 pb-2">
         {mode === 'create' && creationStep === 'target' ? (
           /* Step 1: Target Selection */
           <div className="space-y-4">
@@ -986,39 +986,49 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
       </div>
 
       {/* Action Buttons Footer */}
-      <div className="p-4 border-t border-[var(--color-border-subtle)] space-y-2 flex-shrink-0">
+      <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] space-y-2 flex-shrink-0">
         {(mode === 'create' && creationStep === 'configure') || mode === 'edit' ? (
           <>
             <button
               onClick={handleSave}
-              className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+              className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
+              title={selectedRule ? 'Save Changes' : 'Create Rule'}
             >
-              <Save size={16} />
-              {selectedRule ? 'Save Changes' : 'Create'}
+              <Save size={14} className="md:w-4 md:h-4" />
+              <span className="hidden md:inline">{selectedRule ? 'Save Changes' : 'Create'}</span>
+              <span className="md:hidden">{selectedRule ? 'Save' : 'Create'}</span>
             </button>
             <button
               onClick={handleCancel}
-              className="w-full fusion-button"
+              className="w-full fusion-button flex items-center justify-center text-xs md:text-sm"
               style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text-muted)' }}
+              title="Cancel"
             >
-              Cancel
+              <span className="hidden md:inline">Cancel</span>
+              <span className="md:hidden">
+                <X size={14} className="md:w-4 md:h-4" />
+              </span>
             </button>
           </>
         ) : mode === 'view' && selectedRule ? (
           <button
             onClick={handleEdit}
-            className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+            className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
+            title="Edit Rule"
           >
-            <Edit2 size={16} />
-            Edit Rule
+            <Edit2 size={14} className="md:w-4 md:h-4" />
+            <span className="hidden md:inline">Edit Rule</span>
+            <span className="md:hidden">Edit</span>
           </button>
         ) : (
           <button
             onClick={handleCreateNew}
-            className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+            className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
+            title="Create New Rule"
           >
-            <Plus size={16} />
-            Create New
+            <Plus size={14} className="md:w-4 md:h-4" />
+            <span className="hidden md:inline">Create New</span>
+            <span className="md:hidden">Create</span>
           </button>
         )}
       </div>

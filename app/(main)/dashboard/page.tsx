@@ -741,7 +741,7 @@ export default function DashboardPage() {
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island */}
-      <div className="flex-shrink-0 px-[20px] pt-4 pb-3">
+      <div className="flex-shrink-0 page-padding-x pt-3 md:pt-4 pb-2 md:pb-3">
         <SearchIsland 
           position="top" 
           fullWidth={true}
@@ -809,14 +809,14 @@ export default function DashboardPage() {
 
       {/* Main Content: Site Cards + Details Panel */}
       <div 
-        className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14 overflow-hidden"
+        className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pb-12 md:pb-14 overflow-hidden"
         onClick={handleMainContentClick}
       >
         {/* Site Cards - Left Side */}
         <div ref={cardsContainerRef} className="flex-1 min-w-0 flex flex-col overflow-y-auto">
           {/* Site Cards Grid - Responsive */}
           <div className="flex-1 min-h-0">
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
           {filteredSiteSummaries.map((summary) => {
             const site = sites.find(s => s.id === summary.siteId)
             return (

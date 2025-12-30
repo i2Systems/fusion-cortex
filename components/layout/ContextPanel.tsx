@@ -35,16 +35,22 @@ export function ContextPanel({
   if (!isOpen) return null
 
   return (
-    <div
-      className="w-96 bg-[var(--color-surface)] backdrop-blur-xl border-l border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)]"
-      style={{ 
-        zIndex: 'var(--z-panel)',
-        animation: 'slideInRight 0.3s ease-out'
-      }}
-    >
+    <>
+      {/* Mobile/Tablet Backdrop */}
+      <div
+        className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[calc(var(--z-panel)-1)]"
+        onClick={onClose}
+      />
+      <div
+        className="w-full md:w-96 max-w-md md:max-w-none fixed md:relative right-0 top-0 h-full md:h-auto bg-[var(--color-surface)] backdrop-blur-xl border-l border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-strong)]"
+        style={{ 
+          zIndex: 'var(--z-panel)',
+          animation: 'slideInRight 0.3s ease-out'
+        }}
+      >
       {/* Panel Header */}
-      <div className="h-16 border-b border-[var(--color-border-subtle)] flex items-center justify-between px-6">
-        <h2 className="text-lg font-semibold text-[var(--color-text)]">
+      <div className="h-14 md:h-16 border-b border-[var(--color-border-subtle)] flex items-center justify-between px-4 md:px-6">
+        <h2 className="text-base md:text-lg font-semibold text-[var(--color-text)]">
           {title}
         </h2>
         {onClose && (
@@ -58,7 +64,7 @@ export function ContextPanel({
       </div>
 
       {/* Panel Content */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-4 md:p-6">
         {children || (
           <div className="text-[var(--color-text-muted)] text-sm">
             No details available
@@ -66,6 +72,7 @@ export function ContextPanel({
         )}
       </div>
     </div>
+    </>
   )
 }
 

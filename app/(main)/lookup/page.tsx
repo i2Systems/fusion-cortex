@@ -16,7 +16,7 @@ import { SearchIsland } from '@/components/layout/SearchIsland'
 import { DeviceList } from '@/components/lookup/DeviceList'
 import { DeviceProfilePanel } from '@/components/lookup/DeviceProfilePanel'
 import { ViewToggle, type ViewMode } from '@/components/lookup/ViewToggle'
-import { ResizablePanel } from '@/components/layout/ResizablePanel'
+import { ResizablePanel, type ResizablePanelRef } from '@/components/layout/ResizablePanel'
 import { MapUpload } from '@/components/map/MapUpload'
 import { useDevices } from '@/lib/DeviceContext'
 import { useZones } from '@/lib/ZoneContext'
@@ -64,7 +64,7 @@ export default function LookupPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [showManualEntry, setShowManualEntry] = useState(false)
   const listContainerRef = useRef<HTMLDivElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<ResizablePanelRef>(null)
   
   // Shared zoom state between map views
   const [sharedScale, setSharedScale] = useState(1)
@@ -419,24 +419,35 @@ export default function LookupPage() {
     return null
   }
 
+  // Open panel when device is selected on tablet/mobile
+  useEffect(() => {
+    if (selectedDeviceId && panelRef.current && typeof window !== 'undefined' && window.innerWidth < 1024) {
+      // Open panel when device is selected on tablet/mobile
+      if (panelRef.current.isCollapsed) {
+        panelRef.current.open()
+      }
+    }
+  }, [selectedDeviceId])
+
   // Handle clicking outside the list and panel to deselect
   const handleMainContentClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement
-    // Deselect if clicking outside both the list container and panel
+    // Deselect if clicking outside the list container (panel handles its own clicks)
     if (
       listContainerRef.current &&
-      panelRef.current &&
-      !listContainerRef.current.contains(target) &&
-      !panelRef.current.contains(target)
+      !listContainerRef.current.contains(target)
     ) {
-      setSelectedDeviceId(null)
+      // Only deselect if panel is collapsed (closed)
+      if (panelRef.current?.isCollapsed) {
+        setSelectedDeviceId(null)
+      }
     }
   }
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island - In flow */}
-      <div className="flex-shrink-0 px-[20px] pt-4 pb-3">
+      <div className="flex-shrink-0 page-padding-x pt-3 md:pt-4 pb-2 md:pb-3">
         <SearchIsland 
           position="top" 
           fullWidth={true}
@@ -450,7 +461,7 @@ export default function LookupPage() {
 
       {/* Main Content: Device List/Map + Profile Panel */}
       <div 
-        className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" 
+        className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pb-12 md:pb-14" 
         style={{ overflow: 'visible' }}
         onClick={handleMainContentClick}
       >
@@ -460,7 +471,7 @@ export default function LookupPage() {
           className="flex-1 min-w-0 flex flex-col"
         >
           {/* View Toggle - Top of main content */}
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-2 md:mb-3 flex items-center justify-between">
             <ViewToggle currentView={viewMode} onViewChange={setViewMode} />
           </div>
           
@@ -471,24 +482,25 @@ export default function LookupPage() {
         </div>
 
         {/* Device Profile Panel - Right Side */}
-        <div ref={panelRef}>
-          <ResizablePanel
-            defaultWidth={384}
-            minWidth={320}
-            maxWidth={512}
-            collapseThreshold={200}
-            storageKey="lookup_panel"
-          >
+        <ResizablePanel
+          ref={panelRef}
+          defaultWidth={384}
+          minWidth={320}
+          maxWidth={512}
+          collapseThreshold={200}
+          storageKey="lookup_panel"
+          showCloseButton={true}
+        >
             <DeviceProfilePanel 
-              device={selectedDevice} 
+              device={selectedDevice}
+              onDeviceSelect={(device) => setSelectedDeviceId(device?.id || null)}
               onComponentClick={handleComponentClick}
               onManualEntry={handleManualEntry}
               onQRScan={handleQRScan}
               onImport={handleImport}
               onExport={handleExport}
             />
-          </ResizablePanel>
-        </div>
+        </ResizablePanel>
       </div>
 
       {/* Component Modal */}

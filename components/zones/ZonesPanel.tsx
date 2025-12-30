@@ -11,6 +11,7 @@
 
 import { useState, useEffect } from 'react'
 import { Layers, Edit2, Trash2, MapPin, X, Save, CheckSquare, Square } from 'lucide-react'
+import { SelectSwitcher } from '@/components/shared/SelectSwitcher'
 
 interface Zone {
   id: string
@@ -208,9 +209,9 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
   return (
     <div className="h-full flex flex-col">
       {/* Panel Header - Always visible */}
-      <div className="p-4 border-b border-[var(--color-border-subtle)]">
+      <div className="p-3 md:p-4 border-b border-[var(--color-border-subtle)]">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold text-[var(--color-text)]">
+          <h3 className="text-base md:text-lg font-semibold text-[var(--color-text)]">
             Zones
           </h3>
           {zones.length > 0 && (
@@ -247,7 +248,7 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
 
       {/* Data-Dense Header for Selected Zone - Hidden in selection mode */}
       {selectedZone && !selectionMode && (
-        <div className="p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)]">
+        <div className="p-3 md:p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br from-[var(--color-primary-soft)]/30 to-[var(--color-surface-subtle)]">
           {isEditing ? (
             /* Edit Form */
             <div className="space-y-3">
@@ -350,9 +351,21 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-bold text-[var(--color-text)] mb-0.5 truncate">
-                      {selectedZone.name}
-                    </h3>
+                    {zones.length > 1 ? (
+                      <SelectSwitcher
+                        items={zones}
+                        selectedItem={selectedZone}
+                        onSelect={(zone) => onZoneSelect?.(zone?.id || null)}
+                        getLabel={(z) => z.name}
+                        getKey={(z) => z.id}
+                        className="mb-1"
+                        maxWidth="100%"
+                      />
+                    ) : (
+                      <h3 className="text-base font-bold text-[var(--color-text)] mb-0.5 truncate">
+                        {selectedZone.name}
+                      </h3>
+                    )}
                     <p className="text-xs text-[var(--color-text-muted)]">
                       Control Zone
                     </p>
@@ -544,7 +557,7 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
       </div>
 
       {/* Actions Footer */}
-      <div className="p-4 border-t border-[var(--color-border-subtle)] flex-shrink-0">
+      <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] flex-shrink-0">
         <button 
           onClick={() => {
             if (onCreateZone) {
@@ -554,10 +567,12 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
               onZoneSelect?.(null)
             }
           }}
-          className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+          className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
+          title="Create New Zone"
         >
-          <Layers size={16} />
-          Create New Zone
+          <Layers size={14} className="md:w-4 md:h-4" />
+          <span className="hidden md:inline">Create New Zone</span>
+          <span className="md:hidden">Create Zone</span>
         </button>
       </div>
     </div>

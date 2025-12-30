@@ -533,7 +533,7 @@ export default function BACnetPage() {
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island - In flow */}
-      <div className="flex-shrink-0 px-[20px] pt-4 pb-3">
+      <div className="flex-shrink-0 page-padding-x pt-3 md:pt-4 pb-2 md:pb-3">
         <SearchIsland 
           position="top" 
           fullWidth={true}
@@ -552,7 +552,7 @@ export default function BACnetPage() {
 
       {/* Main Content: Table/Map + Details Panel */}
       <div 
-        className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pb-14" 
+        className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pb-12 md:pb-14" 
         style={{ overflow: 'visible' }}
         onClick={handleMainContentClick}
       >

@@ -56,29 +56,29 @@ export function PageTitle() {
   }, [showSiteDropdown])
 
   return (
-    <div className="relative z-0" style={{ background: 'transparent' }}>
-      <div className="flex items-center justify-between px-8 pt-6 pb-2">
+    <div className="relative" style={{ background: 'transparent', zIndex: 1 }}>
+      <div className="flex items-center justify-between px-4 sm:pl-16 md:pl-6 md:pr-6 lg:pl-8 lg:pr-8 pt-4 md:pt-6 pb-2">
         {/* Left: Title */}
-        <div className="flex items-center gap-2 pointer-events-none">
-          <span className="text-base font-semibold text-[var(--color-text-muted)] opacity-60">
+        <div className="flex items-center gap-1.5 md:gap-2 pointer-events-none min-w-0 flex-1">
+          <span className="text-sm md:text-base font-semibold text-[var(--color-text-muted)] opacity-60 truncate">
             {title.primary}
           </span>
           {title.secondary && (
             <>
-              <span className="text-xs text-[var(--color-text-muted)] opacity-40">/</span>
-              <span className="text-sm font-medium text-[var(--color-text-muted)] opacity-60">
+              <span className="text-xs text-[var(--color-text-muted)] opacity-40 hidden sm:inline">/</span>
+              <span className="text-xs md:text-sm font-medium text-[var(--color-text-muted)] opacity-60 hidden sm:inline truncate">
                 {title.secondary}
               </span>
             </>
           )}
-          <span className="text-xs text-[var(--color-text-muted)] opacity-40">/</span>
-          <span className="text-sm font-medium text-[var(--color-text-muted)] opacity-60">
+          <span className="text-xs text-[var(--color-text-muted)] opacity-40 hidden md:inline">/</span>
+          <span className="text-xs md:text-sm font-medium text-[var(--color-text-muted)] opacity-60 hidden md:inline truncate">
             {role}
           </span>
         </div>
 
         {/* Right: Site Selector + Notifications */}
-        <div className="flex items-center gap-3 pointer-events-auto">
+        <div className="flex items-center gap-2 md:gap-3 pointer-events-auto flex-shrink-0">
           {/* Notifications icon */}
           <button
             onClick={() => router.push('/notifications')}
@@ -103,9 +103,9 @@ export function PageTitle() {
           <button 
             ref={buttonRef}
               onClick={() => setShowSiteDropdown(!showSiteDropdown)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors border border-[var(--color-border-subtle)]"
+            className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors border border-[var(--color-border-subtle)]"
           >
-            <span className="text-sm font-medium text-[var(--color-text)] whitespace-nowrap max-w-[180px] truncate">
+            <span className="text-xs md:text-sm font-medium text-[var(--color-text)] whitespace-nowrap max-w-[120px] sm:max-w-[180px] truncate">
                 {activeSite?.name || 'Select Site'}
             </span>
             <ChevronDown size={14} className="text-[var(--color-text-muted)] flex-shrink-0" />

@@ -14,8 +14,8 @@
 
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { GripVertical } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react'
+import { GripVertical, X } from 'lucide-react'
 
 interface ResizablePanelProps {
   children: React.ReactNode
@@ -25,9 +25,19 @@ interface ResizablePanelProps {
   collapseThreshold?: number
   storageKey?: string
   className?: string
+  showCloseButton?: boolean
+  onClose?: () => void
 }
 
-export function ResizablePanel({
+export interface ResizablePanelRef {
+  toggle: () => void
+  open: () => void
+  close: () => void
+  isCollapsed: boolean
+  panelElement: React.RefObject<HTMLDivElement>
+}
+
+export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>(({
   children,
   defaultWidth = 384, // 24rem
   minWidth = 280,
@@ -35,20 +45,39 @@ export function ResizablePanel({
   collapseThreshold = 200, // Below this, panel collapses completely
   storageKey,
   className = '',
-}: ResizablePanelProps) {
+  showCloseButton = false,
+  onClose,
+}, ref) => {
   const [width, setWidth] = useState(defaultWidth)
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  // Default to collapsed on tablet/mobile (below lg breakpoint)
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 1024 // lg breakpoint
+    }
+    return true // Default to collapsed on SSR
+  })
   const [isDragging, setIsDragging] = useState(false)
+  const [isTouchDragging, setIsTouchDragging] = useState(false)
   const [lastOpenWidth, setLastOpenWidth] = useState(defaultWidth)
   const panelRef = useRef<HTMLDivElement>(null)
   const handleRef = useRef<HTMLDivElement>(null)
   const dragStartX = useRef(0)
   const dragStartWidth = useRef(0)
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
+  const touchStartTime = useRef(0)
+  // Double-tap detection
+  const lastTapTime = useRef(0)
+  const lastTapX = useRef(0)
+  const lastTapY = useRef(0)
+  const doubleTapTimeout = useRef<NodeJS.Timeout | null>(null)
 
-  // Load saved state from localStorage
+  // Load saved state from localStorage, but respect screen size
   useEffect(() => {
     if (storageKey && typeof window !== 'undefined') {
       const saved = localStorage.getItem(`panel_${storageKey}`)
+      const isTabletOrMobile = window.innerWidth < 1024 // lg breakpoint
+      
       if (saved) {
         try {
           const { width: savedWidth, isCollapsed: savedCollapsed } = JSON.parse(saved)
@@ -56,15 +85,42 @@ export function ResizablePanel({
             setWidth(savedWidth)
             setLastOpenWidth(savedWidth)
           }
-          if (savedCollapsed !== undefined) {
-            setIsCollapsed(savedCollapsed)
+          // On tablet/mobile, default to collapsed unless explicitly saved as open
+          // On desktop, respect saved state
+          if (isTabletOrMobile) {
+            setIsCollapsed(savedCollapsed !== false) // Default to collapsed on tablet/mobile
+          } else {
+            if (savedCollapsed !== undefined) {
+              setIsCollapsed(savedCollapsed)
+            }
           }
         } catch (e) {
           console.warn('Failed to load panel state:', e)
         }
+      } else {
+        // No saved state - default to collapsed on tablet/mobile
+        if (isTabletOrMobile) {
+          setIsCollapsed(true)
+        }
       }
     }
   }, [storageKey])
+  
+  // Handle window resize - collapse on tablet/mobile, allow open on desktop
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    const handleResize = () => {
+      const isTabletOrMobile = window.innerWidth < 1024
+      if (isTabletOrMobile && !isCollapsed) {
+        // Don't auto-collapse if user has it open, but set as default for next time
+        // Only auto-collapse if it was already collapsed
+      }
+    }
+    
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [isCollapsed])
 
   // Save state to localStorage
   useEffect(() => {
@@ -119,6 +175,125 @@ export function ResizablePanel({
     document.body.style.userSelect = ''
   }, [isDragging])
 
+  // Double-tap detection handler
+  const handleDoubleTap = useCallback((e: React.TouchEvent) => {
+    if (!isCollapsed) return false
+    
+    const touch = e.touches[0]
+    const currentTime = Date.now()
+    const timeDiff = currentTime - lastTapTime.current
+    const xDiff = Math.abs(touch.clientX - lastTapX.current)
+    const yDiff = Math.abs(touch.clientY - lastTapY.current)
+    
+    // Check if this is a double-tap (within 300ms and within 50px)
+    if (
+      timeDiff > 0 && // Not the first tap
+      timeDiff < 300 &&
+      xDiff < 50 &&
+      yDiff < 50
+    ) {
+      e.preventDefault()
+      e.stopPropagation()
+      // Clear any pending timeout
+      if (doubleTapTimeout.current) {
+        clearTimeout(doubleTapTimeout.current)
+        doubleTapTimeout.current = null
+      }
+      // Open the panel
+      setIsCollapsed(false)
+      setWidth(lastOpenWidth)
+      // Reset tap tracking
+      lastTapTime.current = 0
+      return true
+    }
+    
+    // Update last tap info for next potential double-tap
+    lastTapTime.current = currentTime
+    lastTapX.current = touch.clientX
+    lastTapY.current = touch.clientY
+    
+    // Set timeout to reset if no second tap comes
+    if (doubleTapTimeout.current) {
+      clearTimeout(doubleTapTimeout.current)
+    }
+    doubleTapTimeout.current = setTimeout(() => {
+      lastTapTime.current = 0
+      doubleTapTimeout.current = null
+    }, 300)
+    
+    return false
+  }, [isCollapsed, lastOpenWidth])
+
+  // Touch event handlers for touch devices
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0]
+    
+    // Check for double-tap first (only when collapsed on mobile)
+    if (isCollapsed && typeof window !== 'undefined' && window.innerWidth < 768) {
+      if (handleDoubleTap(e)) {
+        return // Double-tap detected, don't proceed with drag
+      }
+    }
+    
+    // Only start drag tracking if not a double-tap
+    touchStartX.current = touch.clientX
+    touchStartY.current = touch.clientY
+    touchStartTime.current = Date.now()
+    dragStartX.current = touch.clientX
+    dragStartWidth.current = isCollapsed ? 0 : width
+  }, [width, isCollapsed, handleDoubleTap])
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (doubleTapTimeout.current) {
+        clearTimeout(doubleTapTimeout.current)
+      }
+    }
+  }, [])
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    if (e.touches.length === 0) return
+    const touch = e.touches[0]
+    const deltaX = dragStartX.current - touch.clientX
+    const deltaY = Math.abs(touch.clientY - touchStartY.current)
+    const isTabletOrMobile = typeof window !== 'undefined' && window.innerWidth < 1024
+    
+    // Only start dragging if horizontal movement is greater than vertical (swipe gesture)
+    if (Math.abs(deltaX) > 10 && Math.abs(deltaX) > deltaY) {
+      setIsTouchDragging(true)
+      e.preventDefault() // Prevent scrolling
+      
+      let newWidth = dragStartWidth.current + deltaX
+      
+      // If starting from collapsed state, expand if swiping left
+      // Lower threshold on tablet for easier opening
+      const expandThreshold = isTabletOrMobile ? 20 : 30
+      if (isCollapsed && deltaX > expandThreshold) {
+        setIsCollapsed(false)
+        newWidth = Math.max(minWidth, deltaX + collapseThreshold)
+      }
+      
+      // Clamp width
+      newWidth = Math.max(0, Math.min(maxWidth, newWidth))
+      
+      // Check if should collapse
+      // On tablet/mobile, use a lower threshold for easier closing
+      const collapseThresh = isTabletOrMobile ? 150 : collapseThreshold
+      if (newWidth < collapseThresh && !isCollapsed) {
+        setIsCollapsed(true)
+        setLastOpenWidth(width > collapseThreshold ? width : lastOpenWidth)
+      } else if (newWidth >= collapseThresh) {
+        setIsCollapsed(false)
+        setWidth(Math.max(minWidth, newWidth))
+      }
+    }
+  }, [isCollapsed, width, lastOpenWidth, minWidth, maxWidth, collapseThreshold])
+
+  const handleTouchEnd = useCallback(() => {
+    setIsTouchDragging(false)
+  }, [])
+
   // Add global mouse event listeners for dragging
   useEffect(() => {
     if (isDragging) {
@@ -130,6 +305,18 @@ export function ResizablePanel({
       }
     }
   }, [isDragging, handleMouseMove, handleMouseUp])
+
+  // Add global touch event listeners for touch dragging
+  useEffect(() => {
+    if (isTouchDragging) {
+      window.addEventListener('touchmove', handleTouchMove, { passive: false })
+      window.addEventListener('touchend', handleTouchEnd)
+      return () => {
+        window.removeEventListener('touchmove', handleTouchMove)
+        window.removeEventListener('touchend', handleTouchEnd)
+      }
+    }
+  }, [isTouchDragging, handleTouchMove, handleTouchEnd])
 
   // Handle double-click to toggle collapse
   const handleDoubleClick = useCallback(() => {
@@ -148,24 +335,70 @@ export function ResizablePanel({
     setWidth(lastOpenWidth)
   }, [lastOpenWidth])
 
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    toggle: () => {
+      if (isCollapsed) {
+        setIsCollapsed(false)
+        setWidth(lastOpenWidth)
+      } else {
+        setLastOpenWidth(width)
+        setIsCollapsed(true)
+      }
+    },
+    open: () => {
+      setIsCollapsed(false)
+      setWidth(lastOpenWidth)
+    },
+    close: () => {
+      setLastOpenWidth(width)
+      setIsCollapsed(true)
+      onClose?.()
+    },
+    isCollapsed,
+    panelElement: panelRef,
+  }), [isCollapsed, width, lastOpenWidth, onClose])
+
+  const handleClose = useCallback(() => {
+    setLastOpenWidth(width)
+    setIsCollapsed(true)
+    onClose?.()
+  }, [width, onClose])
+
   return (
-    <div className="flex h-full">
-      {/* Drag Handle */}
-      <div
-        ref={handleRef}
-        onMouseDown={handleMouseDown}
-        onDoubleClick={handleDoubleClick}
-        className={`
-          group relative flex-shrink-0 w-4 cursor-col-resize
-          flex items-center justify-center
-          transition-all duration-200 rounded-lg mx-1
-          ${isDragging 
-            ? 'bg-[var(--color-primary)]/30' 
-            : 'bg-[var(--color-surface-subtle)] hover:bg-[var(--color-primary)]/20'
-          }
-        `}
-        title={isCollapsed ? 'Drag or click to expand panel' : 'Drag to resize, double-click to collapse'}
-      >
+    <>
+      {/* Mobile/Tablet Backdrop - Only show when panel is open on mobile/tablet */}
+      {!isCollapsed && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[calc(var(--z-panel)-1)]"
+          onClick={handleClose}
+          onTouchStart={(e) => {
+            // Close on backdrop tap
+            if (e.target === e.currentTarget) {
+              handleClose()
+            }
+          }}
+        />
+      )}
+      <div className="flex h-full relative">
+        {/* Drag Handle - Hidden on mobile, supports touch on tablet */}
+        <div
+          ref={handleRef}
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+          onDoubleClick={handleDoubleClick}
+          className={`
+            group relative flex-shrink-0 w-4 cursor-col-resize
+            hidden lg:flex items-center justify-center
+            transition-all duration-200 rounded-lg mx-1
+            touch-manipulation
+            ${isDragging || isTouchDragging
+              ? 'bg-[var(--color-primary)]/30' 
+              : 'bg-[var(--color-surface-subtle)] hover:bg-[var(--color-primary)]/20'
+            }
+          `}
+          title={isCollapsed ? 'Drag or swipe left to expand panel' : 'Drag to resize, double-click to collapse'}
+        >
         {/* Handle visual indicator - vertical bar */}
         <div 
           className={`
@@ -225,46 +458,112 @@ export function ResizablePanel({
           relative overflow-hidden flex-shrink-0
           transition-all duration-300 ease-out
           ${isDragging ? 'transition-none' : ''}
-          ${isCollapsed ? 'opacity-0' : 'opacity-100'}
+          ${isCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}
           ${className}
         `}
       >
         <div 
           className={`
-            w-full h-full bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl 
+            w-full h-full bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl
             border border-[var(--color-border-subtle)] 
             shadow-[var(--shadow-strong)] overflow-hidden
             transition-transform duration-300
             ${isCollapsed ? 'translate-x-full' : 'translate-x-0'}
+            flex flex-col
+            lg:relative
+            ${!isCollapsed ? 'fixed lg:relative right-0 top-0 bottom-0 z-[var(--z-panel)]' : ''}
           `}
+          style={{
+            width: isCollapsed ? undefined : (typeof window !== 'undefined' && window.innerWidth < 1024 ? '100%' : undefined),
+            maxWidth: typeof window !== 'undefined' && window.innerWidth < 1024 ? '100%' : undefined,
+          }}
         >
-          {children}
+          {/* Close button - visible on mobile/tablet */}
+          {!isCollapsed && (
+            <div className="lg:hidden flex items-center justify-between p-3 md:p-4 border-b border-[var(--color-border-subtle)] flex-shrink-0">
+              <span className="text-sm md:text-base font-semibold text-[var(--color-text)]">Details</span>
+              <button
+                onClick={handleClose}
+                className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-md hover:bg-[var(--color-surface-subtle)] transition-colors text-[var(--color-text-muted)] touch-manipulation"
+                title="Close panel"
+              >
+                <X size={18} className="md:w-5 md:h-5" />
+              </button>
+            </div>
+          )}
+          <div className="flex-1 overflow-auto">
+            {children}
+          </div>
         </div>
       </div>
 
-      {/* Collapsed state expand button overlay */}
+      {/* Collapsed state expand button overlay - Touch-friendly on mobile/tablet */}
       {isCollapsed && (
         <button
           onClick={handleExpandClick}
+          onTouchStart={handleTouchStart}
           className="
             absolute right-0 top-1/2 -translate-y-1/2
-            w-6 h-24 rounded-l-lg
+            w-10 md:w-8 h-40 md:h-32 rounded-l-lg
             bg-[var(--color-surface)] border border-r-0 border-[var(--color-border-subtle)]
             shadow-[var(--shadow-soft)]
             flex items-center justify-center
             hover:bg-[var(--color-primary)]/10 hover:border-[var(--color-primary)]/50
+            active:bg-[var(--color-primary)]/20 active:border-[var(--color-primary)]
             transition-all duration-200
-            group
+            group touch-manipulation
+            lg:hidden
+            z-[var(--z-panel)]
           "
-          title="Click or drag to expand panel"
+          title="Tap, double-tap, or swipe left to expand panel"
         >
-          <div className="flex flex-col gap-[3px]">
-            <div className="w-0.5 h-3 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] transition-colors" />
-            <div className="w-0.5 h-3 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] transition-colors" />
+          <div className="flex flex-col gap-1.5 md:gap-2">
+            <div className="w-1 md:w-0.5 h-5 md:h-4 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] group-active:bg-[var(--color-primary)] transition-colors" />
+            <div className="w-1 md:w-0.5 h-5 md:h-4 rounded-full bg-[var(--color-text-muted)] group-hover:bg-[var(--color-primary)] group-active:bg-[var(--color-primary)] transition-colors" />
           </div>
+          {/* Touch hint text on mobile/tablet */}
+          <span className="absolute left-full ml-3 text-xs text-[var(--color-text-muted)] whitespace-nowrap hidden sm:block lg:hidden">
+            Tap to open
+          </span>
         </button>
       )}
-    </div>
+
+      {/* Double-tap area on mobile/tablet when collapsed - invisible overlay on right edge */}
+      {isCollapsed && (
+        <div
+          onTouchStart={handleTouchStart}
+          onClick={handleExpandClick}
+          className="
+            lg:hidden fixed right-0 top-0 bottom-0 w-24
+            touch-manipulation z-[calc(var(--z-panel)-1)]
+            cursor-pointer
+          "
+          title="Tap or double-tap to open panel"
+        />
+      )}
+
+      {/* Touch drag handle overlay - Visible on touch devices when panel is open */}
+      {!isCollapsed && (
+        <div
+          onTouchStart={handleTouchStart}
+          className="
+            lg:hidden absolute left-0 top-0 bottom-0 w-10 -ml-10
+            flex items-center justify-center
+            touch-manipulation z-10
+          "
+        >
+          <div className="w-2 h-24 rounded-r-lg bg-[var(--color-surface-subtle)] border border-l-0 border-[var(--color-border-subtle)] flex items-center justify-center opacity-60">
+            <div className="flex flex-col gap-1.5">
+              <div className="w-0.5 h-3 rounded-full bg-[var(--color-text-muted)]" />
+              <div className="w-0.5 h-3 rounded-full bg-[var(--color-text-muted)]" />
+            </div>
+          </div>
+        </div>
+      )}
+      </div>
+    </>
   )
-}
+})
+
+ResizablePanel.displayName = 'ResizablePanel'
 

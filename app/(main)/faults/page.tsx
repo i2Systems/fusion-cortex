@@ -16,7 +16,7 @@ import { MapViewToggle, type MapViewMode } from '@/components/shared/MapViewTogg
 import { MapUpload } from '@/components/map/MapUpload'
 import { FaultList } from '@/components/faults/FaultList'
 import { FaultDetailsPanel } from '@/components/faults/FaultDetailsPanel'
-import { ResizablePanel } from '@/components/layout/ResizablePanel'
+import { ResizablePanel, type ResizablePanelRef } from '@/components/layout/ResizablePanel'
 import { useDevices } from '@/lib/DeviceContext'
 import { useZones } from '@/lib/ZoneContext'
 import { useSite } from '@/lib/SiteContext'
@@ -275,7 +275,7 @@ export default function FaultsPage() {
     })
   }, [faults])
   const listContainerRef = useRef<HTMLDivElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<ResizablePanelRef>(null)
 
   // Map data is now loaded from MapContext - no need to load it here
 
@@ -350,6 +350,16 @@ export default function FaultsPage() {
     }
   }
 
+
+  // Open panel when fault is selected on tablet/mobile
+  useEffect(() => {
+    if (selectedFaultId && panelRef.current && typeof window !== 'undefined' && window.innerWidth < 1024) {
+      // Open panel when fault is selected on tablet/mobile
+      if (panelRef.current.isCollapsed) {
+        panelRef.current.open()
+      }
+    }
+  }, [selectedFaultId])
 
   const selectedFault = useMemo(() => {
     if (!selectedFaultId) return null
@@ -557,9 +567,9 @@ export default function FaultsPage() {
     // Deselect if clicking outside both the list container and panel
     if (
       listContainerRef.current &&
-      panelRef.current &&
+      panelRef.current?.panelElement?.current &&
       !listContainerRef.current.contains(target) &&
-      !panelRef.current.contains(target)
+      !panelRef.current.panelElement.current.contains(target)
     ) {
       setSelectedFaultId(null)
       setSelectedDeviceId(null)
@@ -569,7 +579,7 @@ export default function FaultsPage() {
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island - In flow */}
-      <div className="flex-shrink-0 px-[20px] pt-4 pb-3">
+      <div className="flex-shrink-0 page-padding-x pt-3 md:pt-4 pb-2 md:pb-3">
         <SearchIsland 
           position="top" 
           fullWidth={true}
@@ -615,7 +625,7 @@ export default function FaultsPage() {
 
       {/* Main Content: Fault List/Map + Details Panel */}
       <div 
-        className="main-content-area flex-1 flex min-h-0 gap-4 px-[20px] pt-2 pb-14 overflow-hidden"
+        className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pt-2 pb-12 md:pb-14 overflow-hidden"
         onClick={handleMainContentClick}
       >
         {/* Fault List/Map - Left Side */}
@@ -752,17 +762,16 @@ export default function FaultsPage() {
         </div>
 
         {/* Fault Details Panel - Right Side */}
-        <div ref={panelRef}>
-          <ResizablePanel
-            defaultWidth={384}
-            minWidth={320}
-            maxWidth={512}
-            collapseThreshold={200}
-            storageKey="faults_panel"
-          >
-            <FaultDetailsPanel fault={selectedFault} devices={devices} onAddNewFault={handleAddNewFault} />
-          </ResizablePanel>
-        </div>
+        <ResizablePanel
+          ref={panelRef}
+          defaultWidth={384}
+          minWidth={320}
+          maxWidth={512}
+          collapseThreshold={200}
+          storageKey="faults_panel"
+        >
+          <FaultDetailsPanel fault={selectedFault} devices={devices} onAddNewFault={handleAddNewFault} />
+        </ResizablePanel>
       </div>
     </div>
   )

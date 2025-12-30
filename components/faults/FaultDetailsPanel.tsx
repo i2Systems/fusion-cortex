@@ -9,7 +9,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { AlertCircle, Droplets, Zap, Thermometer, Plug, Settings, Package, Wrench, Lightbulb, MapPin, Radio, RefreshCw, CheckCircle2, Clock, TrendingDown, XCircle, Battery, Shield, ExternalLink, Plus, X, ChevronDown, Info, Image } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -85,10 +85,12 @@ export function FaultDetailsPanel({ fault, devices = [], onAddNewFault }: FaultD
                 <div className="p-4 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] flex-shrink-0">
                   <button
                     onClick={() => setShowAddForm(true)}
-                    className="w-full px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center justify-center gap-2"
+                    className="w-full px-3 md:px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center justify-center gap-2"
+                    title="Add New Fault"
                   >
                     <Plus size={16} />
-                    Add New Fault
+                    <span className="hidden md:inline">Add New Fault</span>
+                    <span className="md:hidden">Add Fault</span>
                   </button>
                 </div>
               )}
@@ -214,9 +216,11 @@ export function FaultDetailsPanel({ fault, devices = [], onAddNewFault }: FaultD
                     onClick={handleSubmitNewFault}
                     disabled={!selectedDeviceId || !selectedCategory}
                     className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Add Fault"
                   >
                     <Plus size={16} />
-                    Add Fault
+                    <span className="hidden md:inline">Add Fault</span>
+                    <span className="md:hidden">Add</span>
                   </button>
                 </div>
               </div>
@@ -304,16 +308,23 @@ export function FaultDetailsPanel({ fault, devices = [], onAddNewFault }: FaultD
   // Device Icon Component with image support
   function DeviceIcon({ deviceType }: { deviceType: string }) {
     const [imageError, setImageError] = useState(false)
-    const [imageKey, setImageKey] = useState(0)
     const [deviceImage, setDeviceImage] = useState<string | null>(null)
+    const [imageKey, setImageKey] = useState(0) // For forcing image reload when needed
+    const currentImageRef = useRef<string | null>(null)
 
     // Load device image (database first, then client storage, then default)
     useEffect(() => {
+      let isMounted = true
+      
       const loadImage = async () => {
         // Try sync first (for localStorage images)
         const syncImage = getDeviceImage(deviceType as DeviceType)
         if (syncImage && !syncImage.startsWith('https://images.unsplash.com')) {
-          setDeviceImage(syncImage)
+          if (isMounted && currentImageRef.current !== syncImage) {
+            currentImageRef.current = syncImage
+            setDeviceImage(syncImage)
+            setImageError(false)
+          }
           return
         }
         
@@ -321,11 +332,19 @@ export function FaultDetailsPanel({ fault, devices = [], onAddNewFault }: FaultD
         try {
           const asyncImage = await getDeviceImageAsync(deviceType as DeviceType)
           if (asyncImage && !asyncImage.startsWith('https://images.unsplash.com')) {
-            setDeviceImage(asyncImage)
+            if (isMounted && currentImageRef.current !== asyncImage) {
+              currentImageRef.current = asyncImage
+              setDeviceImage(asyncImage)
+              setImageError(false)
+            }
             return
           } else if (asyncImage) {
             // Default image
-            setDeviceImage(asyncImage)
+            if (isMounted && currentImageRef.current !== asyncImage) {
+              currentImageRef.current = asyncImage
+              setDeviceImage(asyncImage)
+              setImageError(false)
+            }
             return
           }
         } catch (error) {
@@ -334,21 +353,48 @@ export function FaultDetailsPanel({ fault, devices = [], onAddNewFault }: FaultD
         
         // Fallback to sync default
         const defaultImage = getDeviceImage(deviceType as DeviceType)
-        setDeviceImage(defaultImage)
+        if (isMounted && currentImageRef.current !== defaultImage) {
+          currentImageRef.current = defaultImage
+          setDeviceImage(defaultImage)
+          setImageError(false)
+        }
       }
       
       loadImage()
-    }, [deviceType, imageKey])
-
-    // Listen for library image updates
+      
+      return () => {
+        isMounted = false
+      }
+    }, [deviceType])
+    
+    // Listen for library image updates - only reload if image actually changed
     useEffect(() => {
-      const handleImageUpdate = () => {
-        setImageKey(prev => prev + 1)
-        setImageError(false) // Reset error state
+      const handleImageUpdate = async () => {
+        // Reload the image to check if it changed
+        const syncImage = getDeviceImage(deviceType as DeviceType)
+        if (syncImage && syncImage !== currentImageRef.current) {
+          currentImageRef.current = syncImage
+          setDeviceImage(syncImage)
+          setImageError(false)
+          setImageKey(prev => prev + 1) // Only update key when image actually changes
+          return
+        }
+        
+        try {
+          const asyncImage = await getDeviceImageAsync(deviceType as DeviceType)
+          if (asyncImage && asyncImage !== currentImageRef.current) {
+            currentImageRef.current = asyncImage
+            setDeviceImage(asyncImage)
+            setImageError(false)
+            setImageKey(prev => prev + 1) // Only update key when image actually changes
+          }
+        } catch (error) {
+          // Ignore errors on update
+        }
       }
       window.addEventListener('libraryImageUpdated', handleImageUpdate)
       return () => window.removeEventListener('libraryImageUpdated', handleImageUpdate)
-    }, [])
+    }, [deviceType])
 
     const showImage = deviceImage && !imageError
 
@@ -519,8 +565,8 @@ export function FaultDetailsPanel({ fault, devices = [], onAddNewFault }: FaultD
   return (
     <div className="flex flex-col h-full">
       {/* Data-Dense Header */}
-      <div className={`p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br ${getFaultColor(fault.faultType)}/10 to-[var(--color-surface-subtle)]`}>
-        <div className="flex items-start gap-3 mb-3">
+      <div className={`p-3 md:p-4 border-b border-[var(--color-border-subtle)] bg-gradient-to-br ${getFaultColor(fault.faultType)}/10 to-[var(--color-surface-subtle)]`}>
+        <div className="flex items-start gap-2 md:gap-3 mb-2 md:mb-3">
           {/* Device Image/Icon */}
           <DeviceIcon deviceType={fault.device.type} />
           {/* Meta Information */}
@@ -607,10 +653,10 @@ export function FaultDetailsPanel({ fault, devices = [], onAddNewFault }: FaultD
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-2">
+      <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-4 md:space-y-6 pb-2">
         {/* Fault Description */}
         <div>
-          <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">Fault Description</h4>
+          <h4 className="text-xs md:text-sm font-semibold text-[var(--color-text)] mb-2 md:mb-3">Fault Description</h4>
           <div className="p-3 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)]">
             <p className="text-sm text-[var(--color-text-muted)] mb-2">
               {fault.description}
@@ -786,16 +832,18 @@ export function FaultDetailsPanel({ fault, devices = [], onAddNewFault }: FaultD
       </div>
 
       {/* Actions Footer */}
-      <div className="p-4 border-t border-[var(--color-border-subtle)] space-y-2 flex-shrink-0">
-        <button className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2">
-          <RefreshCw size={16} />
-          Retry Connection
+      <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] space-y-2 flex-shrink-0">
+        <button className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm">
+          <RefreshCw size={14} className="md:w-4 md:h-4" />
+          <span className="hidden sm:inline">Retry Connection</span>
+          <span className="sm:hidden">Retry</span>
         </button>
         <button 
-          className="w-full fusion-button"
+          className="w-full fusion-button text-xs md:text-sm"
           style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text-muted)' }}
         >
-          Mark as Resolved
+          <span className="hidden sm:inline">Mark as Resolved</span>
+          <span className="sm:hidden">Resolved</span>
         </button>
         {onAddNewFault && (
           <button

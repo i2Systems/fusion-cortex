@@ -246,7 +246,7 @@ export default function NotificationsPage() {
   return (
     <div className="h-full flex flex-col min-h-0 pb-2 overflow-visible">
       {/* Top Search Island */}
-      <div className="flex-shrink-0 px-[20px] pt-4 pb-3">
+      <div className="flex-shrink-0 page-padding-x pt-3 md:pt-4 pb-2 md:pb-3">
         <SearchIsland 
           position="top" 
           fullWidth={true}
@@ -259,111 +259,117 @@ export default function NotificationsPage() {
       </div>
       
       {/* Header Controls */}
-      <div className="px-[20px] pb-4">
+      <div className="page-padding-x pb-3 md:pb-4">
         <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 md:gap-3 flex-wrap">
             {/* Layout Toggle */}
-            <div className="flex items-center gap-1 bg-[var(--color-surface-subtle)] rounded-lg p-1">
+            <div className="flex items-center gap-0.5 md:gap-1 bg-[var(--color-surface-subtle)] rounded-lg p-0.5 md:p-1">
               <button
                 onClick={() => setLayout('singular')}
-                className={`p-2 rounded transition-all duration-200 ${
+                className={`p-1.5 md:p-2 rounded transition-all duration-200 ${
                   layout === 'singular'
                     ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[var(--shadow-soft)] scale-105'
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
                 }`}
                 title="Feed Layout"
               >
-                <Rss size={16} />
+                <Rss size={14} className="md:w-4 md:h-4" />
               </button>
               <button
                 onClick={() => setLayout('grid')}
-                className={`p-2 rounded transition-all duration-200 ${
+                className={`p-1.5 md:p-2 rounded transition-all duration-200 ${
                   layout === 'grid'
                     ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[var(--shadow-soft)] scale-105'
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
                 }`}
                 title="Grid Layout"
               >
-                <LayoutGrid size={16} />
+                <LayoutGrid size={14} className="md:w-4 md:h-4" />
               </button>
               <button
                 onClick={() => setLayout('double-list')}
-                className={`p-2 rounded transition-all duration-200 ${
+                className={`p-1.5 md:p-2 rounded transition-all duration-200 ${
                   layout === 'double-list'
                     ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[var(--shadow-soft)] scale-105'
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
                 }`}
                 title="Double List Layout"
               >
-                <Columns size={16} />
+                <Columns size={14} className="md:w-4 md:h-4" />
               </button>
               <button
                 onClick={() => setLayout('mortar')}
-                className={`p-2 rounded transition-all duration-200 ${
+                className={`p-1.5 md:p-2 rounded transition-all duration-200 ${
                   layout === 'mortar'
                     ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[var(--shadow-soft)] scale-105'
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
                 }`}
                 title="Mortar Layout"
               >
-                <Grid3x3 size={16} />
+                <Grid3x3 size={14} className="md:w-4 md:h-4" />
               </button>
             </div>
 
             {/* Filter */}
-            <div className="flex items-center gap-1 bg-[var(--color-surface-subtle)] rounded-lg p-1">
-              <Filter size={14} className="text-[var(--color-text-muted)] ml-1" />
+            <div className="flex items-center gap-0.5 md:gap-1 bg-[var(--color-surface-subtle)] rounded-lg p-0.5 md:p-1">
+              <Filter size={12} className="text-[var(--color-text-muted)] ml-0.5 md:ml-1 hidden sm:block" />
               <button
                 onClick={() => setFilter('all')}
-                className={`px-3 py-1.5 rounded text-sm transition-all duration-200 ${
+                className={`px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm transition-all duration-200 ${
                   filter === 'all'
                     ? 'bg-[var(--color-surface)] text-[var(--color-text)] font-medium shadow-[var(--shadow-soft)] scale-105'
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
                 }`}
+                title="Show all notifications"
               >
                 All
               </button>
               <button
                 onClick={() => setFilter('unread')}
-                className={`px-3 py-1.5 rounded text-sm transition-all duration-200 ${
+                className={`px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm transition-all duration-200 ${
                   filter === 'unread'
                     ? 'bg-[var(--color-surface)] text-[var(--color-text)] font-medium shadow-[var(--shadow-soft)] scale-105'
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
                 }`}
+                title="Show unread notifications"
               >
                 Unread
               </button>
               <button
                 onClick={() => setFilter('faults')}
-                className={`px-3 py-1.5 rounded text-sm transition-all duration-200 ${
+                className={`px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm transition-all duration-200 ${
                   filter === 'faults'
                     ? 'bg-[var(--color-surface)] text-[var(--color-text)] font-medium shadow-[var(--shadow-soft)] scale-105'
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
                 }`}
+                title="Show fault notifications only"
               >
-                All Faults
+                <span className="hidden sm:inline">All Faults</span>
+                <span className="sm:hidden">Faults</span>
               </button>
             </div>
             
             {/* Site Filter */}
-            <div className="flex items-center gap-1 bg-[var(--color-surface-subtle)] rounded-lg p-1">
-              <Building2 size={14} className="text-[var(--color-text-muted)] ml-1" />
+            <div className="flex items-center gap-0.5 md:gap-1 bg-[var(--color-surface-subtle)] rounded-lg p-0.5 md:p-1 overflow-x-auto scrollbar-hide">
+              <Building2 size={12} className="text-[var(--color-text-muted)] ml-0.5 md:ml-1 hidden sm:block flex-shrink-0" />
               <button
                 onClick={() => setSiteFilter('all')}
-                className={`px-3 py-1.5 rounded text-sm transition-all duration-200 ${
+                className={`px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
                   siteFilter === 'all'
                     ? 'bg-[var(--color-surface)] text-[var(--color-text)] font-medium shadow-[var(--shadow-soft)] scale-105'
                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
                 }`}
+                title="Show all sites"
               >
-                All Sites
+                <span className="hidden sm:inline">All Sites</span>
+                <span className="sm:hidden">All</span>
               </button>
               {sites.map((site) => (
                 <button
                   key={site.id}
                   onClick={() => setSiteFilter(site.id)}
-                  className={`px-3 py-1.5 rounded text-sm transition-all duration-200 truncate max-w-[120px] ${
+                  className={`px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm transition-all duration-200 truncate max-w-[100px] sm:max-w-[120px] flex-shrink-0 ${
                     siteFilter === site.id
                       ? 'bg-[var(--color-surface)] text-[var(--color-text)] font-medium shadow-[var(--shadow-soft)] scale-105'
                       : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
@@ -376,12 +382,13 @@ export default function NotificationsPage() {
             </div>
             
             {/* Sort */}
-            <div className="flex items-center gap-2 bg-[var(--color-surface-subtle)] rounded-lg p-1">
-              <ArrowUpDown size={14} className="text-[var(--color-text-muted)] ml-1" />
+            <div className="flex items-center gap-1 md:gap-2 bg-[var(--color-surface-subtle)] rounded-lg p-0.5 md:p-1">
+              <ArrowUpDown size={12} className="text-[var(--color-text-muted)] ml-0.5 md:ml-1 hidden sm:block flex-shrink-0" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="px-3 py-1.5 rounded text-sm bg-transparent text-[var(--color-text)] border-none outline-none cursor-pointer transition-all duration-200 hover:bg-[var(--color-surface)] focus:bg-[var(--color-surface)]"
+                className="px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm bg-transparent text-[var(--color-text)] border-none outline-none cursor-pointer transition-all duration-200 hover:bg-[var(--color-surface)] focus:bg-[var(--color-surface)]"
+                title="Sort notifications"
               >
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
@@ -393,20 +400,21 @@ export default function NotificationsPage() {
             {/* Generate Random - Surreptitious */}
             <button
               onClick={handleGenerateRandom}
-              className="p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] text-[var(--color-text-soft)] hover:text-[var(--color-text-muted)] transition-all duration-200 opacity-40 hover:opacity-100"
+              className="p-1.5 md:p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] text-[var(--color-text-soft)] hover:text-[var(--color-text-muted)] transition-all duration-200 opacity-40 hover:opacity-100 flex-shrink-0"
               title="Generate random notification"
             >
-              <Sparkles size={16} />
+              <Sparkles size={14} className="md:w-4 md:h-4" />
             </button>
 
             {/* Mark all as read */}
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="px-4 py-2 rounded-lg bg-[var(--color-surface-subtle)] hover:bg-[var(--color-surface)] text-sm text-[var(--color-text)] transition-all duration-200 flex items-center gap-2 hover:scale-105"
+                className="px-2 md:px-4 py-1.5 md:py-2 rounded-lg bg-[var(--color-surface-subtle)] hover:bg-[var(--color-surface)] text-sm text-[var(--color-text)] transition-all duration-200 flex items-center justify-center gap-1.5 md:gap-2 hover:scale-105 flex-shrink-0"
+                title="Mark all notifications as read"
               >
                 <CheckCheck size={16} />
-                Mark all read
+                <span className="hidden md:inline">Mark all read</span>
               </button>
             )}
             </div>
@@ -443,7 +451,7 @@ export default function NotificationsPage() {
         ) : (
           <>
             {layout === 'singular' && (
-              <div className="max-w-2xl mx-auto px-[20px] space-y-4">
+              <div className="max-w-2xl mx-auto page-padding-x space-y-3 md:space-y-4">
                 {filteredNotifications.map((notification, index) => {
                   const Icon = typeIcons[notification.type] || AlertTriangle
                   const color = typeColors[notification.type] || 'var(--color-text-muted)'
@@ -546,7 +554,7 @@ export default function NotificationsPage() {
             )}
 
             {layout === 'grid' && (
-              <div className="px-[20px]">
+              <div className="page-padding-x">
               <div className="notifications-grid">
                 {filteredNotifications.map((notification, index) => {
                   const Icon = typeIcons[notification.type] || AlertTriangle
@@ -656,7 +664,7 @@ export default function NotificationsPage() {
             )}
 
             {layout === 'double-list' && (
-              <div className="px-[20px]">
+              <div className="page-padding-x">
               <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
                 {filteredNotifications.map((notification, index) => {
                   const Icon = typeIcons[notification.type] || AlertTriangle
@@ -769,7 +777,7 @@ export default function NotificationsPage() {
             )}
 
             {layout === 'mortar' && (
-              <div className="px-[20px]">
+              <div className="page-padding-x">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {filteredNotifications.map((notification, index) => {
                   const Icon = typeIcons[notification.type] || AlertTriangle

@@ -75,7 +75,7 @@ export function SearchIsland({
 
   const containerClass = position === 'top' 
     ? fullWidth
-      ? 'w-full px-4'
+      ? 'w-full px-4 md:pl-5'
       : 'max-w-3xl mx-auto px-4'
     : fullWidth
       ? 'w-full px-4'
@@ -88,17 +88,17 @@ export function SearchIsland({
 
   return (
     <div className={`${containerClass} ${positionClass}`}>
-      <div className="fusion-card backdrop-blur-xl border border-[var(--color-primary)]/20 search-island py-4 px-5">
+      <div className="fusion-card backdrop-blur-xl border border-[var(--color-primary)]/20 search-island py-3 md:py-4 px-3 md:px-5">
         {/* Single Row: Title + Metrics + Search + Actions */}
-        <div className="flex items-center gap-4 flex-wrap md:flex-nowrap">
+        <div className="flex items-center gap-2 md:gap-4 flex-wrap md:flex-nowrap">
           {/* Title Section */}
           {title && (
-            <div className="flex-shrink-0 pr-2 min-w-0">
-              <h1 className="text-lg font-bold text-[var(--color-text)] leading-tight truncate">
+            <div className="flex-shrink-0 pr-2 min-w-0 md:ml-0">
+              <h1 className="text-base md:text-lg font-bold text-[var(--color-text)] leading-tight truncate">
                 {title}
               </h1>
               {subtitle && (
-                <p className="text-xs text-[var(--color-text-muted)] leading-tight mt-0.5 line-clamp-1">
+                <p className="text-xs text-[var(--color-text-muted)] leading-tight mt-0.5 line-clamp-1 hidden sm:block">
                   {subtitle}
                 </p>
               )}
@@ -107,27 +107,27 @@ export function SearchIsland({
 
           {/* Metrics - Compact data viz snippets */}
           {metrics.length > 0 && (
-            <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="flex items-center gap-2 md:gap-3 flex-shrink-0 overflow-x-auto">
               {metrics.map((metric, index) => (
                 <div 
                   key={index}
                   onClick={metric.onClick}
-                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] ${
+                  className={`flex items-center gap-1.5 md:gap-2 px-2 md:px-2.5 py-1 md:py-1.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] flex-shrink-0 ${
                     metric.onClick ? 'cursor-pointer hover:bg-[var(--color-surface)] hover:border-[var(--color-primary)]/30 transition-all duration-200' : ''
                   }`}
                 >
                   {metric.icon && (
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 hidden sm:block">
                       {metric.icon}
                     </div>
                   )}
                   <div className="flex flex-col min-w-0">
-                    <div className="text-xs text-[var(--color-text-muted)] leading-tight">
+                    <div className="text-[10px] md:text-xs text-[var(--color-text-muted)] leading-tight">
                       {metric.label}
                     </div>
-                    <div className="flex items-baseline gap-1.5">
+                    <div className="flex items-baseline gap-1 md:gap-1.5">
                       <span 
-                        className="text-base font-bold leading-tight truncate"
+                        className="text-sm md:text-base font-bold leading-tight truncate"
                         style={{ color: metric.color || 'var(--color-text)' }}
                       >
                         {metric.value}
@@ -159,16 +159,16 @@ export function SearchIsland({
           <div className="flex-1 hidden md:block" />
 
           {/* Search - Pushed to the right, responsive width */}
-          <div className="relative min-w-0 ml-auto md:ml-0" style={{ width: '100%', maxWidth: '500px' }}>
-            <div className="w-full md:w-[400px] lg:w-[500px]">
+          <div className="relative min-w-0 w-full md:w-auto ml-auto md:ml-0" style={{ maxWidth: '500px' }}>
+            <div className="w-full md:w-[300px] lg:w-[400px] xl:w-[500px]">
               <Search 
-                size={22} 
-                className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" 
+                size={18} 
+                className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" 
               />
               {detectedAction && (
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                  <Sparkles size={14} className="text-[var(--color-primary)] animate-pulse" />
-                  <span className="text-xs text-[var(--color-primary)] font-medium bg-[var(--color-primary-soft)] px-2 py-0.5 rounded">
+                <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 md:gap-2">
+                  <Sparkles size={12} className="text-[var(--color-primary)] animate-pulse hidden sm:block" />
+                  <span className="text-[10px] md:text-xs text-[var(--color-primary)] font-medium bg-[var(--color-primary-soft)] px-1.5 md:px-2 py-0.5 rounded">
                     {detectedAction.label}
                   </span>
                 </div>
@@ -184,9 +184,9 @@ export function SearchIsland({
                     setSearchQuery('')
                   }
                 }}
-                className={`w-full pl-14 pr-4 py-3.5 h-[52px] bg-[var(--color-bg-elevated)] border-2 rounded-xl text-lg font-medium text-[var(--color-text)] placeholder:text-[var(--color-text-soft)] placeholder:font-normal focus:outline-none focus:shadow-[var(--shadow-glow-primary)] transition-all ${
+                className={`w-full pl-10 md:pl-14 pr-3 md:pr-4 py-2.5 md:py-3.5 h-[44px] md:h-[52px] bg-[var(--color-bg-elevated)] border-2 rounded-xl text-sm md:text-lg font-medium text-[var(--color-text)] placeholder:text-[var(--color-text-soft)] placeholder:font-normal focus:outline-none focus:shadow-[var(--shadow-glow-primary)] transition-all ${
                   detectedAction 
-                    ? 'border-[var(--color-primary)] pr-32 focus:ring-2 focus:ring-[var(--color-primary)]' 
+                    ? 'border-[var(--color-primary)] pr-24 md:pr-32 focus:ring-2 focus:ring-[var(--color-primary)]' 
                     : 'border-[var(--color-border-subtle)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]'
                 }`}
               />
@@ -198,12 +198,12 @@ export function SearchIsland({
             <div className="flex-shrink-0">
               <button 
                 onClick={onLayersClick}
-                className="px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center gap-2 relative h-[38px]"
+                className="px-3 md:px-4 py-1.5 md:py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-xs md:text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center gap-1.5 md:gap-2 relative h-[36px] md:h-[38px]"
               >
                 <Layers size={14} />
-                <span className="text-sm hidden sm:inline">Layers</span>
+                <span className="text-xs md:text-sm hidden sm:inline">Layers</span>
                 {filterCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[var(--color-primary)] text-[var(--color-text)] text-xs flex items-center justify-center font-semibold">
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[var(--color-primary)] text-[var(--color-text)] text-[10px] md:text-xs flex items-center justify-center font-semibold">
                     {filterCount}
                   </span>
                 )}
