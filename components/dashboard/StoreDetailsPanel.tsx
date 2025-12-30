@@ -440,31 +440,31 @@ export function SiteDetailsPanel({
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-2 gap-2 md:gap-3">
-        <div className="p-2.5 md:p-3 rounded-lg bg-[var(--color-surface-subtle)]">
-          <div className="text-xs text-[var(--color-text-muted)] mb-0.5 md:mb-1">Total Devices</div>
-          <div className="text-lg md:text-xl font-bold text-[var(--color-text)]">{devices.length}</div>
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-2 md:gap-3">
+        <div className="p-2 sm:p-2.5 md:p-3 rounded-lg bg-[var(--color-surface-subtle)]">
+          <div className="text-[10px] sm:text-xs text-[var(--color-text-muted)] mb-0.5 md:mb-1">Total Devices</div>
+          <div className="text-base sm:text-lg md:text-xl font-bold text-[var(--color-text)]">{devices.length}</div>
         </div>
-        <div className="p-2.5 md:p-3 rounded-lg bg-[var(--color-surface-subtle)]">
-          <div className="text-xs text-[var(--color-text-muted)] mb-0.5 md:mb-1">Zones</div>
-          <div className="text-lg md:text-xl font-bold text-[var(--color-text)]">{zones.length}</div>
+        <div className="p-2 sm:p-2.5 md:p-3 rounded-lg bg-[var(--color-surface-subtle)]">
+          <div className="text-[10px] sm:text-xs text-[var(--color-text-muted)] mb-0.5 md:mb-1">Zones</div>
+          <div className="text-base sm:text-lg md:text-xl font-bold text-[var(--color-text)]">{zones.length}</div>
         </div>
-        <div className="p-2.5 md:p-3 rounded-lg bg-[var(--color-surface-subtle)]">
-          <div className="text-xs text-[var(--color-text-muted)] mb-0.5 md:mb-1">Rules</div>
-          <div className="text-lg md:text-xl font-bold text-[var(--color-text)]">{rules.length}</div>
+        <div className="p-2 sm:p-2.5 md:p-3 rounded-lg bg-[var(--color-surface-subtle)]">
+          <div className="text-[10px] sm:text-xs text-[var(--color-text-muted)] mb-0.5 md:mb-1">Rules</div>
+          <div className="text-base sm:text-lg md:text-xl font-bold text-[var(--color-text)]">{rules.length}</div>
         </div>
-        <div className="p-2.5 md:p-3 rounded-lg bg-[var(--color-surface-subtle)]">
-          <div className="text-xs text-[var(--color-text-muted)] mb-0.5 md:mb-1">Map Status</div>
-          <div className="text-xs md:text-sm font-semibold flex items-center gap-1">
+        <div className="p-2 sm:p-2.5 md:p-3 rounded-lg bg-[var(--color-surface-subtle)]">
+          <div className="text-[10px] sm:text-xs text-[var(--color-text-muted)] mb-0.5 md:mb-1">Map Status</div>
+          <div className="text-[10px] sm:text-xs md:text-sm font-semibold flex items-center gap-0.5 sm:gap-1">
             {mapUploaded ? (
               <>
-                <CheckCircle2 size={14} className="text-[var(--color-success)]" />
-                <span className="text-[var(--color-success)]">Uploaded</span>
+                <CheckCircle2 size={12} className="sm:w-3.5 sm:h-3.5 text-[var(--color-success)] flex-shrink-0" />
+                <span className="text-[var(--color-success)] truncate">Uploaded</span>
               </>
             ) : (
               <>
-                <AlertCircle size={14} className="text-[var(--color-warning)]" />
-                <span className="text-[var(--color-warning)]">Not uploaded</span>
+                <AlertCircle size={12} className="sm:w-3.5 sm:h-3.5 text-[var(--color-warning)] flex-shrink-0" />
+                <span className="text-[var(--color-warning)] truncate">Not uploaded</span>
               </>
             )}
           </div>
