@@ -88,16 +88,14 @@ export function SearchIsland({
 
   // Get recent searches and fuzzy-matched devices
   const suggestions = useMemo(() => {
-    if (!focused && !showSuggestions) return []
-    
     const query = searchQuery.trim()
     
     // Get recent searches
-    const recentSearches = getSearchSuggestions(query, 3)
+    const recentSearches = (!focused && !showSuggestions) ? [] : getSearchSuggestions(query, 3)
     
     // Get fuzzy-matched devices (only if query exists)
     let deviceResults: SearchResult<any>[] = []
-    if (query && devices.length > 0) {
+    if (query && devices.length > 0 && (focused || showSuggestions)) {
       deviceResults = fuzzySearch(
         query,
         devices,

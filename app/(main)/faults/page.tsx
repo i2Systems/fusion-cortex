@@ -26,6 +26,7 @@ import { FaultCategory, assignFaultCategory, generateFaultDescription, faultCate
 import { trpc } from '@/lib/trpc/client'
 import { useMap } from '@/lib/MapContext'
 import { Droplets, Zap, Thermometer, Plug, Settings, Package, Wrench, Lightbulb, TrendingUp, TrendingDown, AlertTriangle, Clock, ArrowUp, ArrowDown, Minus } from 'lucide-react'
+import { fuzzySearch } from '@/lib/fuzzySearch'
 
 // Dynamically import FaultsMapCanvas to avoid SSR issues with Konva
 const FaultsMapCanvas = dynamic(() => import('@/components/faults/FaultsMapCanvas').then(mod => ({ default: mod.FaultsMapCanvas })), {

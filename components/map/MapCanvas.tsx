@@ -37,7 +37,7 @@ function getFixtureSizeMultiplier(fixtureType: string): number {
   return 1.0 // Default to 8ft size
 }
 
-interface DevicePoint {
+export interface DevicePoint {
   id: string
   x: number
   y: number
@@ -611,7 +611,8 @@ export function MapCanvas({
           }
           
           // Check Space key state from event (more reliable than checking code)
-          const spaceHeld = e.evt.code === 'Space' || e.evt.key === ' ' || isSpaceHeld
+          // Note: MouseEvent doesn't have code/key, so we rely on isSpaceHeld state
+          const spaceHeld = isSpaceHeld
           if (spaceHeld && !isSpaceHeld) {
             setIsSpaceHeld(true)
             const container = stage.container()
@@ -685,8 +686,8 @@ export function MapCanvas({
           }
         }}
         onMouseUp={(e) => {
-          // Release Space key (check both code and key for reliability)
-          if (isSpaceHeld && (e.evt.code === 'Space' || e.evt.key === ' ' || e.evt.button === 0)) {
+          // Release Space key (MouseEvent doesn't have code/key, so just check button)
+          if (isSpaceHeld && e.evt.button === 0) {
             setIsSpaceHeld(false)
             const container = stageRef.current?.container()
             if (container) {
