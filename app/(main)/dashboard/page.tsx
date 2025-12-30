@@ -826,23 +826,40 @@ export default function DashboardPage() {
                 e.stopPropagation()
                 handleSiteClick(summary.siteId)
               }}
-              className={`fusion-card cursor-pointer transition-all hover:border-[var(--color-primary)]/50 hover:shadow-[var(--shadow-strong)] flex flex-row gap-4 ${
+              className={`fusion-card fusion-card-tile cursor-pointer transition-all hover:border-[var(--color-primary)]/50 hover:shadow-[var(--shadow-strong)] ${
                 summary.siteId === selectedSiteId 
                   ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] shadow-[var(--shadow-glow-primary)] ring-2 ring-[var(--color-primary)]/30' 
                   : 'border-[var(--color-border-subtle)]'
               } ${summary.needsAttention && summary.siteId !== selectedSiteId ? 'ring-2 ring-[var(--color-warning)]/30' : ''}`}
             >
-              {/* Site Image - Top Left */}
+              {/* Card Header */}
+              <div className="fusion-card-tile-header">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  {/* Site Image */}
               <SiteImageCard siteId={summary.siteId} />
 
-              {/* Card Content - Right Side */}
-              <div className="flex-1 min-w-0 flex flex-col">
-                {/* Site Header */}
-                <div className="mb-3">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <h3 className="text-base font-semibold text-[var(--color-text)] truncate">
+                  {/* Title & Subtitle */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="fusion-card-tile-title truncate">
                       {summary.siteName}
                     </h3>
+                    {site && (
+                      <div className="fusion-card-tile-subtitle">
+                        <div className="flex items-center gap-1">
+                          <MapPin size={12} />
+                          <span className="truncate">{site.city}, {site.state}</span>
+                        </div>
+                        {site.manager && (
+                          <div className="truncate mt-0.5">
+                            {site.manager}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Header Actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {getHealthIcon(summary.healthPercentage, 18)}
               <button
@@ -850,71 +867,71 @@ export default function DashboardPage() {
                           e.stopPropagation()
                           handleSiteClick(summary.siteId, '/map')
                         }}
-                        className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]/10 transition-colors"
+                    className="fusion-button-ghost p-1.5"
                         title="Explore Site"
                       >
                         <Search size={14} />
+                  </button>
+                  <div className="fusion-card-tile-overflow">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        // TODO: Show overflow menu
+                      }}
+                      className="fusion-card-tile-overflow-button"
+                      title="More options"
+                    >
+                      <span className="text-lg">⋯</span>
                       </button>
                 </div>
                   </div>
-                  {site && (
-                    <div className="text-xs text-[var(--color-text-muted)]">
-                      <div className="flex items-center gap-1 mb-0.5">
-                        <MapPin size={10} />
-                        <span className="truncate">{site.city}, {site.state}</span>
                       </div>
-                      {site.manager && (
-                        <div className="text-[var(--color-text-soft)] truncate">
-                          {site.manager}
+
+              {/* KPIs - Compact Grid */}
+              <div className="fusion-card-tile-kpis">
+                <div className="fusion-card-tile-kpi">
+                  <div className="fusion-card-tile-kpi-label">Health</div>
+                  <div className="fusion-card-tile-kpi-value" style={{ color: getHealthColor(summary.healthPercentage) }}>
+                    {summary.healthPercentage}%
                         </div>
-                      )}
                     </div>
-                  )}
+                <div className="fusion-card-tile-kpi">
+                  <div className="fusion-card-tile-kpi-label">Devices</div>
+                  <div className="fusion-card-tile-kpi-value">{summary.totalDevices}</div>
                 </div>
-
-                {/* Health & Metrics Row */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold" style={{ color: getHealthColor(summary.healthPercentage) }}>
-                      {summary.healthPercentage}%
-                    </span>
+                <div className="fusion-card-tile-kpi">
+                  <div className="fusion-card-tile-kpi-label">Online</div>
+                  <div className="fusion-card-tile-kpi-value" style={{ color: 'var(--color-success)' }}>
+                    {summary.onlineDevices}
                   </div>
-                  <div className="flex items-center gap-3 text-xs">
-                    <span className="text-[var(--color-text-muted)]">
-                      <span className="font-semibold text-[var(--color-text)]">{summary.totalDevices}</span> devices
-                    </span>
-                    <span className="text-[var(--color-success)]">
-                      <span className="font-semibold">{summary.onlineDevices}</span> online
-                    </span>
-                    <span className="text-[var(--color-text-muted)]">
-                      <span className="font-semibold text-[var(--color-text)]">{summary.totalZones}</span> zones
-                    </span>
+                </div>
+                <div className="fusion-card-tile-kpi">
+                  <div className="fusion-card-tile-kpi-label">Zones</div>
+                  <div className="fusion-card-tile-kpi-value">{summary.totalZones}</div>
                   </div>
                 </div>
 
-                {/* Status Indicators - Horizontal */}
-                <div className="flex flex-wrap items-center gap-2 mb-3">
+              {/* Status Indicators - Compact */}
+              <div className="flex flex-wrap items-center gap-2">
                   {/* Critical Issues */}
                   {summary.criticalFaults.length > 0 && (
                     <div 
-                      className="px-2 py-1 rounded-md bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 cursor-pointer hover:bg-[var(--color-danger)]/15 transition-colors flex items-center gap-1.5"
+                    className="token token-status-error cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation()
                         handleSiteClick(summary.siteId, '/faults')
                       }}
                     >
-                      <AlertTriangle size={12} className="text-[var(--color-danger)] flex-shrink-0" />
-                      <span className="text-xs font-semibold text-[var(--color-danger)] whitespace-nowrap">
-                        {summary.criticalFaults.length} Critical
-                      </span>
+                    <AlertTriangle size={12} />
+                    <span>{summary.criticalFaults.length} Critical</span>
                     </div>
                   )}
 
                   {/* Warranties */}
                   {(summary.warrantiesExpiring > 0 || summary.warrantiesExpired > 0) && (
-                    <div className="px-2 py-1 rounded-md bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/20 flex items-center gap-1.5">
-                      <Shield size={12} className="text-[var(--color-warning)] flex-shrink-0" />
-                      <span className="text-xs font-semibold text-[var(--color-warning)] whitespace-nowrap">
+                  <div className="token token-status-warning">
+                    <Shield size={12} />
+                    <span>
                         {summary.warrantiesExpiring > 0 && `${summary.warrantiesExpiring} expiring`}
                         {summary.warrantiesExpiring > 0 && summary.warrantiesExpired > 0 && ' • '}
                         {summary.warrantiesExpired > 0 && `${summary.warrantiesExpired} expired`}
@@ -924,14 +941,11 @@ export default function DashboardPage() {
 
                   {/* Map Status */}
                   {!summary.mapUploaded && (
-                    <div className="px-2 py-1 rounded-md bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/20 flex items-center gap-1.5">
-                      <Map size={12} className="text-[var(--color-warning)] flex-shrink-0" />
-                      <span className="text-xs font-medium text-[var(--color-warning)] whitespace-nowrap">
-                        No map
-                      </span>
+                  <div className="token token-status-warning">
+                    <Map size={12} />
+                    <span>No map</span>
                     </div>
                   )}
-                </div>
                 </div>
             </div>
             )

@@ -391,31 +391,29 @@ export default function FaultsPage() {
       return showCategories[fault.faultType] !== false
     })
     
-    // Apply search filter - partial match on all fields including numeric values
+    // Apply search filter - fuzzy match on all fields
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(fault => {
-        const categoryInfo = faultCategories[fault.faultType]
-        
-        // Build searchable text from all fields including numeric values
-        const searchableText = [
-          fault.device.deviceId,
-          fault.device.serialNumber,
-          fault.device.location,
-          fault.device.zone,
-          fault.device.type,
-          fault.device.status,
-          String(fault.device.signal), // Convert numbers to strings
-          fault.device.battery !== undefined ? String(fault.device.battery) : '',
-          fault.faultType,
-          fault.description,
-          categoryInfo?.label,
-          categoryInfo?.shortLabel,
-          categoryInfo?.description,
-        ].filter(Boolean).join(' ').toLowerCase()
-        
-        return searchableText.includes(query)
-      })
+      const query = searchQuery.trim()
+      // Use fuzzy search for better matching
+      const searchableFaults = filtered.map(fault => ({
+        id: fault.device.id,
+        deviceId: fault.device.deviceId,
+        serialNumber: fault.device.serialNumber,
+        location: fault.device.location,
+        zone: fault.device.zone,
+        type: fault.device.type,
+        status: fault.device.status,
+        faultType: fault.faultType,
+        description: fault.description,
+        fault, // Keep reference to original fault
+      }))
+      const results = fuzzySearch(
+        query,
+        searchableFaults,
+        ['deviceId', 'serialNumber', 'location', 'zone', 'type', 'status', 'faultType', 'description'],
+        20 // min score threshold
+      )
+      filtered = results.map(r => r.item.fault)
     }
     
     // Note: We don't filter by selectedDeviceId or selectedFaultId here

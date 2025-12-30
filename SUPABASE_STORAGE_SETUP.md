@@ -1,56 +1,69 @@
 # Supabase Storage Setup Guide
 
+**Setup guide for Supabase Storage image hosting (free tier).**
+
 This project uses Supabase Storage for image hosting (free tier). Images are optimized and stored as URLs in the database instead of base64 strings.
 
-## Setup Steps
+## Quick Setup (Automated)
 
-### 1. Create Supabase Project (if you don't have one)
+### Step 1: Get Your Supabase Credentials
 
-1. Go to https://supabase.com
-2. Create a new project (or use existing)
-3. Wait for project to be ready
+1. **Go to https://supabase.com** and sign in (or create an account)
+2. **Create a new project** (or use existing):
+   - Click "New Project"
+   - Choose organization
+   - Enter project name (e.g., "fusion-cortex")
+   - Enter database password (save this!)
+   - Choose region
+   - Click "Create new project"
+   - Wait 2-3 minutes for setup to complete
 
-### 2. Create Storage Buckets
-
-1. Go to **Storage** in your Supabase dashboard
-2. Create two public buckets:
-   - **Bucket name**: `site-images`
-     - Make it **Public** (so images can be accessed via URL)
-   - Enable **Public bucket** option
-   - Click **Create bucket**
-   
-   - **Bucket name**: `library-images`
-     - Make it **Public**
-     - Enable **Public bucket** option
-     - Click **Create bucket**
-
-### 3. Get Your Supabase Credentials
-
-1. Go to **Settings** → **API** in your Supabase dashboard
-2. Copy these values:
+3. **Get your API keys**:
+   - In your project dashboard, go to **Settings** → **API**
+   - Copy these values:
    - **Project URL** (e.g., `https://xxxxx.supabase.co`)
-   - **anon/public key** (starts with `eyJ...`)
-   - **service_role key** (starts with `eyJ...`) - **Keep this secret!**
+     - **anon public** key (starts with `eyJ...`)
+     - **service_role** key (starts with `eyJ...`) - **Keep this secret!**
 
-### 4. Set Environment Variables
+### Step 2: Add Credentials to .env File
 
-Add these to your `.env` file (or Vercel environment variables):
+Add these to your `.env` file in the project root:
 
 ```env
 # Supabase Storage (for image hosting)
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ... (anon/public key)
-SUPABASE_SERVICE_ROLE_KEY=eyJ... (service_role key - server-side only)
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-**For Vercel:**
-1. Go to your project settings
-2. Add these environment variables
-3. Redeploy
+**For Vercel deployment**, also add these in:
+- Vercel Dashboard → Your Project → Settings → Environment Variables
 
-### 5. Run Database Migration
+### Step 3: Run the Setup Script
 
-The schema has been updated to use `imageUrl` instead of `imageData`:
+Once credentials are in your `.env` file, run:
+
+```bash
+npm run setup:supabase
+```
+
+This will automatically:
+- ✅ Create `site-images` bucket (public)
+- ✅ Create `library-images` bucket (public)
+- ✅ Verify the setup
+
+### Step 4: Verify Setup
+
+1. Go to **Storage** in your Supabase dashboard
+2. You should see two buckets:
+   - `site-images` (public)
+   - `library-images` (public)
+
+If they're not marked as "public", click on each bucket → Settings → Toggle "Public bucket" to ON.
+
+### Step 5: Run Database Migration
+
+The schema uses `imageUrl` instead of `imageData`:
 
 ```bash
 npx prisma db push
@@ -60,6 +73,15 @@ Or create a migration:
 ```bash
 npx prisma migrate dev --name use_image_urls
 ```
+
+## Manual Setup (Alternative)
+
+If you prefer to create buckets manually:
+
+1. Go to **Storage** in your Supabase dashboard
+2. Create two public buckets:
+   - **Bucket name**: `site-images` → Enable **Public bucket** → Create
+   - **Bucket name**: `library-images` → Enable **Public bucket** → Create
 
 ## How It Works
 
@@ -86,6 +108,16 @@ For most use cases, this is sufficient. Images are optimized to ~50-150KB each.
 
 ## Troubleshooting
 
+**Script says "Missing credentials"?**
+- Make sure `.env` file exists in project root
+- Check that variable names match exactly (case-sensitive)
+- Restart your terminal/IDE after adding to `.env`
+
+**Buckets not created?**
+- Check that `SUPABASE_SERVICE_ROLE_KEY` is correct (not anon key)
+- Verify project is fully set up in Supabase dashboard
+- Check script output for specific error messages
+
 **Images not uploading?**
 - Check Supabase credentials in `.env`
 - Verify buckets are created and public
@@ -100,4 +132,12 @@ For most use cases, this is sufficient. Images are optimized to ~50-150KB each.
 - Supabase not configured → using fallback
 - Check environment variables are set correctly
 - Check server logs for "Supabase upload failed" messages
+
+## Quick Check
+
+Run this to verify your credentials are set:
+
+```bash
+npx tsx scripts/check-supabase-env.ts
+```
 

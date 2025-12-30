@@ -1,5 +1,9 @@
 # Quick Setup Guide
 
+**Quick reference for common setup tasks and development workflows.**
+
+For detailed documentation, see [README.md](./README.md) and [AI_NOTES.md](./AI_NOTES.md).
+
 ## Initial Setup
 
 1. **Install dependencies:**
@@ -8,10 +12,12 @@
    ```
 
 2. **Set up environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your database credentials
+   Create a `.env` file with your database credentials:
+   ```env
+   DATABASE_URL="postgresql://user:password@localhost:5432/fusion_cortex"
    ```
+   
+   See [LOCAL_DB_SETUP.md](./LOCAL_DB_SETUP.md) for local database setup, or [SUPABASE_STORAGE_SETUP.md](./SUPABASE_STORAGE_SETUP.md) for Supabase setup.
 
 3. **Initialize database:**
    ```bash

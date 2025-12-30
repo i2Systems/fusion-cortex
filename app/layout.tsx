@@ -1,3 +1,13 @@
+/**
+ * Root Layout
+ * 
+ * Next.js root layout that wraps the entire app.
+ * Sets up all global providers (tRPC, Auth, Theme, Contexts, etc.)
+ * 
+ * AI Note: This is the top-level layout. All pages inherit from this.
+ * Providers are ordered: TRPC → Auth → Theme → Role → Site → Data Contexts → UI Contexts
+ */
+
 import type { Metadata } from 'next'
 import './globals.css'
 import { TRPCProvider } from '@/lib/trpc/Provider'

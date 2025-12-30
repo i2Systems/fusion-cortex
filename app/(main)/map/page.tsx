@@ -25,6 +25,7 @@ import type { MapToolMode } from '@/components/map/MapToolbar'
 import { MapFiltersPanel, type MapFilters } from '@/components/map/MapFiltersPanel'
 import { ComponentModal } from '@/components/shared/ComponentModal'
 import type { Component, Device } from '@/lib/mockData'
+import { fuzzySearch } from '@/lib/fuzzySearch'
 
 // Dynamically import MapCanvas to avoid SSR issues with Konva
 const MapCanvas = dynamic(() => import('@/components/map/MapCanvas').then(mod => ({ default: mod.MapCanvas })), {
@@ -295,6 +296,13 @@ export default function MapPage() {
   const [toolMode, setToolMode] = useState<MapToolMode>('select')
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  
+  // Default filters panel open on desktop
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      setShowFilters(true)
+    }
+  }, [])
   const [filters, setFilters] = useState<MapFilters>({
     showMap: true,
     showFixtures: true,
@@ -788,24 +796,17 @@ export default function MapPage() {
   const filteredDevices = useMemo(() => {
     let filtered = devices
 
-    // Search filter - partial match on all device fields including numeric values
+    // Search filter - fuzzy match on all device fields
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(device => {
-        // Search all text and numeric fields
-        const searchableText = [
-          device.deviceId,
-          device.serialNumber,
-          device.location,
-          device.zone,
-          device.type,
-          device.status,
-          String(device.signal), // Convert numbers to strings for partial matching
-          device.battery !== undefined ? String(device.battery) : '',
-        ].filter(Boolean).join(' ').toLowerCase()
-        
-        return searchableText.includes(query)
-      })
+      const query = searchQuery.trim()
+      // Use fuzzy search for better matching with typo tolerance
+      const results = fuzzySearch(
+        query,
+        filtered,
+        ['deviceId', 'serialNumber', 'location', 'zone', 'type', 'status'],
+        20 // min score threshold
+      )
+      filtered = results.map(r => r.item)
     }
 
     // Zone filter - check if device zone matches any selected zone name

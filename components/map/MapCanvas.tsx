@@ -16,7 +16,7 @@
 'use client'
 
 import { Stage, Layer, Circle, Image as KonvaImage, Group, Text, Rect, Line } from 'react-konva'
-import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback, useLayoutEffect } from 'react'
 import { Component, Device as DeviceType, DeviceType as DeviceTypeEnum } from '@/lib/mockData'
 import { VectorFloorPlan } from './VectorFloorPlan'
 import { FloorPlanImage, type ImageBounds } from './FloorPlanImage'
@@ -141,14 +141,39 @@ export function MapCanvas({
     onStagePositionChange?.(newPosition)
   }, [onStagePositionChange])
   const [imageBounds, setImageBounds] = useState<ImageBounds | null>(null)
+  const imageBoundsRef = useRef<ImageBounds | null>(null)
+  
+  // Keep ref in sync with state to avoid re-renders
+  useEffect(() => {
+    imageBoundsRef.current = imageBounds
+  }, [imageBounds])
+  
+  // Stable callback for image bounds change - only update if bounds actually changed
+  const handleImageBoundsChange = useCallback((bounds: ImageBounds) => {
+    setImageBounds(prev => {
+      // Only update if bounds actually changed (prevent unnecessary re-renders)
+      if (!prev || 
+          prev.x !== bounds.x || 
+          prev.y !== bounds.y || 
+          prev.width !== bounds.width || 
+          prev.height !== bounds.height ||
+          prev.naturalWidth !== bounds.naturalWidth ||
+          prev.naturalHeight !== bounds.naturalHeight) {
+        return bounds
+      }
+      return prev
+    })
+    onImageBoundsChange?.(bounds)
+  }, [onImageBoundsChange])
   
   // Convert normalized coordinates (0-1) to canvas coordinates using actual image bounds
   const toCanvasCoords = useCallback((point: { x: number; y: number }) => {
-    if (imageBounds) {
+    const bounds = imageBoundsRef.current || imageBounds
+    if (bounds) {
       // Use actual image bounds for coordinate conversion
       return {
-        x: imageBounds.x + point.x * imageBounds.width,
-        y: imageBounds.y + point.y * imageBounds.height,
+        x: bounds.x + point.x * bounds.width,
+        y: bounds.y + point.y * bounds.height,
       }
     } else {
       // Fallback to canvas dimensions if image bounds not available
@@ -161,11 +186,12 @@ export function MapCanvas({
   
   // Convert canvas coordinates back to normalized coordinates (0-1) using actual image bounds
   const fromCanvasCoords = useCallback((point: { x: number; y: number }) => {
-    if (imageBounds) {
+    const bounds = imageBoundsRef.current || imageBounds
+    if (bounds) {
       // Use actual image bounds for coordinate conversion
       return {
-        x: (point.x - imageBounds.x) / imageBounds.width,
-        y: (point.y - imageBounds.y) / imageBounds.height,
+        x: (point.x - bounds.x) / bounds.width,
+        y: (point.y - bounds.y) / bounds.height,
       }
     } else {
       // Fallback to canvas dimensions if image bounds not available
@@ -177,7 +203,20 @@ export function MapCanvas({
   }, [imageBounds, dimensions])
   const [hoveredDevice, setHoveredDevice] = useState<DevicePoint | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 })
+  const tooltipPositionRef = useRef({ x: 0, y: 0 })
+  const tooltipUpdateFrameRef = useRef<number | null>(null)
   const [draggedDevice, setDraggedDevice] = useState<{ id: string; startX: number; startY: number; dragX?: number; dragY?: number; dragStartX?: number; dragStartY?: number } | null>(null)
+  
+  // Throttled tooltip position update to prevent excessive re-renders
+  const updateTooltipPosition = useCallback((x: number, y: number) => {
+    tooltipPositionRef.current = { x, y }
+    if (tooltipUpdateFrameRef.current === null) {
+      tooltipUpdateFrameRef.current = requestAnimationFrame(() => {
+        setTooltipPosition(tooltipPositionRef.current)
+        tooltipUpdateFrameRef.current = null
+      })
+    }
+  }, [])
   
   // Lasso selection state
   const [isSelecting, setIsSelecting] = useState(false)
@@ -185,6 +224,9 @@ export function MapCanvas({
   const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null)
   const [isShiftHeld, setIsShiftHeld] = useState(false)
   const [hoveredZoneId, setHoveredZoneId] = useState<string | null>(null)
+  const [isSpaceHeld, setIsSpaceHeld] = useState(false)
+  const [showZoomHint, setShowZoomHint] = useState(false)
+  const zoomHintTimeoutRef = useRef<number | null>(null)
   const stageRef = useRef<any>(null)
   
   // Track Shift key state - more robust detection
@@ -270,13 +312,22 @@ export function MapCanvas({
   }, [devices])
 
   // Viewport culling - only render devices visible in current viewport
+  // Use refs to avoid recreating on every pan/zoom update
+  const stagePositionRef = useRef(effectiveStagePosition)
+  const scaleRef = useRef(effectiveScale)
+  
+  useEffect(() => {
+    stagePositionRef.current = effectiveStagePosition
+    scaleRef.current = effectiveScale
+  }, [effectiveStagePosition, effectiveScale])
+  
   const visibleDevices = useMemo(() => {
     // Calculate viewport bounds for culling
     const viewportPadding = 200 // Render devices slightly outside viewport for smooth scrolling
-    const viewportMinX = -effectiveStagePosition.x / effectiveScale - viewportPadding
-    const viewportMaxX = (-effectiveStagePosition.x + dimensions.width) / effectiveScale + viewportPadding
-    const viewportMinY = -effectiveStagePosition.y / effectiveScale - viewportPadding
-    const viewportMaxY = (-effectiveStagePosition.y + dimensions.height) / effectiveScale + viewportPadding
+    const viewportMinX = -stagePositionRef.current.x / scaleRef.current - viewportPadding
+    const viewportMaxX = (-stagePositionRef.current.x + dimensions.width) / scaleRef.current + viewportPadding
+    const viewportMinY = -stagePositionRef.current.y / scaleRef.current - viewportPadding
+    const viewportMaxY = (-stagePositionRef.current.y + dimensions.height) / scaleRef.current + viewportPadding
     
     // Filter devices to only those in viewport
     return devices.filter(device => {
@@ -286,7 +337,7 @@ export function MapCanvas({
              deviceCoords.y >= viewportMinY && 
              deviceCoords.y <= viewportMaxY
     })
-  }, [devices, effectiveStagePosition, effectiveScale, dimensions, toCanvasCoords])
+  }, [devices, dimensions, toCanvasCoords])
 
   // Keyboard navigation: up/down arrows for device selection
   useEffect(() => {
@@ -383,9 +434,12 @@ export function MapCanvas({
   // Removed auto-centering on device selection - it was distracting
   // Map now stays in place when selecting devices
 
-  // Escape key to deselect
+  // Keyboard shortcuts: Escape to deselect, Space+drag to pan, +/- to zoom
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle if typing in an input
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return
+
       if (e.key === 'Escape' && mode === 'select') {
         onDevicesSelect?.([])
         onDeviceSelect?.(null)
@@ -394,11 +448,65 @@ export function MapCanvas({
         setSelectionStart(null)
         setSelectionEnd(null)
       }
+
+      // Zoom with +/- keys
+      if ((e.key === '+' || e.key === '=') && !e.shiftKey) {
+        e.preventDefault()
+        const newScale = Math.min(10, effectiveScale * 1.2)
+        setScale(newScale)
+      }
+      if (e.key === '-' || e.key === '_') {
+        e.preventDefault()
+        const newScale = Math.max(0.1, effectiveScale * 0.8)
+        setScale(newScale)
+      }
+
+      // Space key for panning
+      if (e.key === ' ' && mode === 'select' && !isSpaceHeld) {
+        e.preventDefault()
+        setIsSpaceHeld(true)
+        if (stageRef.current) {
+          const container = stageRef.current.container()
+          if (container) {
+            container.style.cursor = 'grab'
+          }
+        }
+      }
+    }
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      // Release Space key
+      if (e.key === ' ' && isSpaceHeld) {
+        e.preventDefault()
+        setIsSpaceHeld(false)
+        if (stageRef.current) {
+          const container = stageRef.current.container()
+          if (container) {
+            container.style.cursor = isShiftHeld ? 'crosshair' : 'default'
+          }
+        }
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [mode, onDeviceSelect, onDevicesSelect])
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+      if (zoomHintTimeoutRef.current) {
+        clearTimeout(zoomHintTimeoutRef.current)
+      }
+    }
+  }, [mode, onDeviceSelect, onDevicesSelect, effectiveScale, setScale, isSpaceHeld, isShiftHeld])
+  
+  // Cleanup animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (tooltipUpdateFrameRef.current !== null) {
+        cancelAnimationFrame(tooltipUpdateFrameRef.current)
+      }
+    }
+  }, [])
 
   // Devices come from props now, no need for local device array
 
@@ -458,7 +566,7 @@ export function MapCanvas({
         y={effectiveStagePosition.y}
         scaleX={effectiveScale}
         scaleY={effectiveScale}
-        draggable={mode === 'select' && !isSelecting && !isShiftHeld && draggedDevice === null} // Disable stage dragging when Shift is held or selecting
+        draggable={mode === 'select' && !isSelecting && !isShiftHeld && draggedDevice === null && isSpaceHeld} // Pan with Space+drag
         style={{ touchAction: 'none' }}
         onDblClick={(e) => {
           // Double-click on background, map image, or zones to deselect all devices
@@ -502,7 +610,18 @@ export function MapCanvas({
             }
           }
           
-          if (mode === 'select' && e.evt.button === 0 && !draggedDevice) {
+          // Check Space key state from event (more reliable than checking code)
+          const spaceHeld = e.evt.code === 'Space' || e.evt.key === ' ' || isSpaceHeld
+          if (spaceHeld && !isSpaceHeld) {
+            setIsSpaceHeld(true)
+            const container = stage.container()
+            if (container) {
+              container.style.cursor = 'grab'
+            }
+            // Don't return - allow normal drag behavior
+          }
+          
+          if (mode === 'select' && e.evt.button === 0 && !draggedDevice && !spaceHeld) {
             // Check if shift is actually held (use both state and event)
             const shiftHeld = isShiftHeld || e.evt.shiftKey
             const clickedOnEmpty = e.target === stage || e.target === stage.findOne('Layer')
@@ -566,6 +685,15 @@ export function MapCanvas({
           }
         }}
         onMouseUp={(e) => {
+          // Release Space key (check both code and key for reliability)
+          if (isSpaceHeld && (e.evt.code === 'Space' || e.evt.key === ' ' || e.evt.button === 0)) {
+            setIsSpaceHeld(false)
+            const container = stageRef.current?.container()
+            if (container) {
+              container.style.cursor = isShiftHeld ? 'crosshair' : 'default'
+            }
+          }
+          
           if (isSelecting && selectionStart && selectionEnd) {
             // Find devices within selection box
             const minX = Math.min(selectionStart.x, selectionEnd.x)
@@ -631,7 +759,10 @@ export function MapCanvas({
           }
         }}
         onDragEnd={(e) => {
+          // Use requestAnimationFrame to batch position updates and prevent flickering
+          requestAnimationFrame(() => {
           setStagePosition({ x: e.target.x(), y: e.target.y() })
+          })
         }}
         onWheel={(e) => {
           // Handle trackpad/mouse wheel zoom
@@ -642,6 +773,16 @@ export function MapCanvas({
           
           const pointerPos = stage.getPointerPosition()
           if (!pointerPos) return
+          
+          // Show zoom hint briefly (debounced to prevent flickering)
+          if (zoomHintTimeoutRef.current) {
+            clearTimeout(zoomHintTimeoutRef.current)
+          }
+          setShowZoomHint(true)
+          zoomHintTimeoutRef.current = window.setTimeout(() => {
+            setShowZoomHint(false)
+            zoomHintTimeoutRef.current = null
+          }, 2000)
           
           // Get wheel delta (positive = zoom in, negative = zoom out)
           const deltaY = e.evt.deltaY
@@ -659,8 +800,11 @@ export function MapCanvas({
           const newX = pointerPos.x - mouseX * newScale
           const newY = pointerPos.y - mouseY * newScale
           
+          // Batch scale and position updates to prevent flickering
+          requestAnimationFrame(() => {
           setScale(newScale)
           setStagePosition({ x: newX, y: newY })
+          })
         }}
       >
         <Layer>
@@ -707,10 +851,7 @@ export function MapCanvas({
                 url={mapImageUrl} 
                 width={dimensions.width} 
                 height={dimensions.height}
-                onImageBoundsChange={(bounds) => {
-                  setImageBounds(bounds)
-                  onImageBoundsChange?.(bounds)
-                }}
+                onImageBoundsChange={handleImageBoundsChange}
                 zoomBounds={currentLocation?.type === 'zoom' ? currentLocation.zoomBounds : null}
               />
             </Group>
@@ -966,7 +1107,7 @@ export function MapCanvas({
                           if (stage) {
                             const pointerPos = stage.getPointerPosition()
                             if (pointerPos) {
-                              setTooltipPosition({ x: pointerPos.x, y: pointerPos.y })
+                              updateTooltipPosition(pointerPos.x, pointerPos.y)
                             }
                           }
                         }}
@@ -978,7 +1119,7 @@ export function MapCanvas({
                           if (stage) {
                             const pointerPos = stage.getPointerPosition()
                             if (pointerPos) {
-                              setTooltipPosition({ x: pointerPos.x, y: pointerPos.y })
+                              updateTooltipPosition(pointerPos.x, pointerPos.y)
                             }
                           }
                         }}
@@ -1076,7 +1217,7 @@ export function MapCanvas({
                       if (stage) {
                         const pointerPos = stage.getPointerPosition()
                         if (pointerPos) {
-                          setTooltipPosition({ x: pointerPos.x, y: pointerPos.y })
+                          updateTooltipPosition(pointerPos.x, pointerPos.y)
                         }
                       }
                     }}
@@ -1088,7 +1229,7 @@ export function MapCanvas({
                       if (stage) {
                         const pointerPos = stage.getPointerPosition()
                         if (pointerPos) {
-                          setTooltipPosition({ x: pointerPos.x, y: pointerPos.y })
+                          updateTooltipPosition(pointerPos.x, pointerPos.y)
                         }
                       }
                     }}
@@ -1790,16 +1931,16 @@ export function MapCanvas({
         </Layer>
         )}
         
-        {/* Shift hint overlay - more prominent */}
-        {isShiftHeld && mode === 'select' && !isSelecting && (
+        {/* Keyboard shortcuts hint overlay */}
+        {(isShiftHeld || isSpaceHeld || showZoomHint) && mode === 'select' && !isSelecting && (
           <Layer>
             <Group>
               {/* Pulsing background */}
               <Rect
-                x={dimensions.width / 2 - 150}
+                x={dimensions.width / 2 - 180}
                 y={20}
-                width={300}
-                height={50}
+                width={360}
+                height={isSpaceHeld ? 80 : 50}
                 fill="rgba(76, 125, 255, 0.15)"
                 cornerRadius={10}
                 listening={false}
@@ -1807,10 +1948,10 @@ export function MapCanvas({
                 shadowColor="rgba(76, 125, 255, 0.5)"
               />
               <Rect
-                x={dimensions.width / 2 - 150}
+                x={dimensions.width / 2 - 180}
                 y={20}
-                width={300}
-                height={50}
+                width={360}
+                height={isSpaceHeld ? 80 : 50}
                 fill="rgba(17, 24, 39, 0.95)"
                 cornerRadius={10}
                 listening={false}
@@ -1818,10 +1959,10 @@ export function MapCanvas({
                 shadowColor="rgba(0, 0, 0, 0.6)"
               />
               <Rect
-                x={dimensions.width / 2 - 150}
+                x={dimensions.width / 2 - 180}
                 y={20}
-                width={300}
-                height={50}
+                width={360}
+                height={isSpaceHeld ? 80 : 50}
                 fill="transparent"
                 stroke="rgba(76, 125, 255, 1)"
                 strokeWidth={3}
@@ -1829,6 +1970,7 @@ export function MapCanvas({
                 listening={false}
                 dash={[8, 4]}
               />
+              {isShiftHeld && (
               <Text
                 x={dimensions.width / 2}
                 y={47}
@@ -1840,6 +1982,45 @@ export function MapCanvas({
                 align="center"
                 listening={false}
               />
+              )}
+              {isSpaceHeld && (
+                <>
+                  <Text
+                    x={dimensions.width / 2}
+                    y={47}
+                    text="Hold Space + Drag to pan • Scroll to zoom • +/- to zoom"
+                    fontSize={13}
+                    fontFamily="system-ui, -apple-system, sans-serif"
+                    fontStyle="bold"
+                    fill="#ffffff"
+                    align="center"
+                    listening={false}
+                  />
+                  <Text
+                    x={dimensions.width / 2}
+                    y={67}
+                    text="Release Space to return to selection mode"
+                    fontSize={11}
+                    fontFamily="system-ui, -apple-system, sans-serif"
+                    fill="rgba(255, 255, 255, 0.7)"
+                    align="center"
+                    listening={false}
+                  />
+                </>
+              )}
+              {showZoomHint && !isShiftHeld && !isSpaceHeld && (
+                <Text
+                  x={dimensions.width / 2}
+                  y={47}
+                  text={`Zoom: ${Math.round(effectiveScale * 100)}% • Use +/- keys or scroll wheel`}
+                  fontSize={13}
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                  fontStyle="bold"
+                  fill="#ffffff"
+                  align="center"
+                  listening={false}
+                />
+              )}
             </Group>
           </Layer>
         )}

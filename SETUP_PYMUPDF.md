@@ -1,5 +1,7 @@
 # PyMuPDF Setup Instructions
 
+**Setup guide for server-side PDF vector extraction using PyMuPDF.**
+
 To enable server-side PDF vector extraction with PyMuPDF (fitz), you need to install the Python library.
 
 ## Installation

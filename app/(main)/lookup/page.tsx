@@ -24,6 +24,7 @@ import { useSite } from '@/lib/SiteContext'
 import { ComponentModal } from '@/components/shared/ComponentModal'
 import { ManualDeviceEntry } from '@/components/discovery/ManualDeviceEntry'
 import { Component, Device, DeviceType } from '@/lib/mockData'
+import { fuzzySearch } from '@/lib/fuzzySearch'
 import { useMap } from '@/lib/MapContext'
 import { generateComponentsForFixture, generateWarrantyExpiry, isFixtureType } from '@/lib/deviceUtils'
 
@@ -279,26 +280,19 @@ export default function LookupPage() {
     return devices.find(d => d.id === selectedDeviceId) || null
   }, [devices, selectedDeviceId])
 
-  // Filter devices based on search query - partial match on all fields
+  // Filter devices based on search query - fuzzy match on all fields
   const filteredDevices = useMemo(() => {
     if (!searchQuery.trim()) return devices
     
-    const query = searchQuery.toLowerCase().trim()
-    return devices.filter(device => {
-      // Search all text fields
-      const searchableText = [
-        device.deviceId,
-        device.serialNumber,
-        device.location,
-        device.zone,
-        device.type,
-        device.status,
-        String(device.signal), // Convert numbers to strings for partial matching
-        device.battery !== undefined ? String(device.battery) : '',
-      ].filter(Boolean).join(' ').toLowerCase()
-      
-      return searchableText.includes(query)
-    })
+    const query = searchQuery.trim()
+    // Use fuzzy search for better matching with typo tolerance
+    const results = fuzzySearch(
+      query,
+      devices,
+      ['deviceId', 'serialNumber', 'location', 'zone', 'type', 'status'],
+      20 // min score threshold
+    )
+    return results.map(r => r.item)
   }, [devices, searchQuery])
 
   // Prepare devices for map views

@@ -535,25 +535,142 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 )}
 
                 {activeSection === 'about' && (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-[var(--color-surface-subtle)] rounded-lg">
-                      <div className="text-sm font-medium text-[var(--color-text)] mb-1">Fusion / Cortex</div>
-                      <div className="text-xs text-[var(--color-text-muted)]">Version 0.1.0</div>
+                  <div className="space-y-6">
+                    {/* Header */}
+                    <div className="p-4 bg-[var(--color-surface-subtle)] rounded-lg border border-[var(--color-border-subtle)]">
+                      <div className="text-lg font-semibold text-[var(--color-text)] mb-1">Fusion / Cortex</div>
+                      <div className="text-xs text-[var(--color-text-muted)] mb-2">Version 0.1.0</div>
+                      <div className="text-sm text-[var(--color-text-muted)]">
+                        Commissioning & Configuration UI for large-scale retail lighting deployments.
+                      </div>
                     </div>
-                    <div className="text-sm text-[var(--color-text-muted)]">
-                      Commissioning & Configuration UI for large-scale retail lighting deployments.
+
+                    {/* README Content */}
+                    <div className="space-y-6 text-sm text-[var(--color-text)] max-h-[calc(80vh-300px)] overflow-y-auto pr-2">
+                      {/* Purpose */}
+                      <div>
+                        <h4 className="text-base font-semibold text-[var(--color-primary)] mb-3 flex items-center gap-2">
+                          <span>🎯</span> Purpose
+                        </h4>
+                        <div className="space-y-2 pl-6">
+                          <p className="text-[var(--color-text-muted)]">
+                            Fusion/Cortex is a setup, mapping, and rules platform that bridges physical devices (fixtures, motion sensors, light sensors) and BACnet/BMS. Optimized for remote commissioning at scale (thousands of devices, thousands of sites) with multi-site support.
+                          </p>
+                          <div className="mt-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg border-l-2 border-[var(--color-warning)]">
+                            <p className="text-xs font-medium text-[var(--color-text-muted)] mb-1">Not:</p>
+                            <ul className="text-xs text-[var(--color-text-muted)] space-y-1 list-disc list-inside">
+                              <li>A lighting control dashboard</li>
+                              <li>An energy analytics/heatmap tool</li>
+                              <li>A BMS replacement</li>
+                              <li>A site manager operations dashboard</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tech Stack */}
+                      <div>
+                        <h4 className="text-base font-semibold text-[var(--color-primary)] mb-3 flex items-center gap-2">
+                          <span>🏗️</span> Tech Stack
+                        </h4>
+                        <div className="pl-6 space-y-2">
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="p-2 bg-[var(--color-surface-subtle)] rounded">
+                              <span className="font-medium text-[var(--color-text)]">Frontend:</span>
+                              <div className="text-[var(--color-text-muted)] mt-1">Next.js 14, React, Tailwind</div>
+                            </div>
+                            <div className="p-2 bg-[var(--color-surface-subtle)] rounded">
+                              <span className="font-medium text-[var(--color-text)]">API:</span>
+                              <div className="text-[var(--color-text-muted)] mt-1">tRPC (type-safe)</div>
+                            </div>
+                            <div className="p-2 bg-[var(--color-surface-subtle)] rounded">
+                              <span className="font-medium text-[var(--color-text)]">Database:</span>
+                              <div className="text-[var(--color-text-muted)] mt-1">PostgreSQL + Prisma</div>
+                            </div>
+                            <div className="p-2 bg-[var(--color-surface-subtle)] rounded">
+                              <span className="font-medium text-[var(--color-text)]">Canvas:</span>
+                              <div className="text-[var(--color-text-muted)] mt-1">react-konva</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Core Features */}
+                      <div>
+                        <h4 className="text-base font-semibold text-[var(--color-primary)] mb-3 flex items-center gap-2">
+                          <span>📋</span> Core Features
+                        </h4>
+                        <div className="pl-6 space-y-3">
+                          <div className="p-3 bg-[var(--color-surface-subtle)] rounded-lg border border-[var(--color-border-subtle)]">
+                            <div className="font-medium text-[var(--color-text)] mb-1">1. Multi-Site Dashboard</div>
+                            <div className="text-xs text-[var(--color-text-muted)]">Overview of all sites with health metrics, device counts, and critical faults.</div>
+                          </div>
+                          <div className="p-3 bg-[var(--color-surface-subtle)] rounded-lg border border-[var(--color-border-subtle)]">
+                            <div className="font-medium text-[var(--color-text)] mb-1">2. Locations & Devices</div>
+                            <div className="text-xs text-[var(--color-text-muted)]">Point cloud visualization over blueprints with color-coded device types.</div>
+                          </div>
+                          <div className="p-3 bg-[var(--color-surface-subtle)] rounded-lg border border-[var(--color-border-subtle)]">
+                            <div className="font-medium text-[var(--color-text)] mb-1">3. Zones</div>
+                            <div className="text-xs text-[var(--color-text-muted)]">Drag-select devices to create zones - the unit of control for BMS + rules.</div>
+                          </div>
+                          <div className="p-3 bg-[var(--color-surface-subtle)] rounded-lg border border-[var(--color-border-subtle)]">
+                            <div className="font-medium text-[var(--color-text)] mb-1">4. BACnet Mapping</div>
+                            <div className="text-xs text-[var(--color-text-muted)]">Map zones to BACnet Object IDs with inline editing and validation.</div>
+                          </div>
+                          <div className="p-3 bg-[var(--color-surface-subtle)] rounded-lg border border-[var(--color-border-subtle)]">
+                            <div className="font-medium text-[var(--color-text)] mb-1">5. Rules & Overrides</div>
+                            <div className="text-xs text-[var(--color-text-muted)]">Alexa-style rule builder with triggers, conditions, and actions.</div>
+                          </div>
+                          <div className="p-3 bg-[var(--color-surface-subtle)] rounded-lg border border-[var(--color-border-subtle)]">
+                            <div className="font-medium text-[var(--color-text)] mb-1">6. Device Lookup</div>
+                            <div className="text-xs text-[var(--color-text-muted)]">Search by ID/serial, view I2QR details, warranty, and parts list.</div>
+                          </div>
+                          <div className="p-3 bg-[var(--color-surface-subtle)] rounded-lg border border-[var(--color-border-subtle)]">
+                            <div className="font-medium text-[var(--color-text)] mb-1">7. Faults / Health</div>
+                            <div className="text-xs text-[var(--color-text-muted)]">Summary counts and detailed device information for troubleshooting.</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Multi-Site Architecture */}
+                      <div>
+                        <h4 className="text-base font-semibold text-[var(--color-primary)] mb-3 flex items-center gap-2">
+                          <span>🏪</span> Multi-Site Architecture
+                        </h4>
+                        <div className="pl-6 space-y-2">
+                          <p className="text-[var(--color-text-muted)] text-xs">
+                            The app supports managing multiple sites with isolated data. All data (devices, zones, rules, maps, BACnet mappings) is namespaced by site ID. Each site has its own device list, zones, rules, and map images.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Design System */}
+                      <div>
+                        <h4 className="text-base font-semibold text-[var(--color-primary)] mb-3 flex items-center gap-2">
+                          <span>🎨</span> Design System
+                        </h4>
+                        <div className="pl-6 space-y-2">
+                          <p className="text-[var(--color-text-muted)] text-xs">
+                            All design values use CSS custom properties (design tokens) in <code className="px-1 py-0.5 bg-[var(--color-bg-elevated)] rounded text-[var(--color-primary)]">app/globals.css</code>. This enables easy theming, consistent spacing, colors, typography, and no hard-coded values.
+                          </p>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Sign Out Button */}
                     {isAuthenticated && (
+                      <div className="pt-4 border-t border-[var(--color-border-subtle)]">
                       <button
                         onClick={() => {
                           logout()
                           onClose()
                         }}
-                        className="fusion-button mt-6"
+                          className="fusion-button w-full"
                         style={{ background: 'var(--color-danger)', color: 'var(--color-text-on-primary)' }}
                       >
                         Sign Out
                       </button>
+                      </div>
                     )}
                   </div>
                 )}

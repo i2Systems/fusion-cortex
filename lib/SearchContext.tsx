@@ -25,6 +25,7 @@ interface SearchContextType {
   pageType: PageType
   detectAction: (query: string) => Action | null
   getPageActions: () => Action[]
+  searchDevices?: (query: string) => any[]
 }
 
 const SearchContext = createContext<SearchContextType | undefined>(undefined)

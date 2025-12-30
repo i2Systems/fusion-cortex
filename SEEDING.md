@@ -1,5 +1,7 @@
 # Database Seeding Guide
 
+**Guide for populating the database with realistic demo data for testing and development.**
+
 This guide explains how to seed the database with realistic, cohesive demo data for each site.
 
 ## Overview

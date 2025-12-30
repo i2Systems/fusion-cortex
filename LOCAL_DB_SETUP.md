@@ -1,5 +1,7 @@
 # Local Database Setup Guide
 
+**Troubleshooting guide for local PostgreSQL setup and permission issues.**
+
 If you're seeing database permission errors like:
 ```
 User `user` was denied access on the database `fusion_cortex.public`

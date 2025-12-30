@@ -49,16 +49,12 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
   onClose,
 }, ref) => {
   const [width, setWidth] = useState(defaultWidth)
-  // Default to collapsed on tablet/mobile (below lg breakpoint)
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth < 1024 // lg breakpoint
-    }
-    return true // Default to collapsed on SSR
-  })
+  // Always start collapsed to match SSR - will be updated in useEffect
+  const [isCollapsed, setIsCollapsed] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
   const [isTouchDragging, setIsTouchDragging] = useState(false)
   const [lastOpenWidth, setLastOpenWidth] = useState(defaultWidth)
+  const [isMobile, setIsMobile] = useState(false) // Track if we're on mobile/tablet
   const panelRef = useRef<HTMLDivElement>(null)
   const handleRef = useRef<HTMLDivElement>(null)
   const dragStartX = useRef(0)
@@ -72,11 +68,24 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
   const lastTapY = useRef(0)
   const doubleTapTimeout = useRef<NodeJS.Timeout | null>(null)
 
-  // Load saved state from localStorage, but respect screen size
+  // Set mobile state after hydration
   useEffect(() => {
-    if (storageKey && typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // Load saved state from localStorage, but respect screen size
+  // This runs after hydration to avoid SSR mismatch
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    const isTabletOrMobile = window.innerWidth < 1024 // lg breakpoint
+    
+    if (storageKey) {
       const saved = localStorage.getItem(`panel_${storageKey}`)
-      const isTabletOrMobile = window.innerWidth < 1024 // lg breakpoint
       
       if (saved) {
         try {
@@ -86,23 +95,29 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
             setLastOpenWidth(savedWidth)
           }
           // On tablet/mobile, default to collapsed unless explicitly saved as open
-          // On desktop, respect saved state
+          // On desktop, default to open (ignore saved collapsed state on first load)
           if (isTabletOrMobile) {
             setIsCollapsed(savedCollapsed !== false) // Default to collapsed on tablet/mobile
           } else {
-            if (savedCollapsed !== undefined) {
-              setIsCollapsed(savedCollapsed)
+            // Desktop: default to open, but respect saved width
+              setIsCollapsed(false)
+            if (savedWidth) {
+              setWidth(savedWidth)
+              setLastOpenWidth(savedWidth)
             }
           }
         } catch (e) {
           console.warn('Failed to load panel state:', e)
+          // Default based on screen size
+          setIsCollapsed(isTabletOrMobile)
         }
       } else {
-        // No saved state - default to collapsed on tablet/mobile
-        if (isTabletOrMobile) {
-          setIsCollapsed(true)
-        }
+        // No saved state - default to collapsed on tablet/mobile, open on desktop
+        setIsCollapsed(isTabletOrMobile)
       }
+    } else {
+      // No storage key - default based on screen size
+      setIsCollapsed(isTabletOrMobile)
     }
   }, [storageKey])
   
@@ -474,8 +489,8 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
             ${!isCollapsed ? 'fixed lg:relative right-0 top-0 bottom-0 z-[var(--z-panel)]' : ''}
           `}
           style={{
-            width: isCollapsed ? undefined : (typeof window !== 'undefined' && window.innerWidth < 1024 ? '100%' : undefined),
-            maxWidth: typeof window !== 'undefined' && window.innerWidth < 1024 ? '100%' : undefined,
+            width: isCollapsed ? undefined : (isMobile ? '100%' : undefined),
+            maxWidth: isMobile ? '100%' : undefined,
           }}
         >
           {/* Close button - visible on mobile/tablet */}

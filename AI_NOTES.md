@@ -1,38 +1,23 @@
 # AI Assistant Notes
 
-This file contains helpful context for AI assistants working on this codebase.
+**Quick Context**: Fusion/Cortex - Commissioning & Configuration UI for retail lighting. Setup, mapping, and rules platform (NOT a dashboard or analytics tool). Next.js 14 App Router, React, tRPC, Prisma, PostgreSQL, Tailwind. Multi-store aware with store-scoped data isolation.
 
-## Quick Context
+**See [README.md](./README.md) for project overview and [ARCHITECTURE.md](./ARCHITECTURE.md) for system architecture.**
 
-**Project**: Fusion/Cortex - Commissioning & Configuration UI for retail lighting
-**Purpose**: Setup, mapping, and rules platform (NOT a dashboard or analytics tool)
-**Tech**: Next.js 14 App Router, React, tRPC, Prisma, PostgreSQL, Tailwind
-**Architecture**: Multi-store aware with store-scoped data isolation
+## Critical Rules
 
-## Key Principles
-
-1. **Always use design tokens** - Never hard-code colors/spacing. Use `var(--color-*)`, `var(--space-*)`, etc.
-2. **Type safety first** - Use tRPC for all API calls, Zod for validation, TypeScript strict mode
-3. **Server Components by default** - Only use `'use client'` when needed (interactivity, hooks, browser APIs)
-4. **Plain language** - No jargon, simple UX (per brief requirements)
-5. **Store-aware** - All data contexts are store-scoped using localStorage keys with store ID prefix
+1. **Design tokens only** - Never hard-code colors/spacing. Use `var(--color-*)`, `var(--space-*)` from `app/globals.css`
+2. **Type safety** - tRPC for API calls, Zod for validation, TypeScript strict mode
+3. **Server Components default** - Only use `'use client'` when needed (interactivity, hooks, browser APIs)
+4. **Plain language** - No jargon, simple UX
+5. **Store-aware** - All data contexts use store-scoped localStorage keys: `fusion_[data]_store_{storeId}`
 
 ## Multi-Store Architecture
 
-The app supports multiple stores with isolated data:
-
-- **StoreContext**: Manages active store selection (`activeStoreId`, `stores`, `setActiveStore`)
-- **Store-Scoped Storage**: All data uses keys like `fusion_devices_store_{storeId}`
-- **Auto-Reload**: Contexts (Device, Zone, Rule) automatically reload when `activeStoreId` changes
-- **Dashboard**: Shows overview of all stores, detailed panel for selected store
-- **Store Switching**: Dropdown in PageTitle component
-
-**Storage Key Format:**
-- `fusion_devices_store_{storeId}`
-- `fusion_zones_store_{storeId}`
-- `fusion_rules_store_{storeId}`
-- `fusion_map-image-url_store_{storeId}`
-- `fusion_bacnet_mappings_store_{storeId}`
+- **StoreContext**: Manages `activeStoreId`, `stores`, `setActiveStore`
+- **Store-Scoped Keys**: `fusion_[data]_store_{storeId}` (devices, zones, rules, maps, BACnet)
+- **Auto-Reload**: Contexts reload when `activeStoreId` changes
+- **Store Switching**: Dropdown in `PageTitle` component
 
 ## Common Patterns
 
@@ -125,32 +110,23 @@ export function MyComponent() {
 </div>
 ```
 
-## File Locations
+## File Structure
 
 - **Pages**: `app/(main)/[section]/page.tsx`
-- **Layout Components**: `components/layout/`
-- **Feature Components**: `components/[feature]/`
-- **Context Providers**: `lib/[Feature]Context.tsx`
-- **tRPC Routers**: `server/trpc/routers/[feature].ts`
-- **Database Schema**: `prisma/schema.prisma`
-- **Design Tokens**: `app/globals.css` (look for `:root`)
+- **Layout**: `components/layout/` (MainNav, TopBar, ContextPanel, etc.)
+- **Features**: `components/[feature]/` (map, zones, rules, lookup, etc.)
+- **Contexts**: `lib/[Feature]Context.tsx` (DeviceContext, ZoneContext, RuleContext, SiteContext)
+- **tRPC**: `server/trpc/routers/[feature].ts` → `server/trpc/routers/_app.ts`
+- **Schema**: `prisma/schema.prisma`
+- **Tokens**: `app/globals.css` (`:root` section)
 
-## Design Token Reference
+## Design Tokens (Quick Reference)
 
-**Colors:**
-- `--color-primary`: #4c7dff (main brand color)
-- `--color-surface`: #111322 (card/panel backgrounds)
-- `--color-text`: #f9fafb (primary text)
-- `--color-text-muted`: #9ca3af (secondary text)
-- `--color-success`: #22c55e
-- `--color-danger`: #f97373
-- `--color-warning`: #facc15
-
-**Spacing:** `--space-1` through `--space-20` (4px base unit)
-
-**Radius:** `--radius-xs` through `--radius-2xl`
-
-**Shadows:** `--shadow-soft`, `--shadow-md`, `--shadow-strong`
+See `app/globals.css` for full token list. Key tokens:
+- **Colors**: `--color-primary`, `--color-surface`, `--color-text`, `--color-text-muted`, `--color-success`, `--color-danger`, `--color-warning`
+- **Spacing**: `--space-1` through `--space-20` (4px base unit)
+- **Radius**: `--radius-xs` through `--radius-2xl`
+- **Shadows**: `--shadow-soft`, `--shadow-md`, `--shadow-strong`
 
 ## Common Issues & Solutions
 
@@ -188,25 +164,15 @@ export function MyComponent() {
 - Legacy energy/analytics features
 - Device discovery/scanning (removed - use manual entry in lookup page)
 
-## Testing Checklist
+## Quick Checklist
 
 When adding features:
-- [ ] Uses design tokens (no hard-coded values)
-- [ ] Type-safe (tRPC + TypeScript)
-- [ ] Server Component unless client features needed
-- [ ] Added to navigation if it's a main section
-- [ ] tRPC router created and added to app router (if needed)
-- [ ] Database schema updated if needed
-- [ ] Plain language, no jargon
-- [ ] Store-aware if dealing with data (uses store-scoped keys)
-- [ ] Reloads when active store changes
-
-## Next Steps for Full Implementation
-
-1. **Connect tRPC to Prisma**: Create `lib/prisma.ts`, use in routers
-2. **Map canvas**: Blueprint upload, device rendering, interactions
-3. **Zone management**: Create/edit zones, device assignment
-4. **Rule engine**: Rule builder, evaluation, BMS integration
-5. **Auth setup**: Configure Auth.js, protect routes
-6. **Real-time updates**: WebSockets or polling for device status
-7. **Image storage**: Connect IndexedDB for store images
+- ✅ Uses design tokens (no hard-coded values)
+- ✅ Type-safe (tRPC + TypeScript)
+- ✅ Server Component unless client features needed
+- ✅ Added to navigation if main section
+- ✅ tRPC router created and added to app router
+- ✅ Database schema updated if needed
+- ✅ Plain language, no jargon
+- ✅ Store-aware if dealing with data
+- ✅ Reloads when active store changes

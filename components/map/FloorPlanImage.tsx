@@ -8,7 +8,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Image as KonvaImage, Group } from 'react-konva'
+import { Image as KonvaImage, Group, Rect, Text } from 'react-konva'
 
 export interface ImageBounds {
   x: number
@@ -29,12 +29,25 @@ interface FloorPlanImageProps {
 
 export function FloorPlanImage({ url, width, height, onImageBoundsChange, zoomBounds }: FloorPlanImageProps) {
   const [image, setImage] = useState<HTMLImageElement | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [lowResImage, setLowResImage] = useState<HTMLImageElement | null>(null)
+  const [loadError, setLoadError] = useState(false)
 
+  // Progressive loading: first load low-res placeholder, then hi-res
   useEffect(() => {
+    let cancelled = false
+    
+    setIsLoading(true)
+    setLoadError(false)
+    setImage(null)
+    setLowResImage(null)
+
+    // Simplified: Just load the image directly (skip low-res placeholder to reduce flickering)
     const img = new window.Image()
     img.crossOrigin = 'anonymous'
+    
     img.onload = () => {
-      setImage(img)
+      if (cancelled) return
       
       // Calculate aspect-ratio preserving dimensions
       const naturalAspect = img.naturalWidth / img.naturalHeight
@@ -59,8 +72,13 @@ export function FloorPlanImage({ url, width, height, onImageBoundsChange, zoomBo
         offsetY = 0
       }
       
-      // Notify parent of actual image bounds
-      onImageBoundsChange?.({
+      // Set image and bounds in a single update to prevent flickering
+      setImage(img)
+      setIsLoading(false)
+      
+      // Notify parent of actual image bounds (only once after image loads)
+      if (onImageBoundsChange) {
+        onImageBoundsChange({
         x: offsetX,
         y: offsetY,
         width: renderedWidth,
@@ -69,7 +87,19 @@ export function FloorPlanImage({ url, width, height, onImageBoundsChange, zoomBo
         naturalHeight: img.naturalHeight
       })
     }
+    }
+    
+    img.onerror = () => {
+      if (cancelled) return
+      setLoadError(true)
+      setIsLoading(false)
+    }
+    
     img.src = url
+    
+    return () => {
+      cancelled = true
+    }
   }, [url, width, height, onImageBoundsChange])
 
   // Calculate aspect-ratio preserving dimensions
@@ -121,7 +151,70 @@ export function FloorPlanImage({ url, width, height, onImageBoundsChange, zoomBo
 
   const displayBounds = zoomedBounds || imageBounds
 
-  if (!image || !displayBounds) return null
+  // Show skeleton/placeholder while loading
+  if (isLoading && !lowResImage && !image) {
+    return (
+      <Group>
+        <Rect
+          x={0}
+          y={0}
+          width={width}
+          height={height}
+          fill="rgba(17, 24, 39, 0.3)"
+          listening={false}
+        />
+        <Rect
+          x={width / 2 - 50}
+          y={height / 2 - 20}
+          width={100}
+          height={40}
+          fill="rgba(0, 217, 255, 0.1)"
+          cornerRadius={8}
+          listening={false}
+        />
+        <Text
+          x={width / 2}
+          y={height / 2 + 5}
+          text="Loading..."
+          fontSize={12}
+          fill="rgba(0, 217, 255, 0.6)"
+          align="center"
+          listening={false}
+        />
+      </Group>
+    )
+  }
+
+  // Show error state
+  if (loadError && !image) {
+    return (
+      <Group>
+        <Rect
+          x={0}
+          y={0}
+          width={width}
+          height={height}
+          fill="rgba(17, 24, 39, 0.3)"
+          listening={false}
+        />
+        <Text
+          x={width / 2}
+          y={height / 2}
+          text="Failed to load image"
+          fontSize={14}
+          fill="rgba(255, 51, 102, 0.8)"
+          align="center"
+          listening={false}
+        />
+      </Group>
+    )
+  }
+
+  if (!displayBounds) return null
+  
+  // Use low-res image if hi-res not loaded yet
+  const displayImage = image || lowResImage
+  if (!displayImage) return null
 
   // If zoom bounds are provided, we need to transform the image to show only the zoomed area
   if (zoomBounds && imageBounds) {
@@ -144,6 +237,18 @@ export function FloorPlanImage({ url, width, height, onImageBoundsChange, zoomBo
     
     return (
       <Group clipX={0} clipY={0} clipWidth={width} clipHeight={height}>
+        {/* Show low-res placeholder if hi-res not loaded */}
+        {!image && lowResImage && (
+          <KonvaImage
+            image={lowResImage}
+            x={offsetX}
+            y={offsetY}
+            width={imageBounds.width * scale}
+            height={imageBounds.height * scale}
+            opacity={0.4}
+          />
+        )}
+        {image && (
         <KonvaImage
           image={image}
           x={offsetX}
@@ -152,6 +257,7 @@ export function FloorPlanImage({ url, width, height, onImageBoundsChange, zoomBo
           height={imageBounds.height * scale}
           opacity={0.8}
         />
+        )}
       </Group>
     )
   }
@@ -160,6 +266,19 @@ export function FloorPlanImage({ url, width, height, onImageBoundsChange, zoomBo
   if (!imageBounds) return null
   
   return (
+    <>
+      {/* Show low-res placeholder if hi-res not loaded */}
+      {!image && lowResImage && (
+        <KonvaImage
+          image={lowResImage}
+          x={imageBounds.x}
+          y={imageBounds.y}
+          width={imageBounds.width}
+          height={imageBounds.height}
+          opacity={0.4}
+        />
+      )}
+      {image && (
     <KonvaImage
       image={image}
       x={imageBounds.x}
@@ -168,6 +287,8 @@ export function FloorPlanImage({ url, width, height, onImageBoundsChange, zoomBo
       height={imageBounds.height}
       opacity={0.8}
     />
+      )}
+    </>
   )
 }
 

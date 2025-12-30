@@ -1,5 +1,7 @@
 # Architecture Overview
 
+**System architecture, data flow, and design patterns documentation.**
+
 ## System Architecture
 
 ```

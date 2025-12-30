@@ -1,5 +1,7 @@
 # Exporting Zones and Device Positions
 
+**Guide for exporting and persisting zones and device positions across deployments.**
+
 ## Problem
 When you push code to GitHub and deploy to Vercel, your zones and device positions are lost because they're stored in browser localStorage, which doesn't persist across deployments.
 

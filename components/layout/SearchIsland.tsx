@@ -9,9 +9,13 @@
 
 'use client'
 
-import { Search, Layers, Sparkles, ArrowUp, ArrowDown, TrendingUp, TrendingDown, Activity } from 'lucide-react'
-import { useState, useEffect, useMemo } from 'react'
+import { Search, Layers, Sparkles, ArrowUp, ArrowDown, TrendingUp, TrendingDown, Activity, Clock, X } from 'lucide-react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useSearch } from '@/lib/SearchContext'
+import { useDevices } from '@/lib/DeviceContext'
+import { fuzzySearch, type SearchResult } from '@/lib/fuzzySearch'
+import { getRecentSearches, addRecentSearch, getSearchSuggestions, clearRecentSearches } from '@/lib/recentSearches'
+import { usePathname } from 'next/navigation'
 
 interface Metric {
   label: string
@@ -54,7 +58,16 @@ export function SearchIsland({
   metrics = []
 }: SearchIslandProps) {
   const [internalSearchQuery, setInternalSearchQuery] = useState('')
-  const { detectAction, getPageActions } = useSearch()
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
+  const [focused, setFocused] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const suggestionsRef = useRef<HTMLDivElement>(null)
+  const { detectAction, getPageActions, pageType } = useSearch()
+  // Devices may not be available on all pages - handle gracefully
+  const devicesContext = useDevices()
+  const devices = devicesContext?.devices || []
+  const pathname = usePathname()
   
   // Use controlled value if provided, otherwise use internal state
   const searchQuery = searchValue !== undefined ? searchValue : internalSearchQuery
@@ -73,6 +86,105 @@ export function SearchIsland({
     }
   }, [detectedAction, onActionDetected])
 
+  // Get recent searches and fuzzy-matched devices
+  const suggestions = useMemo(() => {
+    if (!focused && !showSuggestions) return []
+    
+    const query = searchQuery.trim()
+    
+    // Get recent searches
+    const recentSearches = getSearchSuggestions(query, 3)
+    
+    // Get fuzzy-matched devices (only if query exists)
+    let deviceResults: SearchResult<any>[] = []
+    if (query && devices.length > 0) {
+      deviceResults = fuzzySearch(
+        query,
+        devices,
+        ['deviceId', 'serialNumber', 'location', 'zone', 'type', 'status'],
+        20 // min score
+      ).slice(0, 5) // Limit to top 5
+    }
+    
+    return {
+      recent: recentSearches,
+      devices: deviceResults,
+    }
+  }, [searchQuery, devices, focused, showSuggestions])
+
+  // Show suggestions when focused or typing
+  useEffect(() => {
+    setShowSuggestions(focused || searchQuery.length > 0)
+  }, [focused, searchQuery])
+
+  // Handle suggestion selection
+  const handleSuggestionSelect = useCallback((suggestion: string) => {
+    setSearchQuery(suggestion)
+    setShowSuggestions(false)
+    setFocused(false)
+    addRecentSearch(suggestion, pageType)
+    searchInputRef.current?.blur()
+  }, [setSearchQuery, pageType])
+
+  // Handle Enter key - save search and execute
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      if (selectedSuggestionIndex >= 0) {
+        // Select highlighted suggestion
+        const allSuggestions = [
+          ...suggestions.recent.map(s => s.query),
+          ...suggestions.devices.map(d => d.item.deviceId || d.item.serialNumber || ''),
+        ].filter(Boolean)
+        
+        if (allSuggestions[selectedSuggestionIndex]) {
+          handleSuggestionSelect(allSuggestions[selectedSuggestionIndex])
+        }
+      } else if (searchQuery.trim()) {
+        // Save search and execute action if detected
+        addRecentSearch(searchQuery, pageType)
+        if (detectedAction) {
+          detectedAction.action()
+          setSearchQuery('')
+        }
+      }
+      setShowSuggestions(false)
+      setFocused(false)
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      const totalSuggestions = suggestions.recent.length + suggestions.devices.length
+      setSelectedSuggestionIndex(prev => 
+        prev < totalSuggestions - 1 ? prev + 1 : prev
+      )
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSelectedSuggestionIndex(prev => prev > 0 ? prev - 1 : -1)
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false)
+      setFocused(false)
+      searchInputRef.current?.blur()
+    }
+  }, [selectedSuggestionIndex, suggestions, searchQuery, detectedAction, handleSuggestionSelect, setSearchQuery, pageType])
+
+  // Click outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(e.target as Node) &&
+        searchInputRef.current &&
+        !searchInputRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false)
+        setFocused(false)
+      }
+    }
+    
+    if (showSuggestions) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showSuggestions])
+
   const containerClass = position === 'top' 
     ? fullWidth
       ? 'w-full px-4 md:pl-5'
@@ -87,7 +199,7 @@ export function SearchIsland({
     : ''
 
   return (
-    <div className={`${containerClass} ${positionClass}`}>
+    <div className={`${containerClass} ${positionClass}`} style={{ position: 'relative', zIndex: 'var(--z-dropdown)' }}>
       <div className="fusion-card backdrop-blur-xl border border-[var(--color-primary)]/20 search-island py-3 md:py-4 px-3 md:px-5">
         {/* Layout: Title + Metrics (stacked on mobile) + Search + Actions */}
         <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3 lg:gap-4">
@@ -161,14 +273,14 @@ export function SearchIsland({
           <div className="flex-1 hidden md:block min-w-0 lg:flex-[0.5] xl:flex-[0.3]" />
 
           {/* Search - Shrinks when space is constrained, min-width 120px, grows on larger screens */}
-          <div className="relative min-w-0 w-full md:w-auto md:flex-shrink md:min-w-[120px] md:flex-[2] lg:flex-[3] xl:flex-[4] xl:max-w-none 2xl:max-w-none">
-            <div className="w-full min-w-0">
+          <div className="relative min-w-0 w-full md:w-auto md:flex-shrink md:min-w-[120px] md:flex-[2] lg:flex-[3] xl:flex-[4] xl:max-w-none 2xl:max-w-none" style={{ zIndex: 'var(--z-dropdown)' }}>
+            <div className="w-full min-w-0 relative">
               <Search 
                 size={16} 
-                className="absolute left-2.5 md:left-3 lg:left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] flex-shrink-0" 
+                className="absolute left-2.5 md:left-3 lg:left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] flex-shrink-0 z-10" 
               />
               {detectedAction && (
-                <div className="absolute right-2 md:right-3 lg:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 md:gap-1.5 lg:gap-2">
+                <div className="absolute right-2 md:right-3 lg:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 md:gap-1.5 lg:gap-2 z-10">
                   <Sparkles size={10} className="text-[var(--color-primary)] animate-pulse hidden sm:block md:w-3 md:h-3" />
                   <span className="text-[9px] md:text-[10px] lg:text-xs text-[var(--color-primary)] font-medium bg-[var(--color-primary-soft)] px-1 md:px-1.5 lg:px-2 py-0.5 rounded">
                     {detectedAction.label}
@@ -176,15 +288,22 @@ export function SearchIsland({
                 </div>
               )}
               <input
+                ref={searchInputRef}
                 type="text"
                 placeholder={placeholder}
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && detectedAction) {
-                    detectedAction.action()
-                    setSearchQuery('')
-                  }
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setSelectedSuggestionIndex(-1)
+                }}
+                onKeyDown={handleKeyDown}
+                onFocus={() => {
+                  setFocused(true)
+                  setShowSuggestions(true)
+                }}
+                onBlur={() => {
+                  // Delay to allow click on suggestions
+                  setTimeout(() => setFocused(false), 200)
                 }}
                 className={`w-full pl-9 md:pl-10 lg:pl-12 pr-2 md:pr-3 lg:pr-4 py-2 md:py-2.5 lg:py-3 h-[40px] md:h-[44px] lg:h-[52px] bg-[var(--color-bg-elevated)] border-2 rounded-xl text-xs md:text-sm lg:text-base xl:text-lg font-medium text-[var(--color-text)] placeholder:text-[var(--color-text-soft)] placeholder:font-normal focus:outline-none focus:shadow-[var(--shadow-glow-primary)] transition-all ${
                   detectedAction 
@@ -192,6 +311,113 @@ export function SearchIsland({
                     : 'border-[var(--color-border-subtle)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]'
                 }`}
               />
+              
+              {/* Typeahead Suggestions Dropdown */}
+              {showSuggestions && (suggestions.recent.length > 0 || suggestions.devices.length > 0) && (
+                <div
+                  ref={suggestionsRef}
+                  className="absolute top-full left-0 right-0 mt-2 rounded-xl max-h-96 overflow-auto border border-[var(--color-border-subtle)]/50 shadow-[var(--shadow-strong)]"
+                  style={{ 
+                    zIndex: 9999,
+                    background: 'rgba(17, 24, 39, 0.75)',
+                    backdropFilter: 'blur(40px) saturate(200%)',
+                    WebkitBackdropFilter: 'blur(40px) saturate(200%)',
+                  }}
+                >
+                  {/* Recent Searches */}
+                  {suggestions.recent.length > 0 && (
+                    <div className="p-2">
+                      <div className="flex items-center justify-between mb-2 px-2">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-muted)]">
+                          <Clock size={12} />
+                          <span>Recent</span>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            clearRecentSearches()
+                          }}
+                          className="text-xs text-[var(--color-text-soft)] hover:text-[var(--color-text)] transition-colors"
+                          title="Clear history"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                      {suggestions.recent.map((recent, idx) => {
+                        const isSelected = selectedSuggestionIndex === idx
+                        return (
+                          <button
+                            key={`recent-${idx}`}
+                            onClick={() => handleSuggestionSelect(recent.query)}
+                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                              isSelected
+                                ? 'bg-[var(--color-primary-soft)] text-[var(--color-text)]'
+                                : 'hover:bg-[var(--color-surface-subtle)] text-[var(--color-text)]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Clock size={14} className="text-[var(--color-text-muted)] flex-shrink-0" />
+                              <span className="truncate">{recent.query}</span>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                  
+                  {/* Device Matches */}
+                  {suggestions.devices.length > 0 && (
+                    <div className="p-2 border-t border-[var(--color-border-subtle)]">
+                      <div className="px-2 mb-2 text-xs font-semibold text-[var(--color-text-muted)]">
+                        Devices
+                      </div>
+                      {suggestions.devices.map((result, idx) => {
+                        const device = result.item
+                        const suggestionIdx = suggestions.recent.length + idx
+                        const isSelected = selectedSuggestionIndex === suggestionIdx
+                        const matchField = result.matchedFields[0] || 'deviceId'
+                        
+                        return (
+                          <button
+                            key={`device-${device.id}`}
+                            onClick={() => handleSuggestionSelect(device.deviceId || device.serialNumber || '')}
+                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                              isSelected
+                                ? 'bg-[var(--color-primary-soft)] text-[var(--color-text)]'
+                                : 'hover:bg-[var(--color-surface-subtle)] text-[var(--color-text)]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Search size={14} className="text-[var(--color-primary)] flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold truncate">
+                                  {device.deviceId || device.serialNumber}
+                                </div>
+                                <div className="text-xs text-[var(--color-text-muted)] truncate">
+                                  {device.serialNumber && device.deviceId !== device.serialNumber && (
+                                    <span>SN: {device.serialNumber}</span>
+                                  )}
+                                  {device.location && (
+                                    <span className="ml-2">• {device.location}</span>
+                                  )}
+                                  {device.zone && (
+                                    <span className="ml-2">• {device.zone}</span>
+                                  )}
+                                </div>
+                                {result.score < 60 && (
+                                  <div className="text-[10px] text-[var(--color-text-soft)] mt-0.5">
+                                    Fuzzy match ({Math.round(result.score)}%)
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

@@ -13,7 +13,7 @@
 'use client'
 
 import { ChevronUp, ChevronDown, AlertTriangle, Layers, Network, Workflow, Search, Home, X } from 'lucide-react'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { useNotifications } from '@/lib/NotificationContext'
 import { useRouter } from 'next/navigation'
@@ -39,6 +39,8 @@ const typeIcons: Record<string, any> = {
 export function BottomDrawer({ children }: BottomDrawerProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
+  const lastClickTime = useRef(0)
+  const lastClickY = useRef(0)
   const pathname = usePathname()
   const { notifications, unreadCount, markAsRead, dismissNotification } = useNotifications()
   const { devices } = useDevices()
@@ -115,8 +117,30 @@ export function BottomDrawer({ children }: BottomDrawerProps) {
     >
       {/* Drawer Header - Always visible */}
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full h-12 flex items-center justify-between px-4 md:px-6 hover:bg-[var(--color-surface-subtle)] transition-colors"
+        onClick={(e) => {
+          const currentTime = Date.now()
+          const timeDiff = currentTime - lastClickTime.current
+          const yDiff = Math.abs(e.clientY - lastClickY.current)
+          
+          // Check for double-click (within 300ms and within 50px vertical)
+          if (timeDiff > 0 && timeDiff < 300 && yDiff < 50) {
+            // Double-click detected - toggle
+            setIsExpanded(!isExpanded)
+            lastClickTime.current = 0 // Reset
+          } else {
+            // Single click - just toggle
+            setIsExpanded(!isExpanded)
+            lastClickTime.current = currentTime
+            lastClickY.current = e.clientY
+          }
+        }}
+        onDoubleClick={(e) => {
+          e.preventDefault()
+          setIsExpanded(!isExpanded)
+          lastClickTime.current = 0 // Reset after double-click
+        }}
+        className="w-full h-12 flex items-center justify-between px-4 md:px-6 hover:bg-[var(--color-surface-subtle)] transition-colors cursor-pointer"
+        title={isExpanded ? "Click or double-click to collapse" : "Click or double-click to expand"}
       >
         <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
           <span className="text-sm font-medium text-[var(--color-text)] whitespace-nowrap">
