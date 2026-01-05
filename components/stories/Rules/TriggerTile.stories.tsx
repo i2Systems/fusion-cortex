@@ -13,8 +13,8 @@ type Story = StoryObj<typeof meta>
 
 const TileWrapper = () => {
   const [isEditing, setIsEditing] = useState(false)
-  const [trigger, setTrigger] = useState<'motion' | undefined>(undefined)
-  
+  const [trigger, setTrigger] = useState<any>(undefined)
+
   return (
     <TriggerTile
       trigger={trigger}
@@ -38,8 +38,8 @@ export const WithMotionTrigger: Story = {
     trigger: 'motion',
     ruleType: 'rule',
     isEditing: false,
-    onClick: () => {},
-    onChange: () => {},
+    onClick: () => { },
+    onChange: () => { },
   },
 }
 
@@ -48,8 +48,8 @@ export const Editing: Story = {
     trigger: undefined,
     ruleType: 'rule',
     isEditing: true,
-    onClick: () => {},
-    onChange: () => {},
+    onClick: () => { },
+    onChange: () => { },
   },
 }
 

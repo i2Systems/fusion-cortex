@@ -12,17 +12,13 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
   args: {
-    onUpload: () => console.log('Upload clicked'),
-    onToggleView: () => console.log('View toggled'),
-    currentView: 'map',
+    onModeChange: () => { },
   },
 }
 
 export const ListView: Story = {
   args: {
-    onUpload: () => {},
-    onToggleView: () => {},
-    currentView: 'list',
+    onModeChange: () => { },
   },
 }
 

@@ -15,7 +15,8 @@ export const DeviceType: Story = {
     object: {
       id: 'fixture-16ft-power-entry',
       name: '16ft Power Entry Fixture',
-      type: 'device',
+      category: 'Fixture',
+      defaultImage: '',
       description: '16-foot power entry lighting fixture',
     },
     onClick: () => console.log('Card clicked'),
@@ -27,7 +28,9 @@ export const ComponentType: Story = {
     object: {
       id: 'driver-board',
       name: 'Driver Board',
-      type: 'component',
+      category: 'Component',
+      quantity: 1,
+      defaultImage: '',
       description: 'LED driver board component',
     },
     onClick: () => console.log('Card clicked'),

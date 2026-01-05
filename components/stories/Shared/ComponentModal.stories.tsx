@@ -21,8 +21,9 @@ const ModalWrapper = () => {
       isOpen={isOpen}
       onClose={() => setIsOpen(false)}
       component={{
+        id: 'comp-1',
+        componentSerialNumber: 'SN-001',
         componentType: 'driver-board',
-        serialNumber: 'DRV-001',
         warrantyExpiry: new Date('2025-12-31'),
         notes: 'Test component',
       }}

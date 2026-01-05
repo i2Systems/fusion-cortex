@@ -15,7 +15,15 @@ import { LibraryObjectModal } from '@/components/library/LibraryObjectModal'
 import { LibraryCard } from '@/components/library/LibraryCard'
 
 // Device types (6 fixtures + 2 sensors)
-const DEVICE_TYPES = [
+export interface LibraryDevice {
+  id: string
+  name: string
+  category: 'Fixture' | 'Sensor'
+  description: string
+  defaultImage: string
+}
+
+const DEVICE_TYPES: LibraryDevice[] = [
   {
     id: 'fixture-16ft-power-entry',
     name: '16ft Power Entry Fixture',
@@ -72,10 +80,19 @@ const DEVICE_TYPES = [
     description: 'Ambient light sensor for daylight harvesting',
     defaultImage: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=600&fit=crop',
   },
-] as const
+]
+
+export interface LibraryComponent {
+  id: string
+  name: string
+  category: 'Component'
+  description: string
+  quantity: number
+  defaultImage: string
+}
 
 // Component types (8 types)
-const COMPONENT_TYPES = [
+const COMPONENT_TYPES: LibraryComponent[] = [
   {
     id: 'lcm',
     name: 'LCM',
@@ -140,9 +157,9 @@ const COMPONENT_TYPES = [
     quantity: 2,
     defaultImage: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=600&fit=crop',
   },
-] as const
+]
 
-export type LibraryObject = typeof DEVICE_TYPES[number] | typeof COMPONENT_TYPES[number]
+export type LibraryObject = LibraryDevice | LibraryComponent
 
 export default function LibraryPage() {
   const [selectedObject, setSelectedObject] = useState<LibraryObject | null>(null)
