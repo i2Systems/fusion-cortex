@@ -835,22 +835,24 @@ export default function DashboardPage() {
               {/* Card Header */}
               <div className="fusion-card-tile-header">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
-                  {/* Site Image */}
-              <SiteImageCard siteId={summary.siteId} />
+                  {/* Site Image - Larger */}
+                  <div className="flex-shrink-0">
+                    <SiteImageCard siteId={summary.siteId} />
+                  </div>
 
-                  {/* Title & Subtitle */}
+                  {/* Title & Subtitle - More space */}
                   <div className="flex-1 min-w-0">
-                    <h3 className="fusion-card-tile-title truncate">
+                    <h3 className="text-lg font-bold text-[var(--color-text)] truncate leading-tight mb-1">
                       {summary.siteName}
                     </h3>
                     {site && (
-                      <div className="fusion-card-tile-subtitle">
-                        <div className="flex items-center gap-1">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1 text-sm text-[var(--color-text-muted)]">
                           <MapPin size={12} />
                           <span className="truncate">{site.city}, {site.state}</span>
                         </div>
                         {site.manager && (
-                          <div className="truncate mt-0.5">
+                          <div className="text-sm text-[var(--color-text-muted)] truncate">
                             {site.manager}
                           </div>
                         )}
@@ -859,33 +861,21 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 
-                {/* Header Actions */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {getHealthIcon(summary.healthPercentage, 18)}
-              <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleSiteClick(summary.siteId, '/map')
-                        }}
+                {/* Header Actions - Simplified, no menu */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {getHealthIcon(summary.healthPercentage, 18)}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleSiteClick(summary.siteId, '/map')
+                    }}
                     className="fusion-button-ghost p-1.5"
-                        title="Explore Site"
-                      >
-                        <Search size={14} />
+                    title="Explore Site"
+                  >
+                    <Search size={14} />
                   </button>
-                  <div className="fusion-card-tile-overflow">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        // TODO: Show overflow menu
-                      }}
-                      className="fusion-card-tile-overflow-button"
-                      title="More options"
-                    >
-                      <span className="text-lg">⋯</span>
-                      </button>
                 </div>
-                  </div>
-                      </div>
+              </div>
 
               {/* KPIs - Compact Grid */}
               <div className="fusion-card-tile-kpis">
