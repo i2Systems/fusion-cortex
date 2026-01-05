@@ -5,13 +5,19 @@
  * Shows zone list and properties.
  * 
  * AI Note: This panel displays zones and allows editing zone properties.
+ * 
+ * Performance optimized with:
+ * - Memoized ZoneListItem component
+ * - useCallback for handlers
+ * - useMemo for derived state
  */
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo, memo } from 'react'
 import { Layers, Edit2, Trash2, MapPin, X, Save, CheckSquare, Square } from 'lucide-react'
 import { SelectSwitcher } from '@/components/shared/SelectSwitcher'
+import { ZONE_COLORS, DEFAULT_ZONE_COLOR } from '@/lib/zoneColors'
 
 interface Zone {
   id: string
@@ -33,7 +39,110 @@ interface ZonesPanelProps {
   selectionMode?: boolean // When true, hide details and show only zone list
 }
 
-import { ZONE_COLORS, DEFAULT_ZONE_COLOR } from '@/lib/zoneColors'
+// Memoized zone list item component
+interface ZoneListItemProps {
+  zone: Zone
+  isSelected: boolean
+  isMultiSelected: boolean
+  zoneColor: string
+  onSelect: () => void
+  onToggleMultiSelect: () => void
+  onDelete: () => void
+}
+
+const ZoneListItem = memo(function ZoneListItem({
+  zone,
+  isSelected,
+  isMultiSelected,
+  zoneColor,
+  onSelect,
+  onToggleMultiSelect,
+  onDelete
+}: ZoneListItemProps) {
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    // Don't toggle single selection if clicking on checkbox or buttons
+    if ((e.target as HTMLElement).closest('button, input[type="checkbox"]')) {
+      return
+    }
+    e.stopPropagation()
+    onSelect()
+  }, [onSelect])
+
+  const handleToggleMultiSelect = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    onToggleMultiSelect()
+  }, [onToggleMultiSelect])
+
+  const handleSelectClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    onSelect()
+  }, [onSelect])
+
+  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    onDelete()
+  }, [onDelete])
+
+  return (
+    <div
+      onClick={handleClick}
+      className={`
+        p-3 rounded-lg border cursor-pointer transition-all
+        ${isSelected
+          ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)] shadow-[var(--shadow-glow-primary)]'
+          : isMultiSelected
+            ? 'bg-[var(--color-primary-soft)]/50 border-[var(--color-primary)]/50'
+            : 'bg-[var(--color-surface-subtle)] border-[var(--color-border-subtle)] hover:border-[var(--color-primary)]/50'
+        }
+      `}
+    >
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <button
+            onClick={handleToggleMultiSelect}
+            className="p-0.5 rounded hover:bg-[var(--color-surface-subtle)] transition-colors flex-shrink-0"
+            title={isMultiSelected ? "Deselect zone" : "Select zone"}
+          >
+            {isMultiSelected ? (
+              <CheckSquare size={16} className="text-[var(--color-primary)]" />
+            ) : (
+              <Square size={16} className="text-[var(--color-text-muted)]" />
+            )}
+          </button>
+          <div
+            className="w-4 h-4 rounded-full flex-shrink-0"
+            style={{ backgroundColor: zoneColor }}
+          />
+          <h4 className="font-semibold text-sm text-[var(--color-text)] truncate">
+            {zone.name}
+          </h4>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            onClick={handleSelectClick}
+            className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
+            title="Select zone"
+          >
+            <MapPin size={14} className="text-[var(--color-text-muted)]" />
+          </button>
+          <button
+            onClick={handleDeleteClick}
+            className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
+            title="Delete zone"
+          >
+            <Trash2 size={14} className="text-[var(--color-text-muted)]" />
+          </button>
+        </div>
+      </div>
+      <p className="text-xs text-[var(--color-text-muted)] mb-1">
+        {zone.deviceCount} devices
+      </p>
+      <p className="text-xs text-[var(--color-text-soft)]">
+        {zone.description}
+      </p>
+    </div>
+  )
+})
 
 export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, onDeleteZone, onDeleteZones, onEditZone, selectionMode = false }: ZonesPanelProps) {
   const [colors, setColors] = useState<Record<string, string>>({})
@@ -45,16 +154,17 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
   })
   const [selectedZoneIds, setSelectedZoneIds] = useState<Set<string>>(new Set())
 
-  const selectedZone = zones.find(z => z.id === selectedZoneId)
-  const allSelected = zones.length > 0 && selectedZoneIds.size === zones.length
-  const someSelected = selectedZoneIds.size > 0 && selectedZoneIds.size < zones.length
+  // Memoized derived values
+  const selectedZone = useMemo(() => zones.find(z => z.id === selectedZoneId), [zones, selectedZoneId])
+  const allSelected = useMemo(() => zones.length > 0 && selectedZoneIds.size === zones.length, [zones.length, selectedZoneIds.size])
+  const someSelected = useMemo(() => selectedZoneIds.size > 0 && selectedZoneIds.size < zones.length, [selectedZoneIds.size, zones.length])
 
   useEffect(() => {
     // Get CSS variable values or use direct color
     const root = document.documentElement
     const computedStyle = getComputedStyle(root)
     const colorMap: Record<string, string> = {}
-    
+
     zones.forEach(zone => {
       if (zone.color) {
         colorMap[zone.id] = zone.color
@@ -65,9 +175,9 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
         }
       }
     })
-    
+
     setColors(colorMap)
-    
+
     // Update edit form color if editing and zone color changed
     if (isEditing && selectedZone) {
       const newColor = colorMap[selectedZone.id] || selectedZone.color || DEFAULT_ZONE_COLOR
@@ -120,15 +230,16 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedZoneId, zones, onZoneSelect])
 
-  const handleStartEdit = () => {
+  // Memoized handlers
+  const handleStartEdit = useCallback(() => {
     if (selectedZone) {
       setIsEditing(true)
     }
-  }
+  }, [selectedZone])
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = useCallback(() => {
     if (!selectedZone) return
-    
+
     if (!editFormData.name.trim()) {
       alert('Zone name is required')
       return
@@ -142,9 +253,9 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
       })
     }
     setIsEditing(false)
-  }
+  }, [selectedZone, editFormData, onEditZone])
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setIsEditing(false)
     // Reset form data
     if (selectedZone) {
@@ -154,9 +265,9 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
         color: colors[selectedZone.id] || selectedZone.color || DEFAULT_ZONE_COLOR,
       })
     }
-  }
+  }, [selectedZone, colors])
 
-  const handleToggleZoneSelection = (zoneId: string) => {
+  const handleToggleZoneSelection = useCallback((zoneId: string) => {
     setSelectedZoneIds(prev => {
       const next = new Set(prev)
       if (next.has(zoneId)) {
@@ -166,24 +277,24 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
       }
       return next
     })
-  }
+  }, [])
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     if (allSelected) {
       setSelectedZoneIds(new Set())
     } else {
       setSelectedZoneIds(new Set(zones.map(z => z.id)))
     }
-  }
+  }, [allSelected, zones])
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = useCallback(() => {
     if (selectedZoneIds.size === 0) return
-    
+
     const zoneNames = zones
       .filter(z => selectedZoneIds.has(z.id))
       .map(z => z.name)
       .join(', ')
-    
+
     if (confirm(`Are you sure you want to delete ${selectedZoneIds.size} zone(s)?\n\n${zoneNames}`)) {
       if (onDeleteZones) {
         onDeleteZones(Array.from(selectedZoneIds))
@@ -197,7 +308,31 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
         onZoneSelect?.(null)
       }
     }
-  }
+  }, [selectedZoneIds, zones, onDeleteZones, onDeleteZone, selectedZoneId, onZoneSelect])
+
+  const handleCreateZone = useCallback(() => {
+    if (onCreateZone) {
+      onCreateZone()
+    } else {
+      // Fallback: clear selection
+      onZoneSelect?.(null)
+    }
+  }, [onCreateZone, onZoneSelect])
+
+  const handleDeleteSelectedZone = useCallback(() => {
+    if (!selectedZone || !onDeleteZone) return
+    if (confirm(`Are you sure you want to delete "${selectedZone.name}"?`)) {
+      onDeleteZone(selectedZone.id)
+      onZoneSelect?.(null)
+    }
+  }, [selectedZone, onDeleteZone, onZoneSelect])
+
+  const handleContainerClick = useCallback((e: React.MouseEvent) => {
+    // If clicking on the container itself (not a zone item), deselect
+    if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('zones-list-container')) {
+      onZoneSelect?.(null)
+    }
+  }, [onZoneSelect])
 
   // Clear multi-select when single selection changes
   useEffect(() => {
@@ -271,7 +406,7 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
                   </button>
                 </div>
               </div>
-              
+
               {/* Name Input */}
               <div>
                 <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
@@ -311,11 +446,10 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
                       <button
                         key={color}
                         onClick={() => setEditFormData({ ...editFormData, color })}
-                        className={`w-8 h-8 rounded-lg border-2 transition-all ${
-                          editFormData.color === color
+                        className={`w-8 h-8 rounded-lg border-2 transition-all ${editFormData.color === color
                             ? 'border-[var(--color-text)] scale-110 shadow-[var(--shadow-soft)]'
                             : 'border-[var(--color-border-subtle)] hover:border-[var(--color-primary)]/50'
-                        }`}
+                          }`}
                         style={{ backgroundColor: color }}
                         title={color}
                       />
@@ -341,7 +475,7 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
             /* View Mode */
             <div className="flex items-start gap-3 mb-3">
               {/* Zone Image/Icon */}
-              <div 
+              <div
                 className="w-16 h-16 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border-subtle)] flex items-center justify-center flex-shrink-0 shadow-[var(--shadow-soft)]"
                 style={{ backgroundColor: colors[selectedZone.id] ? `${colors[selectedZone.id]}20` : 'var(--color-primary-soft)' }}
               >
@@ -384,12 +518,7 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        if (onDeleteZone) {
-                          if (confirm(`Are you sure you want to delete "${selectedZone.name}"?`)) {
-                            onDeleteZone(selectedZone.id)
-                            onZoneSelect?.(null)
-                          }
-                        }
+                        handleDeleteSelectedZone()
                       }}
                       className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
                       title="Delete zone"
@@ -404,13 +533,13 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
                     <div className="text-xs text-[var(--color-text-soft)] mb-0.5 whitespace-nowrap">Devices</div>
                     <div className="text-sm font-semibold text-[var(--color-text)]">{selectedZone.deviceCount}</div>
                   </div>
-                  <div 
+                  <div
                     className="px-2.5 py-1.5 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)] min-w-0"
                     style={{ borderColor: colors[selectedZone.id] ? `${colors[selectedZone.id]}40` : undefined }}
                   >
                     <div className="text-xs text-[var(--color-text-soft)] mb-0.5 whitespace-nowrap">Color</div>
                     <div className="flex items-center gap-1.5">
-                      <div 
+                      <div
                         className="w-3 h-3 rounded-full flex-shrink-0"
                         style={{ backgroundColor: colors[selectedZone.id] || 'var(--color-primary)' }}
                       />
@@ -433,14 +562,9 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
       )}
 
       {/* Zone List */}
-      <div 
+      <div
         className="flex-1 overflow-auto pb-2"
-        onClick={(e) => {
-          // If clicking on the container itself (not a zone item), deselect
-          if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('zones-list-container')) {
-            onZoneSelect?.(null)
-          }
-        }}
+        onClick={handleContainerClick}
       >
         {zones.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-8 text-center">
@@ -455,118 +579,45 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
             </p>
           </div>
         ) : (
-          <div 
+          <div
             className="space-y-2 p-2 zones-list-container"
-            onClick={(e) => {
-              // If clicking on empty space in the list container, deselect
-              if (e.target === e.currentTarget) {
-                onZoneSelect?.(null)
-              }
-            }}
+            onClick={handleContainerClick}
           >
             {zones.map((zone) => {
               const isSelected = selectedZoneId === zone.id
               const isMultiSelected = selectedZoneIds.has(zone.id)
+              const zoneColor = colors[zone.id] || 'var(--color-primary)'
+
               return (
-            <div
-              key={zone.id}
-              onClick={(e) => {
-                // Don't toggle single selection if clicking on checkbox or buttons
-                if ((e.target as HTMLElement).closest('button, input[type="checkbox"]')) {
-                  return
-                }
-                e.stopPropagation() // Prevent container click handler
-                // Toggle: if already selected, deselect; otherwise select
-                onZoneSelect?.(isSelected ? null : zone.id)
-              }}
-              className={`
-                p-3 rounded-lg border cursor-pointer transition-all
-                ${isSelected
-                  ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)] shadow-[var(--shadow-glow-primary)]'
-                  : isMultiSelected
-                  ? 'bg-[var(--color-primary-soft)]/50 border-[var(--color-primary)]/50'
-                  : 'bg-[var(--color-surface-subtle)] border-[var(--color-border-subtle)] hover:border-[var(--color-primary)]/50'
-                }
-              `}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleToggleZoneSelection(zone.id)
-                    }}
-                    className="p-0.5 rounded hover:bg-[var(--color-surface-subtle)] transition-colors flex-shrink-0"
-                    title={isMultiSelected ? "Deselect zone" : "Select zone"}
-                  >
-                    {isMultiSelected ? (
-                      <CheckSquare size={16} className="text-[var(--color-primary)]" />
-                    ) : (
-                      <Square size={16} className="text-[var(--color-text-muted)]" />
-                    )}
-                  </button>
-                  <div 
-                    className="w-4 h-4 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: colors[zone.id] || 'var(--color-primary)' }}
-                  />
-                  <h4 className="font-semibold text-sm text-[var(--color-text)] truncate">
-                    {zone.name}
-                  </h4>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onZoneSelect?.(zone.id)
-                    }}
-                    className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
-                    title="Select zone"
-                  >
-                    <MapPin size={14} className="text-[var(--color-text-muted)]" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (onDeleteZone) {
-                        if (confirm(`Are you sure you want to delete "${zone.name}"?`)) {
-                          onDeleteZone(zone.id)
-                          if (selectedZoneId === zone.id) {
-                            onZoneSelect?.(null)
-                          }
+                <ZoneListItem
+                  key={zone.id}
+                  zone={zone}
+                  isSelected={isSelected}
+                  isMultiSelected={isMultiSelected}
+                  zoneColor={zoneColor}
+                  onSelect={() => onZoneSelect?.(isSelected ? null : zone.id)}
+                  onToggleMultiSelect={() => handleToggleZoneSelection(zone.id)}
+                  onDelete={() => {
+                    if (onDeleteZone) {
+                      if (confirm(`Are you sure you want to delete "${zone.name}"?`)) {
+                        onDeleteZone(zone.id)
+                        if (selectedZoneId === zone.id) {
+                          onZoneSelect?.(null)
                         }
                       }
-                    }}
-                    className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
-                    title="Delete zone"
-                  >
-                    <Trash2 size={14} className="text-[var(--color-text-muted)]" />
-                  </button>
-                </div>
-              </div>
-              <p className="text-xs text-[var(--color-text-muted)] mb-1">
-                {zone.deviceCount} devices
-              </p>
-              <p className="text-xs text-[var(--color-text-soft)]">
-                {zone.description}
-              </p>
-            </div>
-            )
-          })}
+                    }
+                  }}
+                />
+              )
+            })}
           </div>
         )}
       </div>
 
       {/* Actions Footer */}
       <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] flex-shrink-0">
-        <button 
-          onClick={() => {
-            if (onCreateZone) {
-              onCreateZone()
-            } else {
-              // Fallback: clear selection
-              onZoneSelect?.(null)
-            }
-          }}
+        <button
+          onClick={handleCreateZone}
           className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
           title="Create New Zone"
         >

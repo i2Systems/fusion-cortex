@@ -6,17 +6,289 @@
  * 
  * AI Note: This table should be filterable, sortable, and clickable
  * to highlight devices on the map.
+ * 
+ * Performance optimized with:
+ * - DeviceIcon extracted as separate memoized component
+ * - Memoized sortedDevices 
+ * - useCallback for handlers
+ * - Helper functions moved outside component
  */
 
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react'
 import Link from 'next/link'
 import { Signal, Battery, Wifi, WifiOff, Image, Radio, Thermometer, MapPin, Edit2, Plus, ChevronRight, ChevronDown, Package, Shield, Calendar, CheckCircle2, AlertCircle, XCircle, Trash2, CheckSquare, Square, Info } from 'lucide-react'
 import type { Component, Device, DeviceType } from '@/lib/mockData'
 import { ComponentTree } from '@/components/shared/ComponentTree'
 import { getDeviceLibraryUrl, getDeviceImage, getDeviceImageAsync } from '@/lib/libraryUtils'
 import { isFixtureType } from '@/lib/deviceUtils'
+
+// Helper functions moved outside component to prevent recreation
+const getTypeLabel = (type: string) => {
+  switch (type) {
+    case 'fixture': return 'Fixture'
+    case 'motion': return 'Motion Sensor'
+    case 'light-sensor': return 'Light Sensor'
+    default: return type
+  }
+}
+
+const getStatusTokenClass = (status: string) => {
+  switch (status) {
+    case 'online': return 'token token-status-online'
+    case 'offline': return 'token token-status-offline'
+    case 'missing': return 'token token-status-error'
+    default: return 'token token-status-offline'
+  }
+}
+
+const getSignalTokenClass = (signal: number) => {
+  if (signal >= 80) return 'token token-data token-data-signal-high'
+  if (signal >= 50) return 'token token-data token-data-signal-medium'
+  return 'token token-data token-data-signal-low'
+}
+
+const getBatteryTokenClass = (battery: number) => {
+  if (battery >= 80) return 'token token-data token-data-battery-high'
+  if (battery >= 20) return 'token token-data token-data-battery-medium'
+  return 'token token-data token-data-battery-low'
+}
+
+// DeviceIcon component extracted outside and memoized for performance
+interface DeviceIconProps {
+  deviceType: string
+}
+
+const DeviceIcon = memo(function DeviceIcon({ deviceType }: DeviceIconProps) {
+  const [imageError, setImageError] = useState(false)
+  const [imageKey, setImageKey] = useState(0)
+  const [deviceImage, setDeviceImage] = useState<string | null>(null)
+
+  // Load device image (database first, then client storage, then default)
+  useEffect(() => {
+    let isMounted = true
+
+    const loadImage = async () => {
+      // Try sync first (for localStorage images)
+      const syncImage = getDeviceImage(deviceType as DeviceType)
+      if (syncImage && !syncImage.startsWith('https://images.unsplash.com')) {
+        if (isMounted) setDeviceImage(syncImage)
+        return
+      }
+
+      // Try async (for database/IndexedDB images)
+      try {
+        const asyncImage = await getDeviceImageAsync(deviceType as DeviceType)
+        if (!isMounted) return
+        if (asyncImage && !asyncImage.startsWith('https://images.unsplash.com')) {
+          setDeviceImage(asyncImage)
+          return
+        } else if (asyncImage) {
+          // Default image
+          setDeviceImage(asyncImage)
+          return
+        }
+      } catch (error) {
+        console.error('Failed to load device image:', error)
+      }
+
+      // Fallback to sync default
+      if (isMounted) {
+        const defaultImage = getDeviceImage(deviceType as DeviceType)
+        setDeviceImage(defaultImage)
+      }
+    }
+
+    loadImage()
+
+    return () => {
+      isMounted = false
+    }
+  }, [deviceType, imageKey])
+
+  // Listen for library image updates
+  useEffect(() => {
+    const handleImageUpdate = () => {
+      setImageKey(prev => prev + 1)
+      setImageError(false) // Reset error state
+    }
+    window.addEventListener('libraryImageUpdated', handleImageUpdate)
+    return () => window.removeEventListener('libraryImageUpdated', handleImageUpdate)
+  }, [])
+
+  const showImage = deviceImage && !imageError
+
+  return (
+    <div className="w-16 h-16 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border-subtle)] flex items-center justify-center flex-shrink-0 shadow-[var(--shadow-soft)] overflow-hidden relative">
+      {showImage ? (
+        <img
+          key={imageKey}
+          src={deviceImage}
+          alt={getTypeLabel(deviceType)}
+          className="absolute inset-0 w-full h-full object-cover"
+          onError={() => setImageError(true)}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          {isFixtureType(deviceType as DeviceType) ? (
+            <Image size={32} className="text-[var(--color-primary)]" />
+          ) : deviceType === 'motion' ? (
+            <Radio size={32} className="text-[var(--color-accent)]" />
+          ) : (
+            <Thermometer size={32} className="text-[var(--color-success)]" />
+          )}
+        </div>
+      )}
+    </div>
+  )
+})
+
+// Memoized table row component to prevent unnecessary re-renders
+interface DeviceRowProps {
+  device: Device
+  isSelected: boolean
+  isChecked: boolean
+  isExpanded: boolean
+  onSelect: () => void
+  onToggleCheck: () => void
+  onToggleExpand: (e: React.MouseEvent) => void
+  onComponentClick?: (component: Component, parentDevice: Device) => void
+  selectedRowRef?: React.RefObject<HTMLTableRowElement>
+}
+
+const DeviceRow = memo(function DeviceRow({
+  device,
+  isSelected,
+  isChecked,
+  isExpanded,
+  onSelect,
+  onToggleCheck,
+  onToggleExpand,
+  onComponentClick,
+  selectedRowRef
+}: DeviceRowProps) {
+  const hasComponents = device.components && device.components.length > 0
+  const libraryUrl = getDeviceLibraryUrl(device.type)
+
+  return (
+    <>
+      <tr
+        ref={isSelected ? selectedRowRef : null}
+        onClick={onSelect}
+        className={`
+          border-b border-[var(--color-border-subtle)]/50 cursor-pointer transition-all duration-150
+          ${isSelected
+            ? 'bg-[var(--color-primary-soft)] hover:bg-[var(--color-primary-soft)] shadow-[var(--shadow-glow-primary)]'
+            : isChecked
+              ? 'bg-[var(--color-primary-soft)]/30 hover:bg-[var(--color-primary-soft)]/40'
+              : 'hover:bg-[var(--color-surface-subtle)]/50'
+          }
+        `}
+      >
+        <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onChange={(e) => {
+              e.stopPropagation()
+              onToggleCheck()
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
+          />
+        </td>
+        <td className="py-3.5 px-5 text-sm text-[var(--color-text)] font-semibold">
+          <div className="flex items-center gap-2">
+            {hasComponents && (
+              <button
+                onClick={onToggleExpand}
+                className="p-0.5 rounded hover:bg-[var(--color-surface-subtle)] transition-colors flex-shrink-0"
+                title={isExpanded ? 'Collapse components' : 'Expand components'}
+              >
+                {isExpanded ? (
+                  <ChevronDown size={14} className="text-[var(--color-text-muted)]" />
+                ) : (
+                  <ChevronRight size={14} className="text-[var(--color-text-muted)]" />
+                )}
+              </button>
+            )}
+            {!hasComponents && <div className="w-5" />}
+            <span>{device.deviceId}</span>
+          </div>
+        </td>
+        <td className="py-3.5 px-5 text-sm text-[var(--color-text-muted)] font-mono text-xs">
+          {device.serialNumber}
+        </td>
+        <td className="py-3.5 px-5 text-sm text-[var(--color-text-muted)]">
+          <div className="flex items-center gap-1.5">
+            <span>{getTypeLabel(device.type)}</span>
+            {libraryUrl && (
+              <Link
+                href={libraryUrl}
+                onClick={(e) => e.stopPropagation()}
+                className="p-0.5 rounded hover:bg-[var(--color-surface-subtle)] transition-colors"
+                title="View in library"
+              >
+                <Info size={12} className="text-[var(--color-primary)]" />
+              </Link>
+            )}
+          </div>
+        </td>
+        <td className="py-3.5 px-5">
+          {device.signal > 0 ? (
+            <div className={getSignalTokenClass(device.signal)}>
+              <Wifi size={16} />
+              <span>{device.signal}%</span>
+            </div>
+          ) : (
+            <div className="token token-data">
+              <WifiOff size={16} />
+              <span>—</span>
+            </div>
+          )}
+        </td>
+        <td className="py-3.5 px-5">
+          {device.battery !== undefined ? (
+            <div className={getBatteryTokenClass(device.battery)}>
+              <Battery size={16} />
+              <span>{device.battery}%</span>
+            </div>
+          ) : (
+            <span className="text-sm text-[var(--color-text-soft)]">—</span>
+          )}
+        </td>
+        <td className="py-3.5 px-5">
+          <span className={getStatusTokenClass(device.status)}>
+            {device.status}
+          </span>
+        </td>
+      </tr>
+      {isExpanded && hasComponents && (
+        <tr
+          className={`
+            border-b border-[var(--color-border-subtle)]/30
+            ${isSelected
+              ? 'bg-[var(--color-primary-soft)]/30'
+              : 'bg-[var(--color-surface-subtle)]/20'
+            }
+          `}
+        >
+          <td colSpan={7} className="py-3 px-5">
+            <ComponentTree
+              components={device.components || []}
+              expanded={true}
+              showHeader={false}
+              compact={true}
+              parentDevice={device}
+              onComponentClick={onComponentClick}
+            />
+          </td>
+        </tr>
+      )}
+    </>
+  )
+})
 
 interface DeviceTableProps {
   devices: Device[]
@@ -34,52 +306,28 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
   const tableRef = useRef<HTMLDivElement>(null)
   const selectedRowRef = useRef<HTMLTableRowElement>(null)
 
-  const handleSort = (field: keyof Device) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortField(field)
+  // Memoized sort handler
+  const handleSort = useCallback((field: keyof Device) => {
+    setSortField(prev => {
+      if (prev === field) {
+        setSortDirection(d => d === 'asc' ? 'desc' : 'asc')
+        return prev
+      }
       setSortDirection('asc')
-    }
-  }
+      return field
+    })
+  }, [])
 
-  const sortedDevices = [...devices].sort((a, b) => {
-    const aVal = a[sortField]
-    const bVal = b[sortField]
-    if (aVal === undefined || bVal === undefined) return 0
-    const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0
-    return sortDirection === 'asc' ? comparison : -comparison
-  })
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'fixture': return 'Fixture'
-      case 'motion': return 'Motion Sensor'
-      case 'light-sensor': return 'Light Sensor'
-      default: return type
-    }
-  }
-
-  const getStatusTokenClass = (status: string) => {
-    switch (status) {
-      case 'online': return 'token token-status-online'
-      case 'offline': return 'token token-status-offline'
-      case 'missing': return 'token token-status-error'
-      default: return 'token token-status-offline'
-    }
-  }
-
-  const getSignalTokenClass = (signal: number) => {
-    if (signal >= 80) return 'token token-data token-data-signal-high'
-    if (signal >= 50) return 'token token-data token-data-signal-medium'
-    return 'token token-data token-data-signal-low'
-  }
-
-  const getBatteryTokenClass = (battery: number) => {
-    if (battery >= 80) return 'token token-data token-data-battery-high'
-    if (battery >= 20) return 'token token-data token-data-battery-medium'
-    return 'token token-data token-data-battery-low'
-  }
+  // Memoized sorted devices
+  const sortedDevices = useMemo(() => {
+    return [...devices].sort((a, b) => {
+      const aVal = a[sortField]
+      const bVal = b[sortField]
+      if (aVal === undefined || bVal === undefined) return 0
+      const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [devices, sortField, sortDirection])
 
   // Scroll to selected device when it changes
   useEffect(() => {
@@ -127,103 +375,9 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedDeviceId, sortedDevices, onDeviceSelect])
 
-  const selectedDevice = devices.find(d => d.id === selectedDeviceId)
+  const selectedDevice = useMemo(() => devices.find(d => d.id === selectedDeviceId), [devices, selectedDeviceId])
 
-  const getDeviceIcon = (type: string) => {
-    switch (type) {
-      case 'fixture': return Image
-      case 'motion': return Radio
-      case 'light-sensor': return Thermometer
-      default: return Image
-    }
-  }
-
-  const getDeviceIconColor = (type: string) => {
-    switch (type) {
-      case 'fixture': return 'text-[var(--color-primary)]'
-      case 'motion': return 'text-[var(--color-accent)]'
-      case 'light-sensor': return 'text-[var(--color-success)]'
-      default: return 'text-[var(--color-text-muted)]'
-    }
-  }
-
-  // Device Icon Component with image support
-  function DeviceIcon({ deviceType }: { deviceType: string }) {
-    const [imageError, setImageError] = useState(false)
-    const [imageKey, setImageKey] = useState(0)
-    const [deviceImage, setDeviceImage] = useState<string | null>(null)
-
-    // Load device image (database first, then client storage, then default)
-    useEffect(() => {
-      const loadImage = async () => {
-        // Try sync first (for localStorage images)
-        const syncImage = getDeviceImage(deviceType as DeviceType)
-        if (syncImage && !syncImage.startsWith('https://images.unsplash.com')) {
-          setDeviceImage(syncImage)
-          return
-        }
-        
-        // Try async (for database/IndexedDB images)
-        try {
-          const asyncImage = await getDeviceImageAsync(deviceType as DeviceType)
-          if (asyncImage && !asyncImage.startsWith('https://images.unsplash.com')) {
-            setDeviceImage(asyncImage)
-            return
-          } else if (asyncImage) {
-            // Default image
-            setDeviceImage(asyncImage)
-            return
-          }
-        } catch (error) {
-          console.error('Failed to load device image:', error)
-        }
-        
-        // Fallback to sync default
-        const defaultImage = getDeviceImage(deviceType as DeviceType)
-        setDeviceImage(defaultImage)
-      }
-      
-      loadImage()
-    }, [deviceType, imageKey])
-
-    // Listen for library image updates
-    useEffect(() => {
-      const handleImageUpdate = () => {
-        setImageKey(prev => prev + 1)
-        setImageError(false) // Reset error state
-      }
-      window.addEventListener('libraryImageUpdated', handleImageUpdate)
-      return () => window.removeEventListener('libraryImageUpdated', handleImageUpdate)
-    }, [])
-
-    const showImage = deviceImage && !imageError
-
-    return (
-      <div className="w-16 h-16 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border-subtle)] flex items-center justify-center flex-shrink-0 shadow-[var(--shadow-soft)] overflow-hidden relative">
-        {showImage ? (
-          <img
-            key={imageKey}
-            src={deviceImage}
-            alt={getTypeLabel(deviceType)}
-            className="absolute inset-0 w-full h-full object-cover"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            {isFixtureType(deviceType as DeviceType) ? (
-              <Image size={32} className="text-[var(--color-primary)]" />
-            ) : deviceType === 'motion' ? (
-              <Radio size={32} className="text-[var(--color-accent)]" />
-            ) : (
-              <Thermometer size={32} className="text-[var(--color-success)]" />
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  const toggleDeviceExpansion = (deviceId: string, e: React.MouseEvent) => {
+  const toggleDeviceExpansion = useCallback((deviceId: string, e: React.MouseEvent) => {
     e.stopPropagation()
     setExpandedDevices(prev => {
       const next = new Set(prev)
@@ -234,9 +388,9 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
       }
       return next
     })
-  }
+  }, [])
 
-  const handleToggleSelect = (deviceId: string) => {
+  const handleToggleSelect = useCallback((deviceId: string) => {
     setSelectedDeviceIds(prev => {
       const next = new Set(prev)
       if (next.has(deviceId)) {
@@ -246,25 +400,26 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
       }
       return next
     })
-  }
+  }, [])
 
-  const handleSelectAll = () => {
-    if (selectedDeviceIds.size === sortedDevices.length) {
-      setSelectedDeviceIds(new Set())
-    } else {
-      setSelectedDeviceIds(new Set(sortedDevices.map(d => d.id)))
-    }
-  }
+  const handleSelectAll = useCallback(() => {
+    setSelectedDeviceIds(prev => {
+      if (prev.size === sortedDevices.length) {
+        return new Set()
+      }
+      return new Set(sortedDevices.map(d => d.id))
+    })
+  }, [sortedDevices])
 
-  const handleDeleteSelected = () => {
+  const handleDeleteSelected = useCallback(() => {
     if (selectedDeviceIds.size === 0) return
-    
+
     const confirmMessage = `Delete ${selectedDeviceIds.size} device${selectedDeviceIds.size > 1 ? 's' : ''}?`
     if (confirm(confirmMessage)) {
       onDevicesDelete?.(Array.from(selectedDeviceIds))
       setSelectedDeviceIds(new Set())
     }
-  }
+  }, [selectedDeviceIds, onDevicesDelete])
 
   const allSelected = sortedDevices.length > 0 && selectedDeviceIds.size === sortedDevices.length
   const someSelected = selectedDeviceIds.size > 0 && selectedDeviceIds.size < sortedDevices.length
@@ -378,17 +533,17 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
                 )}
                 <div className="px-2.5 py-1.5 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)] min-w-0">
                   <div className="text-xs text-[var(--color-text-soft)] mb-0.5 whitespace-nowrap">Signal</div>
-                    {selectedDevice.signal > 0 ? (
+                  {selectedDevice.signal > 0 ? (
                     <div className={getSignalTokenClass(selectedDevice.signal)}>
                       <Wifi size={10} />
                       <span>{selectedDevice.signal}%</span>
                     </div>
-                    ) : (
+                  ) : (
                     <div className="token token-data">
                       <WifiOff size={10} />
                       <span>—</span>
                     </div>
-                    )}
+                  )}
                 </div>
                 {selectedDevice.battery !== undefined && (
                   <div className="px-2.5 py-1.5 rounded bg-[var(--color-surface)]/50 border border-[var(--color-border-subtle)] min-w-0">
@@ -440,25 +595,25 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
                     className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
                   />
                 </th>
-                <th 
+                <th
                   className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
                   onClick={() => handleSort('deviceId')}
                 >
                   Device ID {sortField === 'deviceId' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
-                <th 
+                <th
                   className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
                   onClick={() => handleSort('serialNumber')}
                 >
                   Serial {sortField === 'serialNumber' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
-                <th 
+                <th
                   className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
                   onClick={() => handleSort('type')}
                 >
                   Type {sortField === 'type' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
-                <th 
+                <th
                   className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
                   onClick={() => handleSort('signal')}
                 >
@@ -467,7 +622,7 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
                 <th className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
                   Battery
                 </th>
-                <th 
+                <th
                   className="text-left py-3.5 px-5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
                   onClick={() => handleSort('status')}
                 >
@@ -476,127 +631,20 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
               </tr>
             </thead>
             <tbody>
-              {sortedDevices.map((device) => {
-                const isExpanded = expandedDevices.has(device.id)
-                const hasComponents = device.components && device.components.length > 0
-                return (
-                  <React.Fragment key={device.id}>
-                    <tr
-                      ref={selectedDeviceId === device.id ? selectedRowRef : null}
-                      onClick={() => onDeviceSelect?.(device.id)}
-                      className={`
-                        border-b border-[var(--color-border-subtle)]/50 cursor-pointer transition-all duration-150
-                        ${selectedDeviceId === device.id
-                          ? 'bg-[var(--color-primary-soft)] hover:bg-[var(--color-primary-soft)] shadow-[var(--shadow-glow-primary)]'
-                          : selectedDeviceIds.has(device.id)
-                          ? 'bg-[var(--color-primary-soft)]/30 hover:bg-[var(--color-primary-soft)]/40'
-                          : 'hover:bg-[var(--color-surface-subtle)]/50'
-                        }
-                      `}
-                    >
-                      <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={selectedDeviceIds.has(device.id)}
-                          onChange={(e) => {
-                            e.stopPropagation()
-                            handleToggleSelect(device.id)
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
-                        />
-                      </td>
-                      <td className="py-3.5 px-5 text-sm text-[var(--color-text)] font-semibold">
-                        <div className="flex items-center gap-2">
-                          {hasComponents && (
-                            <button
-                              onClick={(e) => toggleDeviceExpansion(device.id, e)}
-                              className="p-0.5 rounded hover:bg-[var(--color-surface-subtle)] transition-colors flex-shrink-0"
-                              title={isExpanded ? 'Collapse components' : 'Expand components'}
-                            >
-                              {isExpanded ? (
-                                <ChevronDown size={14} className="text-[var(--color-text-muted)]" />
-                              ) : (
-                                <ChevronRight size={14} className="text-[var(--color-text-muted)]" />
-                              )}
-                            </button>
-                          )}
-                          {!hasComponents && <div className="w-5" />}
-                          <span>{device.deviceId}</span>
-                        </div>
-                      </td>
-                <td className="py-3.5 px-5 text-sm text-[var(--color-text-muted)] font-mono text-xs">
-                  {device.serialNumber}
-                </td>
-                <td className="py-3.5 px-5 text-sm text-[var(--color-text-muted)]">
-                  <div className="flex items-center gap-1.5">
-                    <span>{getTypeLabel(device.type)}</span>
-                    {getDeviceLibraryUrl(device.type) && (
-                      <Link
-                        href={getDeviceLibraryUrl(device.type)!}
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-0.5 rounded hover:bg-[var(--color-surface-subtle)] transition-colors"
-                        title="View in library"
-                      >
-                        <Info size={12} className="text-[var(--color-primary)]" />
-                      </Link>
-                    )}
-                  </div>
-                </td>
-                <td className="py-3.5 px-5">
-                    {device.signal > 0 ? (
-                    <div className={getSignalTokenClass(device.signal)}>
-                      <Wifi size={16} />
-                      <span>{device.signal}%</span>
-                    </div>
-                    ) : (
-                    <div className="token token-data">
-                      <WifiOff size={16} />
-                      <span>—</span>
-                    </div>
-                    )}
-                </td>
-                <td className="py-3.5 px-5">
-                  {device.battery !== undefined ? (
-                    <div className={getBatteryTokenClass(device.battery)}>
-                      <Battery size={16} />
-                      <span>{device.battery}%</span>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-[var(--color-text-soft)]">—</span>
-                  )}
-                </td>
-                <td className="py-3.5 px-5">
-                  <span className={getStatusTokenClass(device.status)}>
-                    {device.status}
-                  </span>
-                </td>
-              </tr>
-              {isExpanded && hasComponents && (
-                <tr
-                  className={`
-                    border-b border-[var(--color-border-subtle)]/30
-                    ${selectedDeviceId === device.id
-                      ? 'bg-[var(--color-primary-soft)]/30'
-                      : 'bg-[var(--color-surface-subtle)]/20'
-                    }
-                  `}
-                >
-                  <td colSpan={7} className="py-3 px-5">
-                    <ComponentTree 
-                      components={device.components || []} 
-                      expanded={true}
-                      showHeader={false}
-                      compact={true}
-                      parentDevice={device}
-                      onComponentClick={onComponentClick}
-                    />
-                  </td>
-                </tr>
-              )}
-              </React.Fragment>
-              )
-            })}
+              {sortedDevices.map((device) => (
+                <DeviceRow
+                  key={device.id}
+                  device={device}
+                  isSelected={selectedDeviceId === device.id}
+                  isChecked={selectedDeviceIds.has(device.id)}
+                  isExpanded={expandedDevices.has(device.id)}
+                  onSelect={() => onDeviceSelect?.(device.id)}
+                  onToggleCheck={() => handleToggleSelect(device.id)}
+                  onToggleExpand={(e) => toggleDeviceExpansion(device.id, e)}
+                  onComponentClick={onComponentClick}
+                  selectedRowRef={selectedRowRef as React.RefObject<HTMLTableRowElement>}
+                />
+              ))}
             </tbody>
           </table>
         )}
@@ -604,5 +652,4 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
     </div>
   )
 }
-
 

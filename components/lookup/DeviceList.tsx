@@ -5,11 +5,17 @@
  * Clickable rows that select a device for viewing details.
  * 
  * AI Note: This is the left-side main view, similar to RulesList.
+ * 
+ * Performance optimized with:
+ * - Memoized DeviceListRow component
+ * - useMemo for filtered and sorted data
+ * - Helper functions moved outside
+ * - useCallback for handlers
  */
 
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react'
 import Link from 'next/link'
 import { Signal, Battery, Wifi, WifiOff, Shield, Plus, QrCode, Upload, Download, Info } from 'lucide-react'
 import { Device } from '@/lib/mockData'
@@ -25,92 +31,203 @@ interface DeviceListProps {
 
 type SortableField = keyof Device | 'warrantyStatus'
 
+// Helper functions moved outside component
+const getTypeLabel = (type: string) => {
+  switch (type) {
+    case 'fixture': return 'Fixture'
+    case 'motion': return 'Motion Sensor'
+    case 'light-sensor': return 'Light Sensor'
+    default: return type
+  }
+}
+
+const getStatusTokenClass = (status: string) => {
+  switch (status) {
+    case 'online': return 'token token-status-online'
+    case 'offline': return 'token token-status-offline'
+    case 'missing': return 'token token-status-error'
+    default: return 'token token-status-offline'
+  }
+}
+
+const getSignalTokenClass = (signal: number) => {
+  if (signal >= 80) return 'token token-data token-data-signal-high'
+  if (signal >= 50) return 'token token-data token-data-signal-medium'
+  return 'token token-data token-data-signal-low'
+}
+
+const getBatteryTokenClass = (battery: number) => {
+  if (battery >= 80) return 'token token-data token-data-battery-high'
+  if (battery >= 20) return 'token token-data token-data-battery-medium'
+  return 'token token-data token-data-battery-low'
+}
+
+// Memoized table row component
+interface DeviceListRowProps {
+  device: Device
+  isSelected: boolean
+  onSelect: () => void
+  selectedRowRef?: React.RefObject<HTMLTableRowElement>
+}
+
+const DeviceListRow = memo(function DeviceListRow({
+  device,
+  isSelected,
+  onSelect,
+  selectedRowRef
+}: DeviceListRowProps) {
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    onSelect()
+  }, [onSelect])
+
+  const libraryUrl = getDeviceLibraryUrl(device.type)
+  const warrantyStatus = device.warrantyExpiry ? calculateWarrantyStatus(device.warrantyExpiry) : null
+
+  return (
+    <tr
+      ref={isSelected ? selectedRowRef : null}
+      onClick={handleClick}
+      className={`
+        border-b border-[var(--color-border-subtle)] cursor-pointer transition-colors
+        ${isSelected
+          ? 'bg-[var(--color-primary-soft)] hover:bg-[var(--color-primary-soft)]'
+          : 'hover:bg-[var(--color-surface-subtle)]'
+        }
+      `}
+    >
+      <td className="py-3 px-4 text-sm text-[var(--color-text)] font-medium">
+        {device.deviceId}
+      </td>
+      <td className="py-3 px-4 text-sm text-[var(--color-text-muted)] font-mono">
+        {device.serialNumber}
+      </td>
+      <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">
+        <div className="flex items-center gap-1.5">
+          <span>{getTypeLabel(device.type)}</span>
+          {libraryUrl && (
+            <Link
+              href={libraryUrl}
+              onClick={(e) => e.stopPropagation()}
+              className="p-0.5 rounded hover:bg-[var(--color-surface-subtle)] transition-colors"
+              title="View in library"
+            >
+              <Info size={12} className="text-[var(--color-primary)]" />
+            </Link>
+          )}
+        </div>
+      </td>
+      <td className="py-3 px-4">
+        {device.signal > 0 ? (
+          <div className={getSignalTokenClass(device.signal)}>
+            <Wifi size={16} />
+            <span>{device.signal}%</span>
+          </div>
+        ) : (
+          <div className="token token-data">
+            <WifiOff size={16} />
+            <span>—</span>
+          </div>
+        )}
+      </td>
+      <td className="py-3 px-4">
+        {device.battery !== undefined ? (
+          <div className={getBatteryTokenClass(device.battery)}>
+            <Battery size={16} />
+            <span>{device.battery}%</span>
+          </div>
+        ) : (
+          <span className="text-sm text-[var(--color-text-soft)]">—</span>
+        )}
+      </td>
+      <td className="py-3 px-4">
+        <span className={getStatusTokenClass(device.status)}>
+          {device.status}
+        </span>
+      </td>
+      <td className="py-3 px-4">
+        {warrantyStatus ? (
+          <span className={getWarrantyStatusTokenClass(warrantyStatus.status)}>
+            {getWarrantyStatusLabel(warrantyStatus.status)}
+          </span>
+        ) : (
+          <span className="text-sm text-[var(--color-text-soft)]">—</span>
+        )}
+      </td>
+      <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">
+        {device.location}
+      </td>
+    </tr>
+  )
+})
+
 export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQuery = '' }: DeviceListProps) {
   const [sortField, setSortField] = useState<SortableField>('deviceId')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const tableRef = useRef<HTMLDivElement>(null)
   const selectedRowRef = useRef<HTMLTableRowElement>(null)
 
-  // Filter devices by search query - partial match on all fields including numeric values
-  const filteredDevices = devices.filter(device => {
-    if (!searchQuery.trim()) return true
+  // Memoized filter - only recalculate when devices or searchQuery changes
+  const filteredDevices = useMemo(() => {
+    if (!searchQuery.trim()) return devices
+
     const query = searchQuery.toLowerCase()
-    
-    // Build searchable text from all device fields
-    const searchableText = [
-      device.deviceId,
-      device.serialNumber,
-      device.location,
-      device.zone,
-      device.type,
-      device.status,
-      String(device.signal), // Convert numbers to strings for partial matching
-      device.battery !== undefined ? String(device.battery) : '',
-    ].filter(Boolean).join(' ').toLowerCase()
-    
-    return searchableText.includes(query)
-  })
+    return devices.filter(device => {
+      // Build searchable text from all device fields
+      const searchableText = [
+        device.deviceId,
+        device.serialNumber,
+        device.location,
+        device.zone,
+        device.type,
+        device.status,
+        String(device.signal),
+        device.battery !== undefined ? String(device.battery) : '',
+      ].filter(Boolean).join(' ').toLowerCase()
 
-  // Sort devices
-  const sortedDevices = [...filteredDevices].sort((a, b) => {
-    let aVal: any
-    let bVal: any
-    
-    if (sortField === 'warrantyStatus') {
-      // Sort by warranty status: in-warranty > near-end > out-of-warranty
-      const aWarranty = calculateWarrantyStatus(a.warrantyExpiry)
-      const bWarranty = calculateWarrantyStatus(b.warrantyExpiry)
-      const statusOrder = { 'in-warranty': 0, 'near-end': 1, 'out-of-warranty': 2 }
-      aVal = statusOrder[aWarranty.status]
-      bVal = statusOrder[bWarranty.status]
-    } else {
-      aVal = a[sortField as keyof Device]
-      bVal = b[sortField as keyof Device]
-    }
-    
-    if (aVal === undefined || bVal === undefined) return 0
-    const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0
-    return sortDirection === 'asc' ? comparison : -comparison
-  })
+      return searchableText.includes(query)
+    })
+  }, [devices, searchQuery])
 
-  const handleSort = (field: SortableField) => {
+  // Memoized sort - only recalculate when filtered devices or sort settings change
+  const sortedDevices = useMemo(() => {
+    return [...filteredDevices].sort((a, b) => {
+      let aVal: any
+      let bVal: any
+
+      if (sortField === 'warrantyStatus') {
+        const aWarranty = calculateWarrantyStatus(a.warrantyExpiry)
+        const bWarranty = calculateWarrantyStatus(b.warrantyExpiry)
+        const statusOrder = { 'in-warranty': 0, 'near-end': 1, 'out-of-warranty': 2 }
+        aVal = statusOrder[aWarranty.status]
+        bVal = statusOrder[bWarranty.status]
+      } else {
+        aVal = a[sortField as keyof Device]
+        bVal = b[sortField as keyof Device]
+      }
+
+      if (aVal === undefined || bVal === undefined) return 0
+      const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [filteredDevices, sortField, sortDirection])
+
+  // Memoized sort handler
+  const handleSort = useCallback((field: SortableField) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
     } else {
       setSortField(field)
       setSortDirection('asc')
     }
-  }
+  }, [sortField])
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'fixture': return 'Fixture'
-      case 'motion': return 'Motion Sensor'
-      case 'light-sensor': return 'Light Sensor'
-      default: return type
+  // Memoized container click handler
+  const handleContainerClick = useCallback((e: React.MouseEvent) => {
+    if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TABLE') {
+      onDeviceSelect?.(null)
     }
-  }
-
-  const getStatusTokenClass = (status: string) => {
-    switch (status) {
-      case 'online': return 'token token-status-online'
-      case 'offline': return 'token token-status-offline'
-      case 'missing': return 'token token-status-error'
-      default: return 'token token-status-offline'
-    }
-  }
-
-  const getSignalTokenClass = (signal: number) => {
-    if (signal >= 80) return 'token token-data token-data-signal-high'
-    if (signal >= 50) return 'token token-data token-data-signal-medium'
-    return 'token token-data token-data-signal-low'
-  }
-
-  const getBatteryTokenClass = (battery: number) => {
-    if (battery >= 80) return 'token token-data token-data-battery-high'
-    if (battery >= 20) return 'token token-data token-data-battery-medium'
-    return 'token token-data token-data-battery-low'
-  }
+  }, [onDeviceSelect])
 
   // Scroll to selected device when it changes
   useEffect(() => {
@@ -122,17 +239,15 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
       const containerTop = container.scrollTop
       const containerBottom = containerTop + container.offsetHeight
 
-      // Only scroll if the row is not visible
       if (rowTop < containerTop || rowBottom > containerBottom) {
         row.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }
     }
   }, [selectedDeviceId])
 
-  // Keyboard navigation: up/down arrows
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle if an item is selected and we're not typing in an input
       if (!selectedDeviceId || sortedDevices.length === 0) return
       if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return
 
@@ -161,15 +276,10 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
   return (
     <div className="h-full flex flex-col">
       {/* Table */}
-      <div 
-        ref={tableRef} 
+      <div
+        ref={tableRef}
         className="flex-1 overflow-auto pb-2"
-        onClick={(e) => {
-          // If clicking on the container itself (not a table row), deselect
-          if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'TABLE') {
-            onDeviceSelect?.(null)
-          }
-        }}
+        onClick={handleContainerClick}
       >
         {sortedDevices.length === 0 ? (
           <div className="p-8 flex flex-col items-center justify-center min-h-[400px]">
@@ -183,7 +293,6 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  // Trigger manual entry - will be handled by parent
                   const event = new CustomEvent('manualEntry')
                   window.dispatchEvent(event)
                 }}
@@ -232,25 +341,25 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
           <table className="w-full">
             <thead className="sticky top-0 bg-[var(--color-surface)] border-b border-[var(--color-border-subtle)] z-10">
               <tr>
-                <th 
+                <th
                   className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
                   onClick={() => handleSort('deviceId')}
                 >
                   Device ID {sortField === 'deviceId' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
-                <th 
+                <th
                   className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
                   onClick={() => handleSort('serialNumber')}
                 >
                   Serial {sortField === 'serialNumber' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
-                <th 
+                <th
                   className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
                   onClick={() => handleSort('type')}
                 >
                   Type {sortField === 'type' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
-                <th 
+                <th
                   className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
                   onClick={() => handleSort('signal')}
                 >
@@ -259,13 +368,13 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
                 <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
                   Battery
                 </th>
-                <th 
+                <th
                   className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
                   onClick={() => handleSort('status')}
                 >
                   Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
-                <th 
+                <th
                   className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text)] transition-colors"
                   onClick={() => handleSort('warrantyStatus')}
                 >
@@ -280,84 +389,13 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
               {sortedDevices.map((device) => {
                 const isSelected = selectedDeviceId === device.id
                 return (
-                <tr
-                  key={device.id}
-                  ref={isSelected ? selectedRowRef : null}
-                  onClick={(e) => {
-                    e.stopPropagation() // Prevent container click handler
-                    // Toggle: if already selected, deselect; otherwise select
-                    onDeviceSelect?.(isSelected ? null : device.id)
-                  }}
-                  className={`
-                    border-b border-[var(--color-border-subtle)] cursor-pointer transition-colors
-                    ${selectedDeviceId === device.id
-                      ? 'bg-[var(--color-primary-soft)] hover:bg-[var(--color-primary-soft)]'
-                      : 'hover:bg-[var(--color-surface-subtle)]'
-                    }
-                  `}
-                >
-                  <td className="py-3 px-4 text-sm text-[var(--color-text)] font-medium">
-                    {device.deviceId}
-                  </td>
-                  <td className="py-3 px-4 text-sm text-[var(--color-text-muted)] font-mono">
-                    {device.serialNumber}
-                  </td>
-                  <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">
-                    <div className="flex items-center gap-1.5">
-                      <span>{getTypeLabel(device.type)}</span>
-                      {getDeviceLibraryUrl(device.type) && (
-                        <Link
-                          href={getDeviceLibraryUrl(device.type)!}
-                          onClick={(e) => e.stopPropagation()}
-                          className="p-0.5 rounded hover:bg-[var(--color-surface-subtle)] transition-colors"
-                          title="View in library"
-                        >
-                          <Info size={12} className="text-[var(--color-primary)]" />
-                        </Link>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                      {device.signal > 0 ? (
-                      <div className={getSignalTokenClass(device.signal)}>
-                        <Wifi size={16} />
-                        <span>{device.signal}%</span>
-                      </div>
-                      ) : (
-                      <div className="token token-data">
-                        <WifiOff size={16} />
-                        <span>—</span>
-                      </div>
-                      )}
-                  </td>
-                  <td className="py-3 px-4">
-                    {device.battery !== undefined ? (
-                      <div className={getBatteryTokenClass(device.battery)}>
-                        <Battery size={16} />
-                        <span>{device.battery}%</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-[var(--color-text-soft)]">—</span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className={getStatusTokenClass(device.status)}>
-                      {device.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    {device.warrantyExpiry ? (
-                      <span className={getWarrantyStatusTokenClass(calculateWarrantyStatus(device.warrantyExpiry).status)}>
-                        {getWarrantyStatusLabel(calculateWarrantyStatus(device.warrantyExpiry).status)}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-[var(--color-text-soft)]">—</span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4 text-sm text-[var(--color-text-muted)]">
-                    {device.location}
-                  </td>
-                </tr>
+                  <DeviceListRow
+                    key={device.id}
+                    device={device}
+                    isSelected={isSelected}
+                    onSelect={() => onDeviceSelect?.(isSelected ? null : device.id)}
+                    selectedRowRef={selectedRowRef as React.RefObject<HTMLTableRowElement>}
+                  />
                 )
               })}
             </tbody>
@@ -367,5 +405,4 @@ export function DeviceList({ devices, selectedDeviceId, onDeviceSelect, searchQu
     </div>
   )
 }
-
 

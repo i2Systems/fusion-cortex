@@ -60,12 +60,12 @@ interface ZoneCanvasProps {
 }
 
 
-export function ZoneCanvas({ 
-  onDeviceSelect, 
-  selectedDeviceId, 
+export function ZoneCanvas({
+  onDeviceSelect,
+  selectedDeviceId,
   mapImageUrl,
   vectorData,
-  devices = [], 
+  devices = [],
   zones = [],
   selectedZoneId,
   onZoneSelect,
@@ -87,17 +87,17 @@ export function ZoneCanvas({
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const [stagePositionInternal, setStagePositionInternal] = useState({ x: 0, y: 0 })
   const [scaleInternal, setScaleInternal] = useState(1)
-  
+
   // Use external state if provided, otherwise use internal state
   const effectiveScale = externalScale ?? scaleInternal
   const effectiveStagePosition = externalStagePosition ?? stagePositionInternal
-  
+
   // Wrapper functions that update both internal and notify parent
   const setScale = useCallback((newScale: number) => {
     setScaleInternal(newScale)
     onScaleChange?.(newScale)
   }, [onScaleChange])
-  
+
   const setStagePosition = useCallback((newPosition: { x: number; y: number }) => {
     setStagePositionInternal(newPosition)
     onStagePositionChange?.(newPosition)
@@ -105,7 +105,7 @@ export function ZoneCanvas({
   const [hoveredDevice, setHoveredDevice] = useState<DevicePoint | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 })
   const [imageBounds, setImageBounds] = useState<ImageBounds | null>(null)
-  
+
   // Get full device data for hovered device
   const hoveredDeviceData = useMemo(() => {
     if (!hoveredDevice || !devicesData) return null
@@ -113,7 +113,7 @@ export function ZoneCanvas({
   }, [hoveredDevice, devicesData])
   const [drawingZone, setDrawingZone] = useState<Array<{ x: number; y: number }> | null>(null)
   const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null)
-  
+
   // Edit mode state - track which handle is being dragged
   const [draggingHandleIndex, setDraggingHandleIndex] = useState<number | null>(null)
   const [editingZonePolygon, setEditingZonePolygon] = useState<Array<{ x: number; y: number }> | null>(null)
@@ -159,24 +159,24 @@ export function ZoneCanvas({
 
     updateDimensions()
     updateColors()
-    
+
     // Use ResizeObserver to respond to container size changes
     const resizeObserver = new ResizeObserver(() => {
       updateDimensions()
     })
-    
+
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current)
     }
-    
+
     window.addEventListener('resize', updateDimensions)
-    
+
     const observer = new MutationObserver(updateColors)
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['data-theme'],
     })
-    
+
     return () => {
       resizeObserver.disconnect()
       window.removeEventListener('resize', updateDimensions)
@@ -191,11 +191,11 @@ export function ZoneCanvas({
       const scaleX = dimensions.width / vectorData.bounds.width
       const scaleY = dimensions.height / vectorData.bounds.height
       const scale = Math.min(scaleX, scaleY)
-      
+
       // Center the drawing
       const offsetX = (dimensions.width - vectorData.bounds.width * scale) / 2
       const offsetY = (dimensions.height - vectorData.bounds.height * scale) / 2
-      
+
       setImageBounds({
         x: offsetX,
         y: offsetY,
@@ -334,10 +334,24 @@ export function ZoneCanvas({
     }
   }, [imageBounds, dimensions])
 
-  const toNormalizedCoords = (point: { x: number; y: number }) => ({
-    x: Math.max(0, Math.min(1, point.x / dimensions.width)),
-    y: Math.max(0, Math.min(1, point.y / dimensions.height)),
-  })
+  // Convert canvas coordinates to normalized coordinates (0-1) using actual image bounds
+  const toNormalizedCoords = useCallback((point: { x: number; y: number }) => {
+    if (imageBounds) {
+      // Convert from canvas coordinates to normalized coordinates within image bounds
+      const normalizedX = (point.x - imageBounds.x) / imageBounds.width
+      const normalizedY = (point.y - imageBounds.y) / imageBounds.height
+      return {
+        x: Math.max(0, Math.min(1, normalizedX)),
+        y: Math.max(0, Math.min(1, normalizedY)),
+      }
+    } else {
+      // Fallback to canvas dimensions if image bounds not available
+      return {
+        x: Math.max(0, Math.min(1, point.x / dimensions.width)),
+        y: Math.max(0, Math.min(1, point.y / dimensions.height)),
+      }
+    }
+  }, [imageBounds, dimensions])
 
   // Initialize editing polygon when entering edit mode
   useEffect(() => {
@@ -359,25 +373,25 @@ export function ZoneCanvas({
       const handleKeyDown = (e: KeyboardEvent) => {
         if ((e.key === 'Delete' || e.key === 'Backspace') && selectedHandleIndex !== null) {
           e.preventDefault()
-          
+
           // Don't allow deleting if polygon would have less than 3 points
           if (editingZonePolygon.length <= 3) {
             return
           }
-          
+
           const updatedPolygon = editingZonePolygon.filter((_, index) => index !== selectedHandleIndex)
           setEditingZonePolygon(updatedPolygon)
-          
+
           // Update the zone immediately
           if (selectedZoneId && onZoneUpdated) {
             onZoneUpdated(selectedZoneId, updatedPolygon)
           }
-          
+
           // Clear selection
           setSelectedHandleIndex(null)
         }
       }
-      
+
       window.addEventListener('keydown', handleKeyDown)
       return () => {
         window.removeEventListener('keydown', handleKeyDown)
@@ -388,7 +402,7 @@ export function ZoneCanvas({
   // Handle handle drag
   const handleHandleDrag = (index: number, canvasPos: { x: number; y: number }) => {
     if (!editingZonePolygon) return
-    
+
     // Convert from canvas coordinates to normalized coordinates (0-1)
     const normalizedPos = toNormalizedCoords(canvasPos)
     const updatedPolygon = [...editingZonePolygon]
@@ -420,29 +434,29 @@ export function ZoneCanvas({
         onWheel={(e) => {
           // Handle trackpad/mouse wheel zoom
           e.evt.preventDefault()
-          
+
           const stage = e.target.getStage()
           if (!stage) return
-          
+
           const pointerPos = stage.getPointerPosition()
           if (!pointerPos) return
-          
+
           // Get wheel delta (positive = zoom in, negative = zoom out)
           const deltaY = e.evt.deltaY
-          
+
           // Determine zoom direction (trackpad: negative deltaY = zoom in, positive = zoom out)
           // Mouse wheel: positive deltaY = scroll down = zoom out
           const zoomFactor = deltaY > 0 ? 0.9 : 1.1
           const newScale = Math.max(0.1, Math.min(10, effectiveScale * zoomFactor))
-          
+
           // Calculate mouse position relative to stage
           const mouseX = (pointerPos.x - effectiveStagePosition.x) / effectiveScale
           const mouseY = (pointerPos.y - effectiveStagePosition.y) / effectiveScale
-          
+
           // Calculate new position to zoom towards mouse point
           const newX = pointerPos.x - mouseX * newScale
           const newY = pointerPos.y - mouseY * newScale
-          
+
           setScale(newScale)
           setStagePosition({ x: newX, y: newY })
         }}
@@ -463,9 +477,9 @@ export function ZoneCanvas({
               showText={showText}
             />
           ) : mapImageUrl ? (
-            <FloorPlanImage 
-              url={mapImageUrl} 
-              width={dimensions.width} 
+            <FloorPlanImage
+              url={mapImageUrl}
+              width={dimensions.width}
               height={dimensions.height}
               onImageBoundsChange={setImageBounds}
             />
@@ -479,7 +493,7 @@ export function ZoneCanvas({
             .filter(zone => selectedZoneId !== zone.id)
             .map((zone) => {
               const points = zone.polygon.map(toCanvasCoords).flatMap(p => [p.x, p.y])
-              
+
               return (
                 <Group key={zone.id}>
                   <Line
@@ -515,19 +529,19 @@ export function ZoneCanvas({
                 </Group>
               )
             })}
-          
+
           {/* Render selected zone last (on top) */}
           {showZones && zones
             .filter(zone => selectedZoneId === zone.id)
             .map((zone) => {
               // Use editing polygon if in edit mode, otherwise use zone polygon
-              const polygonToUse = (mode === 'edit' && editingZonePolygon) 
-                ? editingZonePolygon 
+              const polygonToUse = (mode === 'edit' && editingZonePolygon)
+                ? editingZonePolygon
                 : zone.polygon
               const points = polygonToUse.map(toCanvasCoords).flatMap(p => [p.x, p.y])
               const isSelected = true
               const isEditing = mode === 'edit'
-              
+
               return (
                 <Group key={zone.id}>
                   <Line
@@ -579,14 +593,14 @@ export function ZoneCanvas({
                       align="left"
                     />
                   )}
-                  
+
                   {/* Edit Handles - Show corner circles when editing */}
                   {isEditing && polygonToUse.map((point, index) => {
                     const canvasPoint = toCanvasCoords(point)
                     const isDragging = draggingHandleIndex === index
                     const isSelected = selectedHandleIndex === index
                     const canDelete = polygonToUse.length > 3 // Can't delete if only 3 points remain
-                    
+
                     return (
                       <Group key={`handle-${index}`}>
                         {/* Outer ring for better visibility */}
@@ -632,12 +646,12 @@ export function ZoneCanvas({
                           onDragMove={(e) => {
                             // Prevent stage dragging while dragging handles
                             e.cancelBubble = true
-                            
+
                             // Get the new position of the circle in canvas coordinates
                             // Konva automatically handles stage transforms for draggable shapes
                             const newX = e.target.x()
                             const newY = e.target.y()
-                            
+
                             // Convert from canvas coordinates to normalized coordinates
                             handleHandleDrag(index, { x: newX, y: newY })
                           }}
@@ -701,7 +715,7 @@ export function ZoneCanvas({
             const deviceCoords = toCanvasCoords({ x: device.x, y: device.y })
             const isSelected = selectedDeviceId === device.id
             const isHovered = hoveredDevice?.id === device.id
-            
+
             return (
               <Group key={device.id}>
                 <Circle
@@ -745,7 +759,7 @@ export function ZoneCanvas({
             )
           })}
         </Layer>
-        
+
         {/* Tooltip Layer - Always on top */}
         <Layer>
           {hoveredDevice && hoveredDeviceData && (() => {
@@ -756,7 +770,7 @@ export function ZoneCanvas({
             const padding = 16
             const lineHeight = 18
             const sectionSpacing = 8
-            
+
             // Calculate base info height (accounting for text wrapping)
             const deviceInfoLines = [
               `Type: ${hoveredDevice.type}`,
@@ -766,7 +780,7 @@ export function ZoneCanvas({
               ...(hoveredDevice.location ? [`Location: ${hoveredDevice.location}`] : []),
               ...(hoveredDeviceData.zone ? [`Zone: ${hoveredDeviceData.zone}`] : []),
             ]
-            
+
             // Estimate text wrapping for long strings
             const maxTextWidth = tooltipWidth - (padding * 2)
             const estimateWrappedLines = (text: string, fontSize: number) => {
@@ -774,29 +788,29 @@ export function ZoneCanvas({
               const charsPerLine = Math.floor(maxTextWidth / (fontSize * 0.6))
               return Math.max(1, Math.ceil(text.length / charsPerLine))
             }
-            
+
             let deviceInfoHeight = 0
             deviceInfoLines.forEach(line => {
               const wrappedLines = estimateWrappedLines(line, 12)
               deviceInfoHeight += wrappedLines * lineHeight
             })
-            
+
             // Header + divider + spacing
             const headerHeight = 40
             const dividerHeight = 2
             const baseHeight = headerHeight + dividerHeight + sectionSpacing + deviceInfoHeight + sectionSpacing
-            
+
             // Components section height
             const componentsHeaderHeight = 20
-            const componentsListHeight = hasComponents 
+            const componentsListHeight = hasComponents
               ? Math.min(componentsCount, 5) * 20 + (componentsCount > 5 ? 20 : 0)
               : 0
-            const componentsHeight = hasComponents 
+            const componentsHeight = hasComponents
               ? componentsHeaderHeight + componentsListHeight + sectionSpacing
               : 0
-            
+
             const totalHeight = baseHeight + componentsHeight + (padding * 2)
-            
+
             // Calculate position to keep tooltip within viewport
             const tooltipX = Math.max(
               padding,
@@ -812,7 +826,7 @@ export function ZoneCanvas({
                 dimensions.height - totalHeight - padding
               )
             )
-            
+
             return (
               <Group x={tooltipX} y={tooltipY}>
                 {/* Tooltip background - uses theme tokens */}
@@ -838,7 +852,7 @@ export function ZoneCanvas({
                   cornerRadius={10}
                   listening={false}
                 />
-                
+
                 {/* Header section */}
                 <Text
                   x={padding}
@@ -853,7 +867,7 @@ export function ZoneCanvas({
                   width={tooltipWidth - (padding * 2)}
                   wrap="word"
                 />
-                
+
                 {/* Divider line */}
                 <Line
                   points={[padding, padding + 24, tooltipWidth - padding, padding + 24]}
@@ -862,7 +876,7 @@ export function ZoneCanvas({
                   opacity={0.3}
                   listening={false}
                 />
-                
+
                 {/* Device info - render each line separately for proper wrapping */}
                 {deviceInfoLines.map((line, idx) => {
                   const yPos = padding + headerHeight + dividerHeight + sectionSpacing + (idx * lineHeight)
@@ -884,7 +898,7 @@ export function ZoneCanvas({
                     />
                   )
                 })}
-                
+
                 {/* Components section */}
                 {hasComponents && (
                   <>

@@ -47,7 +47,7 @@ function pointInPolygon(point: { x: number; y: number }, polygon: Array<{ x: num
     const yi = polygon[i].y
     const xj = polygon[j].x
     const yj = polygon[j].y
-    
+
     const intersect = ((yi > point.y) !== (yj > point.y)) &&
       (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi)
     if (intersect) inside = !inside
@@ -66,8 +66,8 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
   // Fetch zones from database
   const { data: zonesData, refetch: refetchZones } = trpc.zone.list.useQuery(
     { siteId: activeSiteId || '' },
-    { 
-      enabled: !!activeSiteId, 
+    {
+      enabled: !!activeSiteId,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
       staleTime: 5 * 60 * 1000, // 5 minutes
@@ -198,9 +198,9 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
 
   const updateZone = useCallback(async (zoneId: string, updates: Partial<Zone>) => {
     // Optimistically update UI
-    setZones(prev => 
-      prev.map(zone => 
-        zone.id === zoneId 
+    setZones(prev =>
+      prev.map(zone =>
+        zone.id === zoneId
           ? { ...zone, ...updates, updatedAt: new Date() }
           : zone
       )
@@ -240,15 +240,15 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
     }
   }, [deleteZoneMutation, refetchZones])
 
-  const getDevicesInZone = (zoneId: string, allDevices: Device[]): Device[] => {
+  const getDevicesInZone = useCallback((zoneId: string, allDevices: Device[]): Device[] => {
     const zone = zones.find(z => z.id === zoneId)
     if (!zone) return []
-    
+
     return allDevices.filter(device => {
       if (device.x === undefined || device.y === undefined) return false
       return pointInPolygon({ x: device.x, y: device.y }, zone.polygon)
     })
-  }
+  }, [zones])
 
   // Sync zone deviceIds with actual device positions
   // This should be called after devices are moved or updated
@@ -280,7 +280,7 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
     }
   }, [zones, updateZoneMutation])
 
-  const getZoneForDevice = (deviceId: string): Zone | null => {
+  const getZoneForDevice = useCallback((deviceId: string): Zone | null => {
     // Find the first zone that contains this device
     for (const zone of zones) {
       const devices = getDevicesInZone(zone.id, [{ id: deviceId, x: 0, y: 0 } as Device])
@@ -289,7 +289,7 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
       }
     }
     return null
-  }
+  }, [zones, getDevicesInZone])
 
   const saveZones = useCallback(async () => {
     // Zones are automatically saved to database on each mutation
