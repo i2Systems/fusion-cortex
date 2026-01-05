@@ -612,9 +612,37 @@ export default function MapPage() {
     let finalX = x
     let finalY = y
     if (currentLocation?.type === 'zoom' && currentLocation.zoomBounds) {
-      const parentCoords = convertZoomToParent(currentLocation, x, y)
-      finalX = parentCoords.x
-      finalY = parentCoords.y
+      // Create compatible Location object for convertZoomToParent
+      const zoomBounds = typeof currentLocation.zoomBounds === 'object' && 
+        currentLocation.zoomBounds !== null &&
+        'minX' in currentLocation.zoomBounds &&
+        'minY' in currentLocation.zoomBounds &&
+        'maxX' in currentLocation.zoomBounds &&
+        'maxY' in currentLocation.zoomBounds
+        ? currentLocation.zoomBounds as { minX: number; minY: number; maxX: number; maxY: number }
+        : undefined
+      
+      if (zoomBounds) {
+        const zoomLocation = {
+          id: currentLocation.id,
+          name: currentLocation.name,
+          type: currentLocation.type as 'base' | 'zoom',
+          zoomBounds,
+          createdAt: typeof currentLocation.createdAt === 'string' 
+            ? new Date(currentLocation.createdAt).getTime() 
+            : currentLocation.createdAt instanceof Date 
+              ? currentLocation.createdAt.getTime() 
+              : Date.now(),
+          updatedAt: typeof currentLocation.updatedAt === 'string' 
+            ? new Date(currentLocation.updatedAt).getTime() 
+            : currentLocation.updatedAt instanceof Date 
+              ? currentLocation.updatedAt.getTime() 
+              : Date.now(),
+        }
+        const parentCoords = convertZoomToParent(zoomLocation, x, y)
+        finalX = parentCoords.x
+        finalY = parentCoords.y
+      }
     }
 
     // Save final position to history when drag ends
@@ -854,13 +882,38 @@ export default function MapPage() {
 
       if (currentLocation?.type === 'zoom' && currentLocation.zoomBounds) {
         // Convert parent coordinates to zoom view coordinates
-        const zoomCoords = convertParentToZoom(currentLocation, deviceX, deviceY)
-        if (zoomCoords) {
-          deviceX = zoomCoords.x
-          deviceY = zoomCoords.y
-        } else {
-          // Device is outside zoom view bounds, hide it
-          return null
+        // Create compatible Location object for convertParentToZoom
+        const zoomBounds = typeof currentLocation.zoomBounds === 'object' && 
+          currentLocation.zoomBounds !== null &&
+          'minX' in currentLocation.zoomBounds &&
+          'minY' in currentLocation.zoomBounds &&
+          'maxX' in currentLocation.zoomBounds &&
+          'maxY' in currentLocation.zoomBounds
+          ? currentLocation.zoomBounds as { minX: number; minY: number; maxX: number; maxY: number }
+          : undefined
+        
+        if (zoomBounds) {
+          const zoomLocation = {
+            id: currentLocation.id,
+            name: currentLocation.name,
+            type: currentLocation.type as 'base' | 'zoom',
+            zoomBounds,
+            createdAt: typeof currentLocation.createdAt === 'string' 
+              ? new Date(currentLocation.createdAt).getTime() 
+              : currentLocation.createdAt instanceof Date 
+                ? currentLocation.createdAt.getTime() 
+                : Date.now(),
+            updatedAt: typeof currentLocation.updatedAt === 'string' 
+              ? new Date(currentLocation.updatedAt).getTime() 
+              : currentLocation.updatedAt instanceof Date 
+                ? currentLocation.updatedAt.getTime() 
+                : Date.now(),
+          }
+          const zoomCoords = convertParentToZoom(zoomLocation, deviceX, deviceY)
+          if (zoomCoords) {
+            deviceX = zoomCoords.x
+            deviceY = zoomCoords.y
+          }
         }
       }
 
@@ -1010,7 +1063,32 @@ export default function MapPage() {
             <div className="w-full h-full rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] relative" style={{ minHeight: 0 }}>
               {/* Locations Menu - Inside map region, lower left */}
               <LocationsMenu
-                locations={locations}
+                locations={locations.map(loc => ({
+                  id: loc.id,
+                  name: loc.name,
+                  type: (loc.type === 'base' || loc.type === 'zoom' ? loc.type : 'base') as 'base' | 'zoom',
+                  parentLocationId: loc.parentId || undefined,
+                  imageUrl: loc.imageUrl || undefined,
+                  vectorData: null,
+                  zoomBounds: typeof loc.zoomBounds === 'object' && 
+                    loc.zoomBounds !== null &&
+                    'minX' in loc.zoomBounds &&
+                    'minY' in loc.zoomBounds &&
+                    'maxX' in loc.zoomBounds &&
+                    'maxY' in loc.zoomBounds
+                    ? loc.zoomBounds as { minX: number; minY: number; maxX: number; maxY: number }
+                    : undefined,
+                  createdAt: typeof loc.createdAt === 'string' 
+                    ? new Date(loc.createdAt).getTime() 
+                    : loc.createdAt instanceof Date 
+                      ? loc.createdAt.getTime() 
+                      : Date.now(),
+                  updatedAt: typeof loc.updatedAt === 'string' 
+                    ? new Date(loc.updatedAt).getTime() 
+                    : loc.updatedAt instanceof Date 
+                      ? loc.updatedAt.getTime() 
+                      : Date.now(),
+                }))}
                 currentLocationId={currentLocationId}
                 onLocationSelect={handleLocationSelect}
                 onAddLocation={() => setShowUploadModal(true)}
@@ -1037,7 +1115,32 @@ export default function MapPage() {
                   devicesData={filteredDevices}
                   onZoneClick={handleZoneClick}
                   devices={devicesForCanvas}
-                  currentLocation={currentLocation}
+                  currentLocation={currentLocation ? {
+                    id: currentLocation.id,
+                    name: currentLocation.name,
+                    type: (currentLocation.type === 'base' || currentLocation.type === 'zoom' ? currentLocation.type : 'base') as 'base' | 'zoom',
+                    parentLocationId: currentLocation.parentId || undefined,
+                    imageUrl: currentLocation.imageUrl || undefined,
+                    vectorData: null,
+                    zoomBounds: typeof currentLocation.zoomBounds === 'object' && 
+                      currentLocation.zoomBounds !== null &&
+                      'minX' in currentLocation.zoomBounds &&
+                      'minY' in currentLocation.zoomBounds &&
+                      'maxX' in currentLocation.zoomBounds &&
+                      'maxY' in currentLocation.zoomBounds
+                      ? currentLocation.zoomBounds as { minX: number; minY: number; maxX: number; maxY: number }
+                      : undefined,
+                    createdAt: typeof currentLocation.createdAt === 'string' 
+                      ? new Date(currentLocation.createdAt).getTime() 
+                      : currentLocation.createdAt instanceof Date 
+                        ? currentLocation.createdAt.getTime() 
+                        : Date.now(),
+                    updatedAt: typeof currentLocation.updatedAt === 'string' 
+                      ? new Date(currentLocation.updatedAt).getTime() 
+                      : currentLocation.updatedAt instanceof Date 
+                        ? currentLocation.updatedAt.getTime() 
+                        : Date.now(),
+                  } : null}
                   onImageBoundsChange={setImageBounds}
                   showWalls={filters.showWalls}
                   showAnnotations={filters.showAnnotations}
