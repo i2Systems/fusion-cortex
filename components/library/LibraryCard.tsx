@@ -118,7 +118,7 @@ export function LibraryCard({ object, onClick }: LibraryCardProps) {
       onClick={onClick}
       className="fusion-card text-left cursor-pointer hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all group"
     >
-      <div className="aspect-video w-full mb-4 rounded-lg bg-[var(--color-surface-subtle)] overflow-hidden relative">
+      <div className="aspect-video w-full mb-3 rounded-lg bg-[var(--color-surface-subtle)] overflow-hidden relative">
         {currentImage ? (
           <img
             key={imageKey}
@@ -132,23 +132,23 @@ export function LibraryCard({ object, onClick }: LibraryCardProps) {
           </div>
         )}
       </div>
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-[var(--color-text)] group-hover:text-[var(--color-primary)] transition-colors">
+      <div className="space-y-1.5">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-semibold text-base text-[var(--color-text)] group-hover:text-[var(--color-primary)] transition-colors leading-tight flex-1">
             {object.name}
           </h3>
-          <span className="text-xs px-2 py-1 rounded token-type-fixture">
+          <span className="text-xs px-1.5 py-0.5 rounded token-type-fixture flex-shrink-0">
             {object.category}
           </span>
         </div>
-        <p className="text-sm text-[var(--color-text-muted)] line-clamp-2">
-          {object.description}
-        </p>
         {'quantity' in object && (
-          <div className="text-xs text-[var(--color-text-soft)]">
-            Quantity per fixture: {object.quantity}
+          <div className="text-xs text-[var(--color-text-muted)] font-medium">
+            Qty: {object.quantity}
           </div>
         )}
+        <p className="text-xs text-[var(--color-text-muted)] line-clamp-1 leading-snug">
+          {object.description}
+        </p>
       </div>
     </button>
   )
