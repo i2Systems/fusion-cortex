@@ -14,6 +14,7 @@ import { ruleRouter } from './rule'
 import { siteRouter } from './site'
 import { faultRouter } from './fault'
 import { imageRouter } from './image'
+import { notificationRouter } from './notification'
 
 export const appRouter = router({
   device: deviceRouter,
@@ -23,6 +24,7 @@ export const appRouter = router({
   site: siteRouter,
   fault: faultRouter,
   image: imageRouter,
+  notification: notificationRouter,
 })
 
 export type AppRouter = typeof appRouter

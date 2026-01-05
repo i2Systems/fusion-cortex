@@ -10,6 +10,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode, useMemo, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { trpc } from './trpc/client'
 
 // Site interface - matches Site model from database with additional UI fields
@@ -155,7 +156,7 @@ export function SiteProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window !== 'undefined' && sites.length > 0) {
       const savedSiteId = localStorage.getItem('fusion_active_site_id')
-      
+
       // If we have a saved site ID, check if it exists
       if (savedSiteId) {
         // Check if the saved site ID exists in database sites
@@ -187,6 +188,17 @@ export function SiteProvider({ children }: { children: ReactNode }) {
     }
   }, [sites])
 
+  // Handle URL-based site switching (deep linking)
+  const searchParams = useSearchParams()
+  const urlSiteId = searchParams?.get('siteId')
+
+  useEffect(() => {
+    if (urlSiteId && urlSiteId !== activeSiteId && sites.some(s => s.id === urlSiteId)) {
+      console.log(`Switching site to ${urlSiteId} from URL param`)
+      setActiveSiteId(urlSiteId)
+    }
+  }, [urlSiteId, activeSiteId, sites])
+
   // Sites are now stored in database, no need to save to localStorage
   // Only save active site ID
 
@@ -207,7 +219,7 @@ export function SiteProvider({ children }: { children: ReactNode }) {
     setActiveSiteId(siteId)
   }
 
-  const activeSite = activeSiteId 
+  const activeSite = activeSiteId
     ? sites.find(s => s.id === activeSiteId) || null
     : null
 
@@ -240,7 +252,7 @@ export function SiteProvider({ children }: { children: ReactNode }) {
       ...siteData,
       id: tempId,
     }
-    
+
     // Create in database - the mutation will refetch sites and update the site list
     // The database will generate the actual ID (cuid)
     createSiteMutation.mutate({
@@ -255,7 +267,7 @@ export function SiteProvider({ children }: { children: ReactNode }) {
       squareFootage: siteData.squareFootage,
       openedDate: siteData.openedDate,
     })
-    
+
     // Return the temporary site - it will be replaced when sites are refetched
     // Don't save this temp ID to localStorage - wait for the real one
     return newSite
@@ -297,7 +309,7 @@ export function SiteProvider({ children }: { children: ReactNode }) {
     if (!confirm(`Are you sure you want to delete this site? This will also delete all devices, zones, rules, and other data associated with this site.`)) {
       return
     }
-    
+
     // If removing active site, switch to first remaining site
     if (activeSiteId === siteId) {
       const remainingSites = sites.filter(s => s.id !== siteId)
@@ -307,7 +319,7 @@ export function SiteProvider({ children }: { children: ReactNode }) {
         setActiveSiteId(null)
       }
     }
-    
+
     // Delete from database
     deleteSiteMutation.mutate({ id: siteId })
   }

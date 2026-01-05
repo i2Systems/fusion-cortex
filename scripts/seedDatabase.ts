@@ -20,11 +20,11 @@ import { PrismaClient, DeviceType, DeviceStatus, BACnetStatus } from '@prisma/cl
 // Helper to check if a DeviceType is a fixture (any of the 6 fixture types)
 function isFixtureDeviceType(type: DeviceType): boolean {
   return type === DeviceType.FIXTURE_16FT_POWER_ENTRY ||
-         type === DeviceType.FIXTURE_12FT_POWER_ENTRY ||
-         type === DeviceType.FIXTURE_8FT_POWER_ENTRY ||
-         type === DeviceType.FIXTURE_16FT_FOLLOWER ||
-         type === DeviceType.FIXTURE_12FT_FOLLOWER ||
-         type === DeviceType.FIXTURE_8FT_FOLLOWER
+    type === DeviceType.FIXTURE_12FT_POWER_ENTRY ||
+    type === DeviceType.FIXTURE_8FT_POWER_ENTRY ||
+    type === DeviceType.FIXTURE_16FT_FOLLOWER ||
+    type === DeviceType.FIXTURE_12FT_FOLLOWER ||
+    type === DeviceType.FIXTURE_8FT_FOLLOWER
 }
 
 // Helper to get a random fixture type for seeding
@@ -43,12 +43,20 @@ function getRandomFixtureType(): DeviceType {
 const prisma = new PrismaClient()
 
 // Store configurations with unique characteristics
+// Store configurations with unique characteristics
 const STORE_CONFIGS = [
   {
     id: 'store-1234',
-    name: 'Store #1234 - Main St',
+    name: 'Main St Market',
     storeNumber: '1234',
-    address: '1250 Main Street, Springfield, IL 62701',
+    address: '1250 Main Street',
+    city: 'Springfield',
+    state: 'IL',
+    zipCode: '62701',
+    phone: '(217) 555-0101',
+    manager: 'Sarah Jenkins',
+    squareFootage: 45000,
+    openedDate: new Date('2015-04-12'),
     theme: 'grocery-focused', // Large grocery section, smaller general merchandise
     characteristics: {
       grocerySize: 'large',
@@ -59,9 +67,16 @@ const STORE_CONFIGS = [
   },
   {
     id: 'store-2156',
-    name: 'Store #2156 - Oak Avenue',
+    name: 'Riverside Garden Center',
     storeNumber: '2156',
-    address: '3420 Oak Avenue, Riverside, CA 92501',
+    address: '3420 Oak Avenue',
+    city: 'Riverside',
+    state: 'CA',
+    zipCode: '92501',
+    phone: '(951) 555-0123',
+    manager: 'David Rodriguez',
+    squareFootage: 52000,
+    openedDate: new Date('2018-09-23'),
     theme: 'outdoor-focused', // Garden center emphasis, outdoor lighting
     characteristics: {
       grocerySize: 'medium',
@@ -73,9 +88,16 @@ const STORE_CONFIGS = [
   },
   {
     id: 'store-3089',
-    name: 'Store #3089 - Commerce Blvd',
+    name: 'Commerce Tech Hub',
     storeNumber: '3089',
-    address: '789 Commerce Boulevard, Austin, TX 78701',
+    address: '789 Commerce Boulevard',
+    city: 'Austin',
+    state: 'TX',
+    zipCode: '78701',
+    phone: '(512) 555-0189',
+    manager: 'Michael Chen',
+    squareFootage: 60000,
+    openedDate: new Date('2019-11-05'),
     theme: 'high-tech', // Electronics section, modern fixtures
     characteristics: {
       grocerySize: 'medium',
@@ -87,9 +109,16 @@ const STORE_CONFIGS = [
   },
   {
     id: 'store-4421',
-    name: 'Store #4421 - River Road',
+    name: 'River Road Eco-Mart',
     storeNumber: '4421',
-    address: '456 River Road, Portland, OR 97201',
+    address: '456 River Road',
+    city: 'Portland',
+    state: 'OR',
+    zipCode: '97201',
+    phone: '(503) 555-0144',
+    manager: 'Emily Wilson',
+    squareFootage: 48000,
+    openedDate: new Date('2016-07-30'),
     theme: 'eco-friendly', // Energy-efficient zones, daylight harvesting
     characteristics: {
       grocerySize: 'large',
@@ -101,9 +130,16 @@ const STORE_CONFIGS = [
   },
   {
     id: 'store-5567',
-    name: 'Store #5567 - Park Plaza',
+    name: 'Park Plaza Superstore',
     storeNumber: '5567',
-    address: '2100 Park Plaza Drive, Denver, CO 80202',
+    address: '2100 Park Plaza Drive',
+    city: 'Denver',
+    state: 'CO',
+    zipCode: '80202',
+    phone: '(303) 555-0155',
+    manager: 'James Thompson',
+    squareFootage: 55000,
+    openedDate: new Date('2021-03-15'),
     theme: 'mountain-store', // High-altitude considerations, robust fixtures
     characteristics: {
       grocerySize: 'large',
@@ -244,18 +280,18 @@ function generateComponents(deviceId: string, serialNumber: string, buildDate: D
     { type: 'Lower LED Housing with Optic', quantity: 4, code: 'HOU' },
     { type: 'Sensor', quantity: 2, code: 'SEN' },
   ]
-  
+
   const components: any[] = []
-  
+
   for (const spec of componentSpecs) {
     for (let instance = 1; instance <= spec.quantity; instance++) {
-      const componentType = spec.quantity > 1 
-        ? `${spec.type} ${instance}` 
+      const componentType = spec.quantity > 1
+        ? `${spec.type} ${instance}`
         : spec.type
-      
+
       const instanceCode = spec.quantity > 1 ? String(instance).padStart(2, '0') : '01'
       const componentSerial = `${serialNumber}-${spec.code}${instanceCode}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`
-      
+
       components.push({
         deviceId: `${deviceId}-${spec.code.toLowerCase()}-${instanceCode}`,
         serialNumber: componentSerial,
@@ -285,29 +321,51 @@ function generateDevicesForZone(
   components: any[]
 }> {
   const devices: Array<{ device: any; components: any[] }> = []
-  
+
   // Calculate zone bounds
   const minX = Math.min(...zonePolygon.map(p => p.x))
   const maxX = Math.max(...zonePolygon.map(p => p.x))
   const minY = Math.min(...zonePolygon.map(p => p.y))
   const maxY = Math.max(...zonePolygon.map(p => p.y))
-  
+
   for (let i = 0; i < deviceCount; i++) {
     const deviceNum = baseDeviceId + i
     const deviceId = `FLX-${deviceNum}`
     const serialNumber = `SN-${siteId}-${deviceNum}`
     const buildDate = new Date(2020 + Math.floor(Math.random() * 4), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1)
-    
+
     // Random position within zone
     const x = minX + Math.random() * (maxX - minX)
     const y = minY + Math.random() * (maxY - minY)
-    
+
     // Status distribution: 85% online, 10% offline, 5% missing
     const statusRand = Math.random()
     let status: DeviceStatus = DeviceStatus.ONLINE
     if (statusRand > 0.95) status = DeviceStatus.MISSING
     else if (statusRand > 0.85) status = DeviceStatus.OFFLINE
-    
+
+    // Notification Scenarios (in addition to status faults)
+    // 1. Warranty Issues (5% chance)
+    const warrantyRand = Math.random()
+    let warrantyExpiry = new Date(buildDate.getTime() + 5 * 365 * 24 * 60 * 60 * 1000)
+    let warrantyStatus = 'Active'
+
+    if (warrantyRand > 0.98) {
+      // Expired warranty (Last month)
+      warrantyExpiry = new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000)
+      warrantyStatus = 'Expired'
+    } else if (warrantyRand > 0.95) {
+      // Expiring soon (Next 30 days)
+      warrantyExpiry = new Date(Date.now() + Math.floor(Math.random() * 25) * 24 * 60 * 60 * 1000)
+      warrantyStatus = 'Active' // Still active but expiring
+    }
+
+    // 2. Low Signal (5% chance for non-fixture devices)
+    let signal = isFixtureDeviceType(deviceType) ? undefined : Math.floor(Math.random() * 40) + 50
+    if (!isFixtureDeviceType(deviceType) && Math.random() > 0.95) {
+      signal = Math.floor(Math.random() * 15) + 1 // Low signal 1-16
+    }
+
     const device = {
       deviceId,
       serialNumber,
@@ -315,22 +373,22 @@ function generateDevicesForZone(
       status,
       x,
       y,
-      signal: isFixtureDeviceType(deviceType) ? undefined : Math.floor(Math.random() * 40) + 50,
+      signal,
       battery: !isFixtureDeviceType(deviceType) ? Math.floor(Math.random() * 40) + 60 : undefined,
       buildDate,
       cct: isFixtureDeviceType(deviceType) ? 4000 : undefined,
-      warrantyStatus: 'Active',
-      warrantyExpiry: new Date(buildDate.getTime() + 5 * 365 * 24 * 60 * 60 * 1000),
+      warrantyStatus,
+      warrantyExpiry,
       siteId,
     }
-    
-    const components = isFixtureDeviceType(deviceType) 
+
+    const components = isFixtureDeviceType(deviceType)
       ? generateComponents(deviceId, serialNumber, buildDate)
       : []
-    
+
     devices.push({ device, components })
   }
-  
+
   return devices
 }
 
@@ -341,7 +399,7 @@ function generateZonesForStore(storeConfig: typeof STORE_CONFIGS[0]): Array<{
 }> {
   const zones: Array<{ zone: any; devices: Array<{ device: any; components: any[] }> }> = []
   let deviceCounter = 1
-  
+
   // Always include grocery
   const groceryZone = { ...ZONE_TEMPLATES.grocery }
   const groceryDevices = generateDevicesForZone(
@@ -354,7 +412,7 @@ function generateZonesForStore(storeConfig: typeof STORE_CONFIGS[0]): Array<{
   )
   deviceCounter += groceryDevices.length
   zones.push({ zone: groceryZone, devices: groceryDevices })
-  
+
   // Produce section
   const produceZone = { ...ZONE_TEMPLATES.produce }
   const produceDevices = generateDevicesForZone(
@@ -367,7 +425,7 @@ function generateZonesForStore(storeConfig: typeof STORE_CONFIGS[0]): Array<{
   )
   deviceCounter += produceDevices.length
   zones.push({ zone: produceZone, devices: produceDevices })
-  
+
   // Meat section
   const meatZone = { ...ZONE_TEMPLATES.meat }
   const meatDevices = generateDevicesForZone(
@@ -380,7 +438,7 @@ function generateZonesForStore(storeConfig: typeof STORE_CONFIGS[0]): Array<{
   )
   deviceCounter += meatDevices.length
   zones.push({ zone: meatZone, devices: meatDevices })
-  
+
   // Deli (if store has it)
   if (storeConfig.characteristics.hasDeli) {
     const deliZone = { ...ZONE_TEMPLATES.deli }
@@ -395,7 +453,7 @@ function generateZonesForStore(storeConfig: typeof STORE_CONFIGS[0]): Array<{
     deviceCounter += deliDevices.length
     zones.push({ zone: deliZone, devices: deliDevices })
   }
-  
+
   // Bakery (if store has it)
   if (storeConfig.characteristics.hasBakery) {
     const bakeryZone = { ...ZONE_TEMPLATES.bakery }
@@ -410,7 +468,7 @@ function generateZonesForStore(storeConfig: typeof STORE_CONFIGS[0]): Array<{
     deviceCounter += bakeryDevices.length
     zones.push({ zone: bakeryZone, devices: bakeryDevices })
   }
-  
+
   // Apparel
   const apparelZone = { ...ZONE_TEMPLATES.apparel }
   const apparelDevices = generateDevicesForZone(
@@ -423,7 +481,7 @@ function generateZonesForStore(storeConfig: typeof STORE_CONFIGS[0]): Array<{
   )
   deviceCounter += apparelDevices.length
   zones.push({ zone: apparelZone, devices: apparelDevices })
-  
+
   // Home & Garden
   const homeZone = { ...ZONE_TEMPLATES.home }
   const homeDevices = generateDevicesForZone(
@@ -436,7 +494,7 @@ function generateZonesForStore(storeConfig: typeof STORE_CONFIGS[0]): Array<{
   )
   deviceCounter += homeDevices.length
   zones.push({ zone: homeZone, devices: homeDevices })
-  
+
   // Electronics
   const electronicsZone = { ...ZONE_TEMPLATES.electronics }
   const electronicsDevices = generateDevicesForZone(
@@ -449,7 +507,7 @@ function generateZonesForStore(storeConfig: typeof STORE_CONFIGS[0]): Array<{
   )
   deviceCounter += electronicsDevices.length
   zones.push({ zone: electronicsZone, devices: electronicsDevices })
-  
+
   // Toys
   const toysZone = { ...ZONE_TEMPLATES.toys }
   const toysDevices = generateDevicesForZone(
@@ -462,7 +520,7 @@ function generateZonesForStore(storeConfig: typeof STORE_CONFIGS[0]): Array<{
   )
   deviceCounter += toysDevices.length
   zones.push({ zone: toysZone, devices: toysDevices })
-  
+
   // Lobby
   const lobbyZone = { ...ZONE_TEMPLATES.lobby }
   const lobbyDevices = generateDevicesForZone(
@@ -475,7 +533,7 @@ function generateZonesForStore(storeConfig: typeof STORE_CONFIGS[0]): Array<{
   )
   deviceCounter += lobbyDevices.length
   zones.push({ zone: lobbyZone, devices: lobbyDevices })
-  
+
   // Add motion sensors to key areas (entrances, high-traffic zones)
   const motionSensorZones = [lobbyZone, groceryZone, produceZone]
   for (const motionZone of motionSensorZones) {
@@ -494,7 +552,7 @@ function generateZonesForStore(storeConfig: typeof STORE_CONFIGS[0]): Array<{
       zoneData.devices.push(...motionDevices)
     }
   }
-  
+
   return zones
 }
 
@@ -507,7 +565,7 @@ function generateBACnetMappings(zoneIds: string[]): Array<{
 }> {
   const mappings = []
   let objectIdCounter = 1000
-  
+
   for (const zoneId of zoneIds) {
     // 80% of zones have BACnet mappings
     if (Math.random() > 0.2) {
@@ -515,30 +573,30 @@ function generateBACnetMappings(zoneIds: string[]): Array<{
       let status: BACnetStatus = BACnetStatus.CONNECTED
       if (statusRand > 0.9) status = BACnetStatus.ERROR
       else if (statusRand > 0.7) status = BACnetStatus.NOT_ASSIGNED
-      
+
       mappings.push({
         zoneId,
         bacnetObjectId: `AI${objectIdCounter++}`,
         status,
-        lastConnected: status === BACnetStatus.CONNECTED 
+        lastConnected: status === BACnetStatus.CONNECTED
           ? new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000) // Within last week
           : null,
       })
     }
   }
-  
+
   return mappings
 }
 
 // Generate rules for zones
 function generateRules(siteId: string, zones: Array<{ zone: any; devices: any[] }>): any[] {
   const rules = []
-  
+
   // Motion-activated lighting for high-traffic zones
-  const highTrafficZones = zones.filter(z => 
+  const highTrafficZones = zones.filter(z =>
     ['Main Lobby', 'Grocery Aisles', 'Produce Section'].includes(z.zone.name)
   )
-  
+
   for (const zoneData of highTrafficZones) {
     rules.push({
       name: `Motion-activated lighting: ${zoneData.zone.name}`,
@@ -559,12 +617,12 @@ function generateRules(siteId: string, zones: Array<{ zone: any; devices: any[] 
       targetZones: [zoneData.zone.name],
     })
   }
-  
+
   // Daylight harvesting for stores that have it
-  const daylightZones = zones.filter(z => 
+  const daylightZones = zones.filter(z =>
     ['Produce Section', 'Grocery Aisles'].includes(z.zone.name)
   )
-  
+
   for (const zoneData of daylightZones) {
     rules.push({
       name: `Daylight harvesting: ${zoneData.zone.name}`,
@@ -585,7 +643,7 @@ function generateRules(siteId: string, zones: Array<{ zone: any; devices: any[] 
       targetZones: [zoneData.zone.name],
     })
   }
-  
+
   // Scheduled opening/closing
   rules.push({
     name: 'Store Opening - Full Brightness',
@@ -605,7 +663,7 @@ function generateRules(siteId: string, zones: Array<{ zone: any; devices: any[] 
     zoneId: null, // Global rule
     targetZones: zones.map(z => z.zone.name),
   })
-  
+
   rules.push({
     name: 'Store Closing - Dimmed Lighting',
     description: 'Reduce lighting after store closes',
@@ -624,7 +682,7 @@ function generateRules(siteId: string, zones: Array<{ zone: any; devices: any[] 
     zoneId: null, // Global rule
     targetZones: zones.map(z => z.zone.name),
   })
-  
+
   return rules
 }
 
@@ -638,39 +696,35 @@ function generateFaults(devices: Array<{ device: any }>): any[] {
     'installation-wiring',
     'control-integration',
   ]
-  
+
   // Generate faults for 5-10% of devices
   const faultCount = Math.floor(devices.length * (0.05 + Math.random() * 0.05))
   const devicesWithFaults = devices
     .filter(() => Math.random() < 0.1)
     .slice(0, faultCount)
-  
+
   for (const deviceData of devicesWithFaults) {
     const faultType = faultTypes[Math.floor(Math.random() * faultTypes.length)]
-    const severity = Math.random() > 0.7 ? 'critical' : Math.random() > 0.4 ? 'warning' : 'info'
-    
+
     faults.push({
       deviceId: deviceData.device.id,
-      deviceSerialNumber: deviceData.device.serialNumber,
-      deviceType: deviceData.device.type,
       faultType,
-      severity,
       description: `Device ${deviceData.device.deviceId} experiencing ${faultType.replace('-', ' ')} issues`,
       detectedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Within last 30 days
       resolved: Math.random() > 0.6, // 40% resolved
-      resolvedAt: Math.random() > 0.6 
+      resolvedAt: Math.random() > 0.6
         ? new Date(Date.now() - Math.random() * 10 * 24 * 60 * 60 * 1000)
         : null,
     })
   }
-  
+
   return faults
 }
 
 // Main seeding function
 export async function seedDatabase() {
   console.log('🌱 Starting database seeding...\n')
-  
+
   try {
     // Clear existing data (optional - comment out if you want to keep existing data)
     console.log('🧹 Clearing existing data...')
@@ -681,11 +735,11 @@ export async function seedDatabase() {
     await prisma.zone.deleteMany()
     await prisma.site.deleteMany()
     console.log('✅ Cleared existing data\n')
-    
+
     // Create sites and their data
     for (const storeConfig of STORE_CONFIGS) {
       console.log(`📦 Creating site: ${storeConfig.name}`)
-      
+
       // Create site
       const site = await prisma.site.create({
         data: {
@@ -693,16 +747,23 @@ export async function seedDatabase() {
           name: storeConfig.name,
           storeNumber: storeConfig.storeNumber,
           address: storeConfig.address,
+          city: storeConfig.city,
+          state: storeConfig.state,
+          zipCode: storeConfig.zipCode,
+          phone: storeConfig.phone,
+          manager: storeConfig.manager,
+          squareFootage: storeConfig.squareFootage,
+          openedDate: storeConfig.openedDate,
         },
       })
-      
+
       // Generate zones and devices
       const zonesData = generateZonesForStore(storeConfig)
       console.log(`  📍 Creating ${zonesData.length} zones...`)
-      
+
       const allDevices: Array<{ device: any; components: any[] }> = []
       const createdZones: any[] = []
-      
+
       for (const zoneData of zonesData) {
         // Create zone
         const zone = await prisma.zone.create({
@@ -716,9 +777,9 @@ export async function seedDatabase() {
             minDaylight: storeConfig.characteristics.hasDaylightHarvesting ? 50 : null,
           },
         })
-        
+
         createdZones.push(zone)
-        
+
         // Create devices for this zone
         for (const deviceData of zoneData.devices) {
           const device = await prisma.device.create({
@@ -727,7 +788,7 @@ export async function seedDatabase() {
               siteId: site.id,
             },
           })
-          
+
           // Create components
           for (const component of deviceData.components) {
             await prisma.device.create({
@@ -738,7 +799,7 @@ export async function seedDatabase() {
               },
             })
           }
-          
+
           // Link device to zone
           await prisma.zoneDevice.create({
             data: {
@@ -746,17 +807,17 @@ export async function seedDatabase() {
               deviceId: device.id,
             },
           })
-          
+
           allDevices.push({ device, components: deviceData.components })
         }
       }
-      
+
       console.log(`  ✅ Created ${allDevices.length} devices`)
-      
+
       // Create BACnet mappings
       const bacnetMappings = generateBACnetMappings(createdZones.map(z => z.id))
       console.log(`  🔌 Creating ${bacnetMappings.length} BACnet mappings...`)
-      
+
       for (const mapping of bacnetMappings) {
         await prisma.bACnetMapping.create({
           data: {
@@ -767,16 +828,16 @@ export async function seedDatabase() {
           },
         })
       }
-      
+
       console.log(`  ✅ Created ${bacnetMappings.length} BACnet mappings`)
-      
+
       // Create rules
-      const rules = generateRules(site.id, zonesData.map(z => ({ 
-        zone: { ...z.zone, id: createdZones.find(cz => cz.name === z.zone.name)?.id || '' }, 
-        devices: z.devices 
+      const rules = generateRules(site.id, zonesData.map(z => ({
+        zone: { ...z.zone, id: createdZones.find(cz => cz.name === z.zone.name)?.id || '' },
+        devices: z.devices
       })))
       console.log(`  📋 Creating ${rules.length} rules...`)
-      
+
       for (const rule of rules) {
         // Find zone ID for the rule by matching zone name
         const zone = createdZones.find(z => {
@@ -785,12 +846,12 @@ export async function seedDatabase() {
           }
           return false
         })
-        
+
         // Update targetZones to use zone IDs instead of names
         const targetZoneIds = rule.targetZones
           .map((zoneName: string) => createdZones.find(z => z.name === zoneName)?.id)
           .filter((id: string | undefined): id is string => !!id)
-        
+
         await prisma.rule.create({
           data: {
             name: rule.name,
@@ -805,23 +866,43 @@ export async function seedDatabase() {
           },
         })
       }
-      
+
       console.log(`  ✅ Created ${rules.length} rules`)
-      
+
+      console.log(`  ✅ Created ${rules.length} rules`)
+
+      // Create Faults
+      const faults = generateFaults(allDevices)
+      console.log(`  ⚠️  Creating ${faults.length} faults...`)
+
+      for (const fault of faults) {
+        await prisma.fault.create({
+          data: {
+            deviceId: fault.deviceId, // Ensure we are using the internal ID which we have in allDevices[x].device.id
+            faultType: fault.faultType,
+            description: fault.description,
+            detectedAt: fault.detectedAt,
+            resolved: fault.resolved,
+            resolvedAt: fault.resolvedAt,
+          }
+        })
+      }
+      console.log(`  ✅ Created ${faults.length} faults`)
+
       // Note: Faults are calculated on-the-fly from device status
       // Devices with OFFLINE or MISSING status will show up in the faults page
-      const offlineDevices = allDevices.filter(d => 
+      const offlineDevices = allDevices.filter(d =>
         d.device.status === DeviceStatus.OFFLINE || d.device.status === DeviceStatus.MISSING
       )
-      console.log(`  ⚠️  ${offlineDevices.length} devices with faults (offline/missing status)`)
-      
+      console.log(`  NB: Also created ${offlineDevices.length} devices with offline/missing status`)
+
       console.log(`✅ Completed site: ${storeConfig.name}\n`)
     }
-    
+
     console.log('🎉 Database seeding completed successfully!')
     console.log(`\n📊 Summary:`)
     console.log(`   - Sites: ${STORE_CONFIGS.length}`)
-    
+
   } catch (error) {
     console.error('❌ Error seeding database:', error)
     throw error

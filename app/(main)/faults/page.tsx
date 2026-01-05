@@ -10,6 +10,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { MapViewToggle, type MapViewMode } from '@/components/shared/MapViewToggle'
@@ -57,25 +58,50 @@ export default function FaultsPage() {
   const mapImageUrl = mapData.mapImageUrl
   const vectorData = mapData.vectorData
   const mapUploaded = mapData.mapUploaded
-  
+
   const [selectedFaultId, setSelectedFaultId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<MapViewMode>('list')
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
-  
+
   // Fetch faults from database
   const { data: dbFaults, refetch: refetchFaults } = trpc.fault.list.useQuery(
     { siteId: activeSiteId || '', includeResolved: false },
     { enabled: !!activeSiteId, refetchOnWindowFocus: false }
   )
-  
+
   // Create fault mutation
   const createFaultMutation = trpc.fault.create.useMutation({
     onSuccess: () => {
       refetchFaults()
     },
   })
-  
+
+  // Handle URL deep linking for faults
+  const searchParams = useSearchParams()
+  const initialFaultId = searchParams?.get('id')
+
+  useEffect(() => {
+    if (initialFaultId) {
+      setSelectedFaultId(initialFaultId)
+
+      // If dbFaults are loaded...
+      if (dbFaults) {
+        const dbFault = dbFaults.find(f => f.id === initialFaultId)
+        if (dbFault) {
+          setSelectedDeviceId(dbFault.deviceId)
+          return
+        }
+      }
+
+      // If simulated/device generated fault
+      const device = devices.find(d => d.id === initialFaultId)
+      if (device) {
+        setSelectedDeviceId(device.id)
+      }
+    }
+  }, [initialFaultId, dbFaults, devices])
+
   // Generate faults from devices (auto-generated from device status)
   const deviceGeneratedFaults = useMemo<Fault[]>(() => {
     const faultList: Fault[] = []
@@ -89,7 +115,7 @@ export default function FaultsPage() {
       'device-fault-apparel-002': 'mechanical-structural',
       'device-fault-grocery-002': 'optical-output',
     }
-    
+
     const detectedTimes: Record<string, number> = {
       'device-fault-grocery-001': 45, // 45 minutes ago
       'device-fault-electronics-001': 2 * 60, // 2 hours ago
@@ -104,7 +130,7 @@ export default function FaultsPage() {
     devices.forEach(device => {
       // Check if this is a specific fault device with assigned category
       const assignedCategory = categoryMap[device.id]
-      
+
       if (assignedCategory) {
         // Use specific fault descriptions for these devices
         const descriptions: Record<string, string> = {
@@ -117,7 +143,7 @@ export default function FaultsPage() {
           'device-fault-apparel-002': 'Bezel detaching from fixture housing. Device FLX-2092 has structural mounting issue. Inspect bracket geometry. Hardware issue preventing proper operation.',
           'device-fault-grocery-002': 'Single LED out in fixture array. Device FLX-2105 shows optical output abnormality. Check LED module connections. Visible output abnormality detected.',
         }
-        
+
         faultList.push({
           device,
           faultType: assignedCategory,
@@ -148,28 +174,39 @@ export default function FaultsPage() {
       // Low battery devices - still track separately but can also have other issues
       if (device.battery !== undefined && device.battery < 20 && !assignedCategory) {
         // Low battery can be a symptom, but also create a separate entry
-        const faultCategory = device.status === 'offline' || device.status === 'missing' 
+        const faultCategory = device.status === 'offline' || device.status === 'missing'
           ? assignFaultCategory(device)
           : 'electrical-driver' // Low battery often indicates power issues
         faultList.push({
           device,
           faultType: faultCategory,
           detectedAt: new Date(Date.now() - 1000 * 60 * (Math.floor(Math.random() * 120) + 30)),
-          description: device.battery < 10 
+          description: device.battery < 10
             ? `Critical battery level (${device.battery}%). Device may shut down. Power supply or charging system issue suspected.`
             : `Battery level is below 20% (${device.battery}%). Replacement recommended. May indicate charging system or power supply problem.`,
         })
       }
+
+      // Low signal - generate fault entry
+      if (device.signal !== undefined && device.signal < 20 && !assignedCategory && device.status === 'online') {
+        faultList.push({
+          device,
+          faultType: 'control-integration',
+          detectedAt: new Date(Date.now() - 1000 * 60 * (Math.floor(Math.random() * 60) + 10)),
+          description: `Weak signal detected (${device.signal}%). Check wireless coverage or interference.`,
+        })
+      }
     })
+
 
     // Sort by detected time (most recent first)
     return faultList.sort((a, b) => b.detectedAt.getTime() - a.detectedAt.getTime())
   }, [devices])
-  
+
   // Combine database faults with device-generated faults
   const faults = useMemo<Fault[]>(() => {
     const allFaults: Fault[] = []
-    
+
     // Add database faults (manually created)
     if (dbFaults) {
       dbFaults.forEach(dbFault => {
@@ -186,7 +223,7 @@ export default function FaultsPage() {
         }
       })
     }
-    
+
     // Add device-generated faults (only if not already in database)
     const dbFaultDeviceIds = new Set(dbFaults?.map(f => f.deviceId) || [])
     deviceGeneratedFaults.forEach(deviceFault => {
@@ -196,7 +233,7 @@ export default function FaultsPage() {
         allFaults.push(deviceFault)
       }
     })
-    
+
     // Sort by detected time (most recent first)
     return allFaults.sort((a, b) => b.detectedAt.getTime() - a.detectedAt.getTime())
   }, [dbFaults, deviceGeneratedFaults, devices])
@@ -205,17 +242,17 @@ export default function FaultsPage() {
   // Use a ref to track which faults we've already created notifications for
   // Store as a global map keyed by fault ID to persist across site changes
   const syncedFaultIdsRef = useRef<Set<string>>(new Set())
-  
+
   useEffect(() => {
     if (!dbFaults || !activeSiteId || devices.length === 0) return
-    
+
     // Create notifications for database faults that don't have notifications yet
     dbFaults.forEach(dbFault => {
       const notificationId = `fault-notification-${dbFault.id}`
-      
+
       // Skip if we've already synced this fault (globally, not per-site)
       if (syncedFaultIdsRef.current.has(dbFault.id)) return
-      
+
       // Check if notification already exists in the notifications list
       // This prevents duplicates if the component re-renders
       const existingNotification = notifications.find(n => n.id === notificationId)
@@ -224,7 +261,7 @@ export default function FaultsPage() {
         syncedFaultIdsRef.current.add(dbFault.id)
         return
       }
-      
+
       const device = devices.find(d => d.id === dbFault.deviceId)
       if (device) {
         const categoryInfo = faultCategories[dbFault.faultType as FaultCategory]
@@ -281,13 +318,13 @@ export default function FaultsPage() {
   // Map data is now loaded from MapContext - no need to load it here
 
   const { refreshMapData } = useMap()
-  
+
   const handleMapUpload = async (imageUrl: string) => {
     // Map upload is handled in the map page, which updates shared storage
     // Just refresh the map data to pick up the new upload
     await refreshMapData()
   }
-  
+
   const handleVectorDataUpload = async (data: any) => {
     // Vector data upload is handled in the map page
     // Just refresh the map data to pick up the new upload
@@ -303,7 +340,7 @@ export default function FaultsPage() {
         description: faultData.description,
         detectedAt: new Date(),
       })
-      
+
       // Create notification for the new fault
       const categoryInfo = faultCategories[faultData.faultType]
       addNotification({
@@ -316,7 +353,7 @@ export default function FaultsPage() {
         link: '/faults',
         siteId: activeSiteId || undefined,
       })
-      
+
       // Select the newly created fault by its ID
       setSelectedFaultId(newFault.id)
       setSelectedDeviceId(faultData.device.id)
@@ -364,7 +401,7 @@ export default function FaultsPage() {
 
   const selectedFault = useMemo(() => {
     if (!selectedFaultId) return null
-    
+
     // First, try to find by database fault ID
     const dbFault = dbFaults?.find(f => f.id === selectedFaultId)
     if (dbFault) {
@@ -378,7 +415,7 @@ export default function FaultsPage() {
         }
       }
     }
-    
+
     // Otherwise, try to find by device ID (for device-generated faults)
     return faults.find(f => f.device.id === selectedFaultId) || null
   }, [faults, selectedFaultId, dbFaults, devices])
@@ -386,12 +423,12 @@ export default function FaultsPage() {
   // Filter faults based on selected device, search, and category filters
   const filteredFaults = useMemo(() => {
     let filtered = faults
-    
+
     // Apply category filters
     filtered = filtered.filter(fault => {
       return showCategories[fault.faultType] !== false
     })
-    
+
     // Apply search filter - fuzzy match on all fields
     if (searchQuery.trim()) {
       const query = searchQuery.trim()
@@ -416,11 +453,11 @@ export default function FaultsPage() {
       )
       filtered = results.map(r => r.item.fault)
     }
-    
+
     // Note: We don't filter by selectedDeviceId or selectedFaultId here
     // because we want to show the entire fault list even when one is selected.
     // The selected fault will be highlighted in the UI, but all faults remain visible.
-    
+
     return filtered
   }, [faults, searchQuery, showCategories])
 
@@ -438,7 +475,7 @@ export default function FaultsPage() {
   const mapDevices = useMemo(() => {
     return devices.map(d => {
       const deviceFaults = faults.filter(f => f.device.id === d.id)
-      
+
       // Convert DeviceType enum to simplified type for canvas
       let simplifiedType: 'fixture' | 'motion' | 'light-sensor' = 'fixture'
       if (d.type === 'motion' || d.type?.includes('motion')) {
@@ -449,7 +486,7 @@ export default function FaultsPage() {
         // All fixture types map to 'fixture'
         simplifiedType = 'fixture'
       }
-      
+
       return {
         id: d.id,
         x: d.x || 0,
@@ -471,7 +508,7 @@ export default function FaultsPage() {
     const now = Date.now()
     const last24h = now - (24 * 60 * 60 * 1000)
     const last48h = now - (48 * 60 * 60 * 1000)
-    
+
     // Insight 1: New Faults (Last 24h)
     const newFaults24h = faults.filter(f => f.detectedAt.getTime() >= last24h)
     const newFaultsPrevious24h = faults.filter(f => {
@@ -480,7 +517,7 @@ export default function FaultsPage() {
     })
     const newFaultsDelta = newFaults24h.length - newFaultsPrevious24h.length
     const newFaultsTrend: 'up' | 'down' | 'stable' = newFaultsDelta > 0 ? 'up' : newFaultsDelta < 0 ? 'down' : 'stable'
-    
+
     // Insight 2: Trending Category (category with most new faults in last 24h)
     const categoryNewCounts: Record<FaultCategory, number> = {
       'environmental-ingress': 0,
@@ -492,28 +529,28 @@ export default function FaultsPage() {
       'mechanical-structural': 0,
       'optical-output': 0,
     }
-    
+
     newFaults24h.forEach(fault => {
       categoryNewCounts[fault.faultType] = (categoryNewCounts[fault.faultType] || 0) + 1
     })
-    
+
     const trendingCategory = Object.entries(categoryNewCounts)
       .filter(([, count]) => count > 0)
       .sort(([, a], [, b]) => b - a)[0]
-    
-    const trendingCategoryInfo = trendingCategory 
+
+    const trendingCategoryInfo = trendingCategory
       ? {
-          category: trendingCategory[0] as FaultCategory,
-          newCount: trendingCategory[1],
-          totalCount: faults.filter(f => f.faultType === trendingCategory[0]).length,
-        }
+        category: trendingCategory[0] as FaultCategory,
+        newCount: trendingCategory[1],
+        totalCount: faults.filter(f => f.faultType === trendingCategory[0]).length,
+      }
       : null
-    
+
     // Insight 3: Critical Faults (faults older than 6 hours that are still active)
     const criticalThreshold = now - (6 * 60 * 60 * 1000) // 6 hours
     const criticalFaults = faults.filter(f => f.detectedAt.getTime() < criticalThreshold)
     const criticalCount = criticalFaults.length
-    
+
     // Calculate critical delta (compare to 12 hours ago)
     const criticalThreshold12h = now - (12 * 60 * 60 * 1000)
     const criticalFaultsPrevious = faults.filter(f => {
@@ -521,7 +558,7 @@ export default function FaultsPage() {
       return time >= criticalThreshold12h && time < criticalThreshold
     })
     const criticalDelta = criticalCount - criticalFaultsPrevious.length
-    
+
     // Insight 4: Average Resolution Time (mock - simulate based on fault age distribution)
     const recentFaults = faults.filter(f => f.detectedAt.getTime() >= last24h)
     const olderFaults = faults.filter(f => f.detectedAt.getTime() < last24h)
@@ -529,7 +566,7 @@ export default function FaultsPage() {
       ? olderFaults.reduce((sum, f) => sum + (now - f.detectedAt.getTime()), 0) / olderFaults.length
       : 0
     const avgAgeHours = Math.floor(avgAge / (1000 * 60 * 60))
-    
+
     return {
       newFaults24h: {
         count: newFaults24h.length,
@@ -579,8 +616,8 @@ export default function FaultsPage() {
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island - In flow */}
       <div className="flex-shrink-0 page-padding-x pt-3 md:pt-4 pb-2 md:pb-3">
-        <SearchIsland 
-          position="top" 
+        <SearchIsland
+          position="top"
           fullWidth={true}
           title="Faults / Health"
           subtitle="Monitor device health and system status"
@@ -623,12 +660,12 @@ export default function FaultsPage() {
       </div>
 
       {/* Main Content: Fault List/Map + Details Panel */}
-      <div 
+      <div
         className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pt-2 pb-12 md:pb-14 overflow-hidden"
         onClick={handleMainContentClick}
       >
         {/* Fault List/Map - Left Side */}
-        <div 
+        <div
           ref={listContainerRef}
           className="flex-1 min-w-0 flex flex-col overflow-y-auto"
         >
@@ -636,7 +673,7 @@ export default function FaultsPage() {
           <div className="mb-3 flex items-center justify-between gap-3">
             {/* Left side: View Toggle */}
             <MapViewToggle currentView={viewMode} onViewChange={setViewMode} />
-            
+
             {/* Right side: Category Filter Toggles */}
             <div className="flex items-center gap-3">
               {selectedDeviceId && viewMode === 'map' && (
@@ -650,7 +687,7 @@ export default function FaultsPage() {
                   Clear filter
                 </button>
               )}
-              
+
               {/* Category Filter Toggles - only show in list view */}
               {viewMode === 'list' && (
                 <div className="flex items-center gap-1 p-0.5 bg-[var(--color-surface-subtle)] rounded-lg border border-[var(--color-border-subtle)]">
@@ -659,7 +696,7 @@ export default function FaultsPage() {
                     const isActive = showCategories[category]
                     const hasFaults = faults.some(f => f.faultType === category)
                     const isDisabled = !hasFaults
-                    
+
                     // Get icon component
                     const getIcon = () => {
                       switch (category) {
@@ -674,7 +711,7 @@ export default function FaultsPage() {
                         default: return null
                       }
                     }
-                    
+
                     return (
                       <button
                         key={category}
@@ -686,10 +723,9 @@ export default function FaultsPage() {
                         disabled={isDisabled}
                         className={`
                           p-1.5 rounded-md transition-all duration-200
-                          ${
-                            isDisabled
-                              ? 'opacity-40 cursor-not-allowed text-[var(--color-text-soft)]'
-                              : isActive
+                          ${isDisabled
+                            ? 'opacity-40 cursor-not-allowed text-[var(--color-text-soft)]'
+                            : isActive
                               ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-soft)]'
                               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
                           }

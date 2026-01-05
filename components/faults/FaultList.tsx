@@ -15,7 +15,7 @@
 
 'use client'
 
-import { useState, useEffect, useMemo, useCallback, memo } from 'react'
+import { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react'
 import { AlertCircle, Droplets, Zap, Thermometer, Plug, Settings, Package, Wrench, Lightbulb } from 'lucide-react'
 import { Device } from '@/lib/mockData'
 import { FaultCategory, faultCategories } from '@/lib/faultDefinitions'
@@ -86,6 +86,18 @@ interface FaultListItemProps {
 }
 
 const FaultListItem = memo(function FaultListItem({ fault, isSelected, onSelect }: FaultListItemProps) {
+  const elementRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll into view when selected
+  useEffect(() => {
+    if (isSelected && elementRef.current) {
+      // Use scrollIntoView with smooth behavior for user context, 
+      // but 'auto' is often better for initial deep links to avoid "jumping"
+      // block: 'nearest' ensures minimal scrolling if already visible
+      elementRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [isSelected])
+
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     onSelect()
@@ -93,6 +105,7 @@ const FaultListItem = memo(function FaultListItem({ fault, isSelected, onSelect 
 
   return (
     <div
+      ref={elementRef}
       onClick={handleClick}
       className={`
         p-4 rounded-lg border cursor-pointer transition-all

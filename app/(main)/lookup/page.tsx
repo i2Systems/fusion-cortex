@@ -11,6 +11,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { DeviceList } from '@/components/lookup/DeviceList'
@@ -61,31 +62,45 @@ export default function LookupPage() {
   const mapImageUrl = mapData.mapImageUrl
   const vectorData = mapData.vectorData
   const mapUploaded = mapData.mapUploaded
-  
+
+  // Handle URL deep linking
+  const searchParams = useSearchParams()
+  const urlDeviceId = searchParams?.get('id')
+
+  useEffect(() => {
+    if (urlDeviceId) {
+      // Find device by ID or database ID
+      const device = devices.find(d => d.id === urlDeviceId || d.deviceId === urlDeviceId)
+      if (device) {
+        setSelectedDeviceId(device.id)
+      }
+    }
+  }, [urlDeviceId, devices])
+
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [showManualEntry, setShowManualEntry] = useState(false)
   const listContainerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<ResizablePanelRef>(null)
-  
+
   // Shared zoom state between map views
   const [sharedScale, setSharedScale] = useState(1)
   const [sharedStagePosition, setSharedStagePosition] = useState({ x: 0, y: 0 })
 
   // Action handlers
   const handleManualEntry = useCallback(() => setShowManualEntry(true), [])
-  
+
   const handleQRScan = useCallback(() => {
     // Mock QR code scanning - simulate finding a device
     const mockDeviceId = `FLX-${Math.floor(Math.random() * 9000) + 1000}`
     const mockSerial = `SN-2024-${Math.floor(Math.random() * 9000) + 1000}-A${Math.floor(Math.random() * 9) + 1}`
-    
+
     // Show a mock "scanning" message
     const confirmed = confirm(`QR Code scanned!\n\nDevice ID: ${mockDeviceId}\nSerial: ${mockSerial}\n\nWould you like to add this device?`)
-    
+
     if (confirmed) {
       const deviceId = `device-${Date.now()}`
       const warrantyExpiry = generateWarrantyExpiry()
-      
+
       const newDevice: Device = {
         id: deviceId,
         deviceId: mockDeviceId,
@@ -104,7 +119,7 @@ export default function LookupPage() {
       addDevice(newDevice)
     }
   }, [addDevice])
-  
+
   const handleImport = useCallback(() => {
     // Create a hidden file input
     const input = document.createElement('input')
@@ -113,13 +128,13 @@ export default function LookupPage() {
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (!file) return
-      
+
       const reader = new FileReader()
       reader.onload = (event) => {
         try {
           const text = event.target?.result as string
           let importedDevices: Device[] = []
-          
+
           if (file.name.endsWith('.json')) {
             importedDevices = JSON.parse(text)
           } else if (file.name.endsWith('.csv')) {
@@ -131,7 +146,7 @@ export default function LookupPage() {
               const serialNumber = values[1] || `SN-${Date.now()}`
               const deviceType = (values[2] || 'fixture') as 'fixture' | 'motion' | 'light-sensor'
               const warrantyExpiry = generateWarrantyExpiry()
-              
+
               return {
                 id: deviceId,
                 deviceId: values[0] || `FLX-${Math.floor(Math.random() * 9000) + 1000}`,
@@ -151,12 +166,12 @@ export default function LookupPage() {
               } as Device
             })
           }
-          
+
           // Add imported devices (with components if they don't have them)
           importedDevices.forEach(device => {
             const deviceId = `device-${Date.now()}-${Math.random()}`
             const warrantyExpiry = device.warrantyExpiry || generateWarrantyExpiry()
-            
+
             addDevice({
               ...device,
               id: deviceId,
@@ -168,7 +183,7 @@ export default function LookupPage() {
               warrantyExpiry,
             })
           })
-          
+
           alert(`Successfully imported ${importedDevices.length} device(s)`)
         } catch (error) {
           alert('Error importing file. Please check the format.')
@@ -179,13 +194,13 @@ export default function LookupPage() {
     }
     input.click()
   }, [addDevice])
-  
+
   const handleExport = useCallback(() => {
     if (devices.length === 0) {
       alert('No devices to export')
       return
     }
-    
+
     // Export as JSON
     const dataStr = JSON.stringify(devices, null, 2)
     const dataBlob = new Blob([dataStr], { type: 'application/json' })
@@ -215,14 +230,14 @@ export default function LookupPage() {
   const handleAddDevice = (deviceData: { deviceId: string; serialNumber: string; type: DeviceType }) => {
     const deviceId = `device-${Date.now()}`
     const warrantyExpiry = generateWarrantyExpiry()
-    
+
     // Ensure type is explicitly set
     if (!deviceData.type) {
       console.error('Device type is missing in deviceData:', deviceData)
       alert('Device type is required')
       return
     }
-    
+
     const newDevice: Device = {
       id: deviceId,
       deviceId: deviceData.deviceId,
@@ -235,13 +250,13 @@ export default function LookupPage() {
       x: Math.random(),
       y: Math.random(),
       // Generate components for fixtures
-      components: isFixtureType(deviceData.type) 
+      components: isFixtureType(deviceData.type)
         ? generateComponentsForFixture(deviceId, deviceData.serialNumber, warrantyExpiry)
         : undefined,
       warrantyStatus: 'Active',
       warrantyExpiry,
     }
-    
+
     console.log('Creating device with type:', newDevice.type, 'Full device:', newDevice)
     addDevice(newDevice)
     setShowManualEntry(false)
@@ -249,13 +264,13 @@ export default function LookupPage() {
 
   // Map data is now loaded from MapContext - no need to load it here
   const { refreshMapData } = useMap()
-  
+
   const handleMapUpload = async (imageUrl: string) => {
     // Map upload is handled in the map page, which updates shared storage
     // Just refresh the map data to pick up the new upload
     await refreshMapData()
   }
-  
+
   const handleVectorDataUpload = async (data: any) => {
     // Vector data upload is handled in the map page
     // Just refresh the map data to pick up the new upload
@@ -283,7 +298,7 @@ export default function LookupPage() {
   // Filter devices based on search query - fuzzy match on all fields
   const filteredDevices = useMemo(() => {
     if (!searchQuery.trim()) return devices
-    
+
     const query = searchQuery.trim()
     // Use fuzzy search for better matching with typo tolerance
     const results = fuzzySearch(
@@ -358,7 +373,7 @@ export default function LookupPage() {
       return (
         <div className="fusion-card overflow-hidden h-full flex flex-col rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] relative">
           <div className="w-full h-full rounded-2xl overflow-hidden">
-            <MapCanvas 
+            <MapCanvas
               onDeviceSelect={setSelectedDeviceId}
               selectedDeviceId={selectedDeviceId}
               mapImageUrl={mapImageUrl}
@@ -389,7 +404,7 @@ export default function LookupPage() {
       return (
         <div className="fusion-card overflow-hidden h-full flex flex-col rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] relative">
           <div className="w-full h-full rounded-2xl overflow-hidden">
-            <ZoneCanvas 
+            <ZoneCanvas
               onDeviceSelect={setSelectedDeviceId}
               selectedDeviceId={selectedDeviceId}
               mapImageUrl={mapImageUrl}
@@ -397,7 +412,7 @@ export default function LookupPage() {
               devices={mapDevices}
               zones={mapZones}
               selectedZoneId={null}
-              onZoneSelect={() => {}}
+              onZoneSelect={() => { }}
               mode="select"
               devicesData={filteredDevices}
               externalScale={sharedScale}
@@ -442,8 +457,8 @@ export default function LookupPage() {
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island - In flow */}
       <div className="flex-shrink-0 page-padding-x pt-3 md:pt-4 pb-2 md:pb-3">
-        <SearchIsland 
-          position="top" 
+        <SearchIsland
+          position="top"
           fullWidth={true}
           title="Device Lookup"
           subtitle="Search for devices by ID or serial number"
@@ -454,13 +469,13 @@ export default function LookupPage() {
       </div>
 
       {/* Main Content: Device List/Map + Profile Panel */}
-      <div 
-        className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pb-12 md:pb-14" 
+      <div
+        className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pb-12 md:pb-14"
         style={{ overflow: 'visible' }}
         onClick={handleMainContentClick}
       >
         {/* Main View - Left Side */}
-        <div 
+        <div
           ref={listContainerRef}
           className="flex-1 min-w-0 flex flex-col"
         >
@@ -468,7 +483,7 @@ export default function LookupPage() {
           <div className="mb-2 md:mb-3 flex items-center justify-between">
             <ViewToggle currentView={viewMode} onViewChange={setViewMode} />
           </div>
-          
+
           {/* Content Area */}
           <div className="flex-1 min-h-0">
             {renderMainContent()}
@@ -485,15 +500,15 @@ export default function LookupPage() {
           storageKey="lookup_panel"
           showCloseButton={true}
         >
-            <DeviceProfilePanel 
-              device={selectedDevice}
-              onDeviceSelect={(device) => setSelectedDeviceId(device?.id || null)}
-              onComponentClick={handleComponentClick}
-              onManualEntry={handleManualEntry}
-              onQRScan={handleQRScan}
-              onImport={handleImport}
-              onExport={handleExport}
-            />
+          <DeviceProfilePanel
+            device={selectedDevice}
+            onDeviceSelect={(device) => setSelectedDeviceId(device?.id || null)}
+            onComponentClick={handleComponentClick}
+            onManualEntry={handleManualEntry}
+            onQRScan={handleQRScan}
+            onImport={handleImport}
+            onExport={handleExport}
+          />
         </ResizablePanel>
       </div>
 
