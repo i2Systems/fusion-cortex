@@ -378,7 +378,7 @@ export default function MapPage() {
         try {
           // Show upload progress
           console.log('📤 Uploading map image to Supabase...')
-          
+
           // Convert base64 to Blob
           const fetchRes = await fetch(imageUrl)
           const blob = await fetchRes.blob()
@@ -417,13 +417,13 @@ export default function MapPage() {
       })
 
       console.log('✅ Location created:', newLocation.id)
-      
+
       // Immediately set the current location ID so UI updates
       setCurrentLocationId(newLocation.id)
-      
+
       // Close upload modal
       setShowUploadModal(false)
-      
+
       // Refetch locations to ensure everything is in sync
       await utils.location.list.refetch({ siteId: activeSiteId })
     } catch (error) {
@@ -637,7 +637,7 @@ export default function MapPage() {
     let finalY = y
     if (currentLocation?.type === 'zoom' && currentLocation.zoomBounds) {
       // Create compatible Location object for convertZoomToParent
-      const zoomBounds = typeof currentLocation.zoomBounds === 'object' && 
+      const zoomBounds = typeof currentLocation.zoomBounds === 'object' &&
         currentLocation.zoomBounds !== null &&
         'minX' in currentLocation.zoomBounds &&
         'minY' in currentLocation.zoomBounds &&
@@ -645,22 +645,22 @@ export default function MapPage() {
         'maxY' in currentLocation.zoomBounds
         ? currentLocation.zoomBounds as { minX: number; minY: number; maxX: number; maxY: number }
         : undefined
-      
+
       if (zoomBounds) {
         const zoomLocation = {
           id: currentLocation.id,
           name: currentLocation.name,
           type: currentLocation.type as 'base' | 'zoom',
           zoomBounds,
-          createdAt: typeof currentLocation.createdAt === 'string' 
-            ? new Date(currentLocation.createdAt).getTime() 
-            : currentLocation.createdAt instanceof Date 
-              ? currentLocation.createdAt.getTime() 
+          createdAt: typeof currentLocation.createdAt === 'string'
+            ? new Date(currentLocation.createdAt).getTime()
+            : currentLocation.createdAt instanceof Date
+              ? currentLocation.createdAt.getTime()
               : Date.now(),
-          updatedAt: typeof currentLocation.updatedAt === 'string' 
-            ? new Date(currentLocation.updatedAt).getTime() 
-            : currentLocation.updatedAt instanceof Date 
-              ? currentLocation.updatedAt.getTime() 
+          updatedAt: typeof currentLocation.updatedAt === 'string'
+            ? new Date(currentLocation.updatedAt).getTime()
+            : currentLocation.updatedAt instanceof Date
+              ? currentLocation.updatedAt.getTime()
               : Date.now(),
         }
         const parentCoords = convertZoomToParent(zoomLocation, x, y)
@@ -907,7 +907,7 @@ export default function MapPage() {
       if (currentLocation?.type === 'zoom' && currentLocation.zoomBounds) {
         // Convert parent coordinates to zoom view coordinates
         // Create compatible Location object for convertParentToZoom
-        const zoomBounds = typeof currentLocation.zoomBounds === 'object' && 
+        const zoomBounds = typeof currentLocation.zoomBounds === 'object' &&
           currentLocation.zoomBounds !== null &&
           'minX' in currentLocation.zoomBounds &&
           'minY' in currentLocation.zoomBounds &&
@@ -915,22 +915,22 @@ export default function MapPage() {
           'maxY' in currentLocation.zoomBounds
           ? currentLocation.zoomBounds as { minX: number; minY: number; maxX: number; maxY: number }
           : undefined
-        
+
         if (zoomBounds) {
           const zoomLocation = {
             id: currentLocation.id,
             name: currentLocation.name,
             type: currentLocation.type as 'base' | 'zoom',
             zoomBounds,
-            createdAt: typeof currentLocation.createdAt === 'string' 
-              ? new Date(currentLocation.createdAt).getTime() 
-              : currentLocation.createdAt instanceof Date 
-                ? currentLocation.createdAt.getTime() 
+            createdAt: typeof currentLocation.createdAt === 'string'
+              ? new Date(currentLocation.createdAt).getTime()
+              : currentLocation.createdAt instanceof Date
+                ? currentLocation.createdAt.getTime()
                 : Date.now(),
-            updatedAt: typeof currentLocation.updatedAt === 'string' 
-              ? new Date(currentLocation.updatedAt).getTime() 
-              : currentLocation.updatedAt instanceof Date 
-                ? currentLocation.updatedAt.getTime() 
+            updatedAt: typeof currentLocation.updatedAt === 'string'
+              ? new Date(currentLocation.updatedAt).getTime()
+              : currentLocation.updatedAt instanceof Date
+                ? currentLocation.updatedAt.getTime()
                 : Date.now(),
           }
           const zoomCoords = convertParentToZoom(zoomLocation, deviceX, deviceY)
@@ -1102,7 +1102,7 @@ export default function MapPage() {
                   parentLocationId: loc.parentId || undefined,
                   imageUrl: loc.imageUrl || undefined,
                   vectorData: null,
-                  zoomBounds: typeof loc.zoomBounds === 'object' && 
+                  zoomBounds: typeof loc.zoomBounds === 'object' &&
                     loc.zoomBounds !== null &&
                     'minX' in loc.zoomBounds &&
                     'minY' in loc.zoomBounds &&
@@ -1110,15 +1110,15 @@ export default function MapPage() {
                     'maxY' in loc.zoomBounds
                     ? loc.zoomBounds as { minX: number; minY: number; maxX: number; maxY: number }
                     : undefined,
-                  createdAt: typeof loc.createdAt === 'string' 
-                    ? new Date(loc.createdAt).getTime() 
-                    : loc.createdAt instanceof Date 
-                      ? loc.createdAt.getTime() 
+                  createdAt: typeof loc.createdAt === 'string'
+                    ? new Date(loc.createdAt).getTime()
+                    : loc.createdAt instanceof Date
+                      ? loc.createdAt.getTime()
                       : Date.now(),
-                  updatedAt: typeof loc.updatedAt === 'string' 
-                    ? new Date(loc.updatedAt).getTime() 
-                    : loc.updatedAt instanceof Date 
-                      ? loc.updatedAt.getTime() 
+                  updatedAt: typeof loc.updatedAt === 'string'
+                    ? new Date(loc.updatedAt).getTime()
+                    : loc.updatedAt instanceof Date
+                      ? loc.updatedAt.getTime()
                       : Date.now(),
                 }))}
                 currentLocationId={currentLocationId}
@@ -1154,7 +1154,7 @@ export default function MapPage() {
                     parentLocationId: currentLocation.parentId || undefined,
                     imageUrl: currentLocation.imageUrl || undefined,
                     vectorData: null,
-                    zoomBounds: typeof currentLocation.zoomBounds === 'object' && 
+                    zoomBounds: typeof currentLocation.zoomBounds === 'object' &&
                       currentLocation.zoomBounds !== null &&
                       'minX' in currentLocation.zoomBounds &&
                       'minY' in currentLocation.zoomBounds &&
@@ -1162,15 +1162,15 @@ export default function MapPage() {
                       'maxY' in currentLocation.zoomBounds
                       ? currentLocation.zoomBounds as { minX: number; minY: number; maxX: number; maxY: number }
                       : undefined,
-                    createdAt: typeof currentLocation.createdAt === 'string' 
-                      ? new Date(currentLocation.createdAt).getTime() 
-                      : currentLocation.createdAt instanceof Date 
-                        ? currentLocation.createdAt.getTime() 
+                    createdAt: typeof currentLocation.createdAt === 'string'
+                      ? new Date(currentLocation.createdAt).getTime()
+                      : currentLocation.createdAt instanceof Date
+                        ? currentLocation.createdAt.getTime()
                         : Date.now(),
-                    updatedAt: typeof currentLocation.updatedAt === 'string' 
-                      ? new Date(currentLocation.updatedAt).getTime() 
-                      : currentLocation.updatedAt instanceof Date 
-                        ? currentLocation.updatedAt.getTime() 
+                    updatedAt: typeof currentLocation.updatedAt === 'string'
+                      ? new Date(currentLocation.updatedAt).getTime()
+                      : currentLocation.updatedAt instanceof Date
+                        ? currentLocation.updatedAt.getTime()
                         : Date.now(),
                   } : null}
                   onImageBoundsChange={setImageBounds}

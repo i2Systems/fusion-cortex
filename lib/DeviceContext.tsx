@@ -136,8 +136,23 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
   // Update local state when data from database changes
   // Use a ref to prevent updates during user interactions
   const isUpdatingRef = useRef(false)
+  const previousSiteIdRef = useRef<string | null>(null)
+  
+  // Clear devices when site changes (before new data loads)
   useEffect(() => {
-    if (devicesData && !isUpdatingRef.current) {
+    if (activeSiteId !== previousSiteIdRef.current && previousSiteIdRef.current !== null) {
+      // Site changed - clear old devices immediately
+      setDevices([])
+      setHistory([[]])
+      setHistoryIndex(0)
+      isUpdatingRef.current = false
+    }
+    previousSiteIdRef.current = activeSiteId
+  }, [activeSiteId])
+
+  useEffect(() => {
+    if (devicesData !== undefined && !isUpdatingRef.current) {
+      // Allow empty arrays to clear devices, but only update if we have a defined value
       setDevices(devicesData)
       setHistory([devicesData])
       setHistoryIndex(0)
