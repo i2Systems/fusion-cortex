@@ -549,8 +549,8 @@ export async function getSiteImage(siteId: string, retries: number = 3, trpcClie
       }
     } else {
       // No trpcClient provided - skip database lookup, go straight to client storage
-      // Components should use tRPC hooks (trpc.image.getSiteImage.useQuery) instead of this utility
-      console.log(`ℹ️ No trpcClient provided for ${siteId}, skipping database lookup, using client storage only`)
+      // This is expected when called from components that use useQuery for the primary fetch
+
     }
   } catch (dbError: any) {
     console.warn(`⚠️ Failed to load from database for ${siteId}, trying client storage:`, dbError.message)

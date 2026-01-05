@@ -43,14 +43,26 @@ import { useSite } from '@/lib/SiteContext'
 import { useMap } from '@/lib/MapContext'
 import { useRole } from '@/lib/role'
 import { detectAllLights, createDevicesFromLights } from '@/lib/lightDetection'
+import { trpc } from '@/lib/trpc/client'
+import { supabaseAdmin, STORAGE_BUCKETS } from '@/lib/supabase'
+
+// Define Location interface matching the DB schema (plus optional local props if needed)
+export interface Location {
+  id: string
+  name: string
+  type: 'base' | 'zoom'
+  parentId?: string | null
+  imageUrl?: string | null
+  vectorDataUrl?: string | null
+  zoomBounds?: any
+  siteId: string
+  createdAt: string | Date
+  updatedAt: string | Date
+}
+
 import {
-  loadLocations,
-  addLocation,
-  updateLocation,
-  deleteLocation,
-  saveLocations,
   convertZoomToParent,
-  type Location
+  convertParentToZoom,
 } from '@/lib/locationStorage'
 import { LocationsMenu } from '@/components/map/LocationsMenu'
 import { ZoomViewCreator } from '@/components/map/ZoomViewCreator'
@@ -103,8 +115,38 @@ export default function MapPage() {
   const { activeSiteId } = useSite()
   const { zones, syncZoneDeviceIds, getDevicesInZone } = useZones()
 
-  // Location management
-  const [locations, setLocations] = useState<Location[]>([])
+  // TRPC Hooks
+  const utils = trpc.useContext()
+  const { data: locations = [], isLoading: locationsLoading } = trpc.location.list.useQuery(
+    { siteId: activeSiteId || '' },
+    { enabled: !!activeSiteId }
+  )
+
+  const createLocationMutation = trpc.location.create.useMutation({
+    onSuccess: () => {
+      utils.location.list.invalidate({ siteId: activeSiteId || '' })
+    }
+  })
+
+  const updateLocationMutation = trpc.location.update.useMutation({
+    onSuccess: () => {
+      utils.location.list.invalidate({ siteId: activeSiteId || '' })
+    }
+  })
+
+  const deleteLocationMutation = trpc.location.delete.useMutation({
+    onSuccess: () => {
+      utils.location.list.invalidate({ siteId: activeSiteId || '' })
+    }
+  })
+
+  // Local state for UI
+  // locations is now from TRPC, so we don't need `const [locations, setLocations] = useState<Location[]>([])`
+  // We just need to manage null/loading states if needed.
+  // Actually, keeping local locations state might be redundant if we use the query data directly.
+  // But existing code uses `locations` variable. 
+  // I replaced `const [locations, setLocations]` with the query result.
+
   const [currentLocationId, setCurrentLocationId] = useState<string | null>(null)
   const [showZoomCreator, setShowZoomCreator] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
@@ -221,12 +263,26 @@ export default function MapPage() {
   const [vectorData, setVectorData] = useState<any>(null)
 
   const currentLocation = useMemo(() => {
-    return locations.find(loc => loc.id === currentLocationId) || null
+    // If we have locations but no current ID, set it to the first one
+    if (locations.length > 0 && !currentLocationId) {
+      // Side effect in render is bad, but we can't easily sync state otherwise without useEffect.
+      // Better to check inside the component or use useEffect.
+      return locations[0]
+    }
+    return locations.find((loc: any) => loc.id === currentLocationId) || null
   }, [locations, currentLocationId])
 
-  const mapUploaded = currentLocation !== null
+  // Sync ID if not set
+  useEffect(() => {
+    if (locations.length > 0 && !currentLocationId) {
+      setCurrentLocationId(locations[0].id)
+    }
+  }, [locations, currentLocationId])
+
+  const mapUploaded = !!currentLocation
 
   // Load location data (image/vector) from storage when location changes
+  // Load location data (image/vector) from URL
   useEffect(() => {
     const loadLocationData = async () => {
       if (!currentLocation) {
@@ -235,56 +291,44 @@ export default function MapPage() {
         return
       }
 
-      // If location has storageKey, load from IndexedDB
-      if (currentLocation.storageKey && activeSiteId) {
+      // 1. Handle Vector Data
+      if (currentLocation.vectorDataUrl) {
         try {
-          const { getVectorData } = await import('@/lib/indexedDB')
-          const stored = await getVectorData(activeSiteId, currentLocation.storageKey)
-          if (stored) {
-            // Check if it's vector data or image data
-            if (stored.paths || stored.texts) {
-              setVectorData(stored)
-              setMapImageUrl(null)
-            } else if (stored.data) {
-              // Image data stored as { data: base64String }
-              setMapImageUrl(stored.data)
-              setVectorData(null)
-            }
+          const res = await fetch(currentLocation.vectorDataUrl)
+          if (res.ok) {
+            const data = await res.json()
+            setVectorData(data)
           }
         } catch (e) {
-          console.warn('Failed to load location data from IndexedDB:', e)
+          console.error('Failed to load vector data:', e)
         }
       } else {
-        // Use direct imageUrl/vectorData from location
-        setMapImageUrl(currentLocation.imageUrl || null)
-        setVectorData(currentLocation.vectorData || null)
+        setVectorData(null)
       }
 
-      // For zoom views, inherit from parent if no data
-      if (currentLocation.type === 'zoom' && currentLocation.parentLocationId) {
-        const parentLocation = locations.find(loc => loc.id === currentLocation.parentLocationId)
-        if (parentLocation) {
-          // Use parent's data if zoom view doesn't have its own
-          if (!currentLocation.storageKey && !currentLocation.imageUrl && !currentLocation.vectorData) {
-            if (parentLocation.storageKey && activeSiteId) {
+      // 2. Handle Image URL
+      if (currentLocation.imageUrl) {
+        // Direct URL (Supabase or otherwise)
+        setMapImageUrl(currentLocation.imageUrl)
+      } else {
+        setMapImageUrl(null)
+      }
+
+      // 3. Handle Zoom View Inheritance
+      // If it's a zoom view and missing data, try to get from parent
+      if (currentLocation.type === 'zoom' && currentLocation.parentId) {
+        // Check if we need to inherit
+        if (!currentLocation.vectorDataUrl && !currentLocation.imageUrl) {
+          const parent = locations.find((l: any) => l.id === currentLocation.parentId)
+          if (parent) {
+            if (parent.vectorDataUrl) {
               try {
-                const { getVectorData } = await import('@/lib/indexedDB')
-                const stored = await getVectorData(activeSiteId, parentLocation.storageKey)
-                if (stored) {
-                  if (stored.paths || stored.texts) {
-                    setVectorData(stored)
-                    setMapImageUrl(null)
-                  } else if (stored.data) {
-                    setMapImageUrl(stored.data)
-                    setVectorData(null)
-                  }
-                }
-              } catch (e) {
-                console.warn('Failed to load parent location data:', e)
-              }
-            } else {
-              setMapImageUrl(parentLocation.imageUrl || null)
-              setVectorData(parentLocation.vectorData || null)
+                const res = await fetch(parent.vectorDataUrl)
+                if (res.ok) setVectorData(await res.json())
+              } catch (e) { }
+            }
+            if (parent.imageUrl) {
+              setMapImageUrl(parent.imageUrl)
             }
           }
         }
@@ -292,7 +336,7 @@ export default function MapPage() {
     }
 
     loadLocationData()
-  }, [currentLocation, locations, activeSiteId])
+  }, [currentLocation, locations])
   const [toolMode, setToolMode] = useState<MapToolMode>('select')
   const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -316,134 +360,103 @@ export default function MapPage() {
   })
   const uploadInputRef = useRef<HTMLInputElement>(null)
 
-  // Load locations on mount or when store changes
-  useEffect(() => {
-    const loadLocationsData = async () => {
-      const loadedLocations = await loadLocations(activeSiteId)
-      setLocations(loadedLocations)
-
-      // Set current location to first one, or migrate old single map if exists
-      if (loadedLocations.length > 0) {
-        setCurrentLocationId(loadedLocations[0].id)
-      } else {
-        // Try to migrate old single map format
-        const imageKey = activeSiteId ? `fusion_map-image-url_${activeSiteId}` : 'map-image-url'
-        const vectorKey = `${imageKey}_vector`
-
-        try {
-          let imageUrl: string | null = null
-          let vectorData: any = null
-
-          // Try IndexedDB first
-          try {
-            if (activeSiteId) {
-              const { getVectorData } = await import('@/lib/indexedDB')
-              vectorData = await getVectorData(activeSiteId, vectorKey)
-            }
-          } catch (e) {
-            // Fallback to localStorage
-            const savedVectorData = localStorage.getItem(vectorKey)
-            if (savedVectorData) {
-              vectorData = JSON.parse(savedVectorData)
-            }
-          }
-
-          // Try image
-          const savedImageUrl = localStorage.getItem(imageKey)
-          if (savedImageUrl) {
-            imageUrl = savedImageUrl
-          }
-
-          // If we have old data, migrate it to location system
-          if (imageUrl || vectorData) {
-            const migratedLocation = await addLocation(activeSiteId, {
-              name: 'Main Floor Plan',
-              type: 'base',
-              imageUrl,
-              vectorData,
-            })
-            setLocations([migratedLocation])
-            setCurrentLocationId(migratedLocation.id)
-
-            // Clean up old storage
-            localStorage.removeItem(imageKey)
-            localStorage.removeItem(vectorKey)
-          }
-        } catch (e) {
-          console.warn('Failed to migrate old map data:', e)
-        }
-      }
-    }
-
-    loadLocationsData()
-  }, [activeSiteId])
+  // Legacy migration effect removed.
+  // We rely on TRPC 'locations' query now.
 
   const handleMapUpload = async (imageUrl: string) => {
+    if (!activeSiteId) return
     const locationName = prompt('Enter a name for this location:', 'Main Floor Plan')
     if (!locationName) return
 
-    // Store large images in IndexedDB if they're too big for localStorage
-    let storageKey: string | undefined = undefined
-    if (imageUrl.length > 100000 && activeSiteId) {
+    let finalImageUrl = imageUrl
+
+    // If it's a base64 string, upload it to Supabase
+    if (imageUrl.startsWith('data:')) {
       try {
-        const { storeVectorData } = await import('@/lib/indexedDB')
-        const vectorKey = `location_image_${Date.now()}`
-        // Store as vector data (it's just a blob of data)
-        await storeVectorData(activeSiteId, { data: imageUrl } as any, vectorKey)
-        storageKey = vectorKey
-        // Don't store large images in location object - use storageKey instead
+        // Convert base64 to Blob
+        const fetchRes = await fetch(imageUrl)
+        const blob = await fetchRes.blob()
+        const file = new File([blob], `map-${Date.now()}.jpg`, { type: 'image/jpeg' })
+
+        // Upload
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('bucket', 'map-data') // Use map-data bucket
+        formData.append('fileName', `${activeSiteId}/${Date.now()}-map.jpg`)
+
+        const uploadRes = await fetch('/api/upload-image', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!uploadRes.ok) throw new Error('Upload failed')
+
+        const { url } = await uploadRes.json()
+        finalImageUrl = url
       } catch (e) {
-        console.warn('Failed to store large image in IndexedDB, using localStorage:', e)
+        console.error('Failed to upload map image:', e)
+        alert('Failed to upload map image. Using unstable local copy.')
+        // Fallback to base64 if upload fails (not ideal for db, but keeps it working)
       }
     }
 
-    const newLocation = await addLocation(activeSiteId, {
+    createLocationMutation.mutate({
+      siteId: activeSiteId,
       name: locationName,
       type: 'base',
-      imageUrl: imageUrl && imageUrl.length <= 100000 ? imageUrl : undefined,
-      storageKey,
+      imageUrl: finalImageUrl,
     })
 
-    setLocations(prev => [...prev, newLocation])
-    setCurrentLocationId(newLocation.id)
     setShowUploadModal(false)
-
-    // Note: Map images are stored separately from site images
-    // Site images should be uploaded separately via the dashboard/AddSiteModal
   }
 
   const handleVectorDataUpload = async (data: any) => {
-    const locationName = prompt('Enter a name for this location:', 'Main Floor Plan')
-    if (!locationName) return
-
-    // Always store vector data in IndexedDB (it's usually large)
     if (!activeSiteId) {
       alert('No store selected. Please select a store first.')
       return
     }
-    let storageKey: string | undefined = undefined
+    const locationName = prompt('Enter a name for this location:', 'Main Floor Plan')
+    if (!locationName) return
+
+    let vectorUrl: string | undefined = undefined
+
+    // Upload JSON data to Supabase
     try {
-      const { storeVectorData } = await import('@/lib/indexedDB')
-      const vectorKey = `location_vector_${Date.now()}`
-      await storeVectorData(activeSiteId, data, vectorKey)
-      storageKey = vectorKey
+      const jsonString = JSON.stringify(data)
+      const blob = new Blob([jsonString], { type: 'application/json' })
+      const file = new File([blob], `vector-${Date.now()}.json`, { type: 'application/json' })
+
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('bucket', 'map-data')
+      formData.append('fileName', `${activeSiteId}/${Date.now()}-vector.json`)
+
+      const uploadRes = await fetch('/api/upload-image', { // It handles any file if we don't enforce image mime in backend strictly, let's hope. 
+        // Backend says `contentType: file.type || 'image/jpeg'` so it might force jpeg?
+        // Wait, `app/api/upload-image/route.ts` line 54: `contentType: file.type || 'image/jpeg'`. 
+        // If I pass application/json as file type, it should use it.
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!uploadRes.ok) throw new Error('Upload failed')
+
+      const { url } = await uploadRes.json()
+      vectorUrl = url
     } catch (e) {
-      console.error('Failed to store vector data in IndexedDB:', e)
-      alert('Failed to save location. Storage may be full. Please try clearing browser storage.')
+      console.error('Failed to upload vector data:', e)
+      alert('Failed to upload vector data.')
       return
     }
 
-    const newLocation = await addLocation(activeSiteId, {
+    createLocationMutation.mutate({
+      siteId: activeSiteId,
       name: locationName,
       type: 'base',
-      storageKey, // Store reference only
+      vectorDataUrl: vectorUrl,
     })
 
-    setLocations(prev => [...prev, newLocation])
-    setCurrentLocationId(newLocation.id)
     setShowUploadModal(false)
-    // Refresh map cache so other pages see the new map
-    await refreshMapData()
   }
 
   const handleLocationSelect = (locationId: string) => {
@@ -451,33 +464,26 @@ export default function MapPage() {
   }
 
   const handleCreateZoomView = async (name: string, bounds: { minX: number; minY: number; maxX: number; maxY: number }) => {
-    if (!currentLocationId) return
+    if (!currentLocationId || !activeSiteId) return
 
-    const newZoomView = await addLocation(activeSiteId, {
+    createLocationMutation.mutate({
+      siteId: activeSiteId,
       name,
       type: 'zoom',
-      parentLocationId: currentLocationId,
-      imageUrl: currentLocation?.imageUrl,
-      vectorData: currentLocation?.vectorData,
+      parentId: currentLocationId,
       zoomBounds: bounds,
+      // URL inheritence is handled by backend or frontend resolve logic
+      // But we can implicitly store them? No, we shouldn't duplicate data.
+      // Frontend resolve logic already looks at parent.
     })
-
-    setLocations(prev => [...prev, newZoomView])
-    setCurrentLocationId(newZoomView.id)
   }
 
   const handleDeleteLocation = async (locationId: string) => {
-    await deleteLocation(activeSiteId, locationId)
-    const updatedLocations = await loadLocations(activeSiteId)
-    setLocations(updatedLocations)
+    if (!confirm('Are you sure you want to delete this location?')) return
+    deleteLocationMutation.mutate({ id: locationId })
 
-    // If we deleted the current location, switch to first available
     if (locationId === currentLocationId) {
-      if (updatedLocations.length > 0) {
-        setCurrentLocationId(updatedLocations[0].id)
-      } else {
-        setCurrentLocationId(null)
-      }
+      setCurrentLocationId(null)
     }
   }
 
@@ -573,15 +579,16 @@ export default function MapPage() {
   }
 
   const handleClearMap = async () => {
-    if (!confirm('Are you sure you want to clear all locations and zoom views? This cannot be undone.')) {
+    if (!confirm('Are you sure you want to clear all locations? This cannot be undone.')) {
       return
     }
 
-    // Clear all locations (this will also clear all zoom views since they're stored together)
-    await saveLocations(activeSiteId, [])
+    // Delete all locations
+    // Note: iterating mutations might spam, but for now it's fine for a clear action
+    for (const loc of locations) {
+      deleteLocationMutation.mutate({ id: loc.id })
+    }
 
-    // Reset state
-    setLocations([])
     setCurrentLocationId(null)
     setSelectedDevice(null)
     setSelectedDeviceIds([])

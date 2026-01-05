@@ -194,7 +194,6 @@ export function SiteProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (urlSiteId && urlSiteId !== activeSiteId && sites.some(s => s.id === urlSiteId)) {
-      console.log(`Switching site to ${urlSiteId} from URL param`)
       setActiveSiteId(urlSiteId)
     }
   }, [urlSiteId, activeSiteId, sites])

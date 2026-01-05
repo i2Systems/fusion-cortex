@@ -29,16 +29,17 @@ export const supabase = supabaseUrl && supabaseAnonKey
 // Client for server-side operations (service role key for admin access)
 export const supabaseAdmin = supabaseUrl && supabaseServiceKey
   ? createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
   : null
 
 // Storage bucket names
 export const STORAGE_BUCKETS = {
   SITE_IMAGES: 'site-images',
   LIBRARY_IMAGES: 'library-images',
+  MAP_DATA: 'map-data',
 } as const
 

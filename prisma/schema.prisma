@@ -34,8 +34,9 @@ model Site {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  devices Device[]
-  zones   Zone[]
+  devices   Device[]
+  zones     Zone[]
+  locations Location[]
 }
 
 model Device {
@@ -237,9 +238,31 @@ model LibraryImage {
 //   @@index([status])
 // }
 
-// enum DiscoveryStatus {
-//   RUNNING
-//   COMPLETED
-//   FAILED
-//   STOPPED
-// }
+// Map Location Model
+model Location {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   // 'base' or 'zoom'
+  
+  // Storage references (Supabase Key/URL)
+  imageUrl      String?  
+  vectorDataUrl String? 
+
+  // Zoom view properties
+  zoomBounds    Json?    // { minX, minY, maxX, maxY }
+  
+  // Hierarchy
+  parentId      String?
+  parent        Location? @relation("LocationHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children      Location[] @relation("LocationHierarchy")
+  
+  // Site context
+  siteId    String
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([siteId])
+  @@index([parentId])
+}
