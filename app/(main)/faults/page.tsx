@@ -782,7 +782,7 @@ export default function FaultsPage() {
           {/* Content Area */}
           <div className="flex-1 min-h-0">
             {viewMode === 'list' ? (
-              <div className="fusion-card overflow-hidden h-full flex flex-col">
+              <div className="fusion-card h-full flex flex-col">
                 <FaultList
                   faults={filteredFaults}
                   selectedFaultId={selectedFaultId}

@@ -46,7 +46,12 @@ Fusion/Cortex is **not**:
 │   │   ├── faults/        # Faults / Health section
 │   │   └── layout.tsx     # Main layout wrapper
 │   ├── api/trpc/          # tRPC API route
-│   ├── globals.css        # Design tokens & global styles
+│   ├── globals.css        # Global styles & theme imports
+│   ├── styles/            # CSS Architecture
+│   │   ├── themes/        # Individual theme files (dark.css, light.css, etc.)
+│   │   ├── base.css       # Core HSL variable definitions
+│   │   ├── components.css # Component-specific overrides
+│   │   └── utilities.css  # Utility classes
 │   └── layout.tsx         # Root layout
 ├── components/
 │   ├── layout/            # Layout components (Nav, TopBar, Panels)
@@ -80,16 +85,23 @@ All design values are defined as CSS custom properties in `app/globals.css`. Thi
 - Consistent spacing, colors, typography
 - No hard-coded values in components
 
+**Theme Architecture:**
+- **Themes**: Located in `app/styles/themes/`. Each file (`dark.css`, `warm-night.css`) defines the full set of CSS variables.
+- **Base**: `app/styles/base.css` defines the core HSL variables and default values.
+- **Components**: `app/styles/components.css` contains component-specific overrides and legacy token styles.
+- **Globals**: `app/globals.css` serves as the entry point, importing all themes and base styles.
+
 **Key Token Categories:**
 - Colors (backgrounds, borders, text, primary, status)
 - Spacing (4px base unit scale)
 - Border radius
-- Shadows (layered, modern)
+- Shadows (layered, modern, neumorphic)
 - Typography (system fonts)
 - Transitions
 - Z-index layers
 
-**AI Note**: Always use design tokens (`var(--color-primary)`) instead of hard-coded values. To change the theme, modify tokens in `globals.css`.
+**AI Note**: Always use design tokens (`var(--color-primary)`) instead of hard-coded values. To modify a theme, edit the specific file in `app/styles/themes/`.
+
 
 ### Component Library & Storybook
 
@@ -320,6 +332,20 @@ See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for complete deployment guide to Vercel
 - Analytics dashboards for site managers
 - Legacy spec content about energy/analytics beyond what's defined
 - Device discovery/scanning (removed - use manual entry in lookup page)
+
+## 🗺️ Roadmap
+
+### Phase 2: Enhanced Components (Current)
+- [x] **Badge Component**: Unified status indicators across the app.
+- [x] **Toggle Component**: Standardized toggle buttons.
+- [ ] **Select Component**: Custom select wrapper for consistent styling.
+- [ ] **Card Component**: Standardized container styling.
+
+### Phase 3: Global Theming & Dashboard
+- [ ] Refactor Dashboard to use new components.
+- [ ] Audit `base.css` for distinct High Contrast vs Dark separation.
+- [ ] Refactor Status/Stat Cards.
+
 
 ## 📚 External Resources
 

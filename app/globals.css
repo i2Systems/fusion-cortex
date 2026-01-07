@@ -23,4 +23,6 @@
   - styles/base.css: Variables, resets, and themes
   - styles/components.css: Design system components (.fusion-card, .btn-)
   - styles/utilities.css: Helper classes
+
+  For details on adding new themes, see app/styles/README.md
 */
