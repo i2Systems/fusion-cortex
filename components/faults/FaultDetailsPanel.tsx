@@ -19,6 +19,7 @@ import { FaultCategory, faultCategories, generateFaultDescription } from '@/lib/
 import { calculateWarrantyStatus, getWarrantyStatusLabel, getWarrantyStatusTokenClass, formatWarrantyExpiry } from '@/lib/warranty'
 import { getDeviceLibraryUrl, getDeviceImage, getDeviceImageAsync } from '@/lib/libraryUtils'
 import { isFixtureType } from '@/lib/deviceUtils'
+import { Button } from '@/components/ui/Button'
 
 interface Fault {
   id?: string // Database fault ID (if from database)
@@ -208,18 +209,18 @@ export function FaultDetailsPanel({ fault, devices = [], onAddNewFault, onDelete
                   </p>
                 </div>
 
-                {/* Submit Button */}
                 <div className="pt-2">
-                  <button
+                  <Button
                     onClick={handleSubmitNewFault}
                     disabled={!selectedDeviceId || !selectedCategory}
-                    className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    variant="primary"
+                    className="w-full flex items-center justify-center gap-2"
                     title="Add Fault"
                   >
                     <Plus size={16} />
                     <span className="hidden md:inline">Add Fault</span>
                     <span className="md:hidden">Add</span>
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -543,14 +544,15 @@ export function FaultDetailsPanel({ fault, devices = [], onAddNewFault, onDelete
 
             {/* Submit Button */}
             <div className="pt-2">
-              <button
+              <Button
                 onClick={handleSubmitNewFault}
                 disabled={!selectedCategory}
-                className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="primary"
+                className="w-full flex items-center justify-center gap-2"
               >
                 <Plus size={16} />
                 Add Fault
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -826,7 +828,7 @@ export function FaultDetailsPanel({ fault, devices = [], onAddNewFault, onDelete
         {/* Resolve/Unresolve Toggle - Only for database faults, at bottom of scroll */}
         {fault.id && (fault.resolved ? onUnresolve : onResolve) && (
           <div className="pt-4 mt-4 border-t border-[var(--color-border-subtle)]">
-            <button
+            <Button
               onClick={() => {
                 if (fault.resolved && onUnresolve) {
                   onUnresolve(fault.id!)
@@ -834,54 +836,60 @@ export function FaultDetailsPanel({ fault, devices = [], onAddNewFault, onDelete
                   onResolve(fault.id!)
                 }
               }}
-              className="w-full fusion-button text-xs md:text-sm flex items-center justify-center gap-1.5 md:gap-2"
-              style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text-muted)' }}
+              className="w-full text-xs md:text-sm flex items-center justify-center gap-1.5 md:gap-2"
+              variant="secondary"
+            // style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text-muted)' }} // Removed style override, relying on secondary variant + className if needed or we can use ghost? The original had specific style. Secondary is close. 
+            // Actually, original had specific style to look muted. Let's use ghost or overwrite.
+            // Original: style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text-muted)' }}
             >
               <CheckCircle2 size={14} className="md:w-4 md:h-4" />
               <span className="hidden sm:inline">{fault.resolved ? 'Mark Unresolved' : 'Mark as Resolved'}</span>
               <span className="sm:hidden">{fault.resolved ? 'Unresolve' : 'Resolved'}</span>
-            </button>
+            </Button>
           </div>
         )}
 
         {/* Delete Button - Only for database faults, at bottom of scroll */}
         {fault.id && onDelete && (
           <div className={`pt-4 ${fault.id && (fault.resolved ? onUnresolve : onResolve) ? '' : 'mt-4 border-t border-[var(--color-border-subtle)]'}`}>
-            <button
+            <Button
               onClick={() => {
                 if (confirm('Are you sure you want to permanently delete this fault? This cannot be undone.')) {
                   onDelete(fault.id!)
                 }
               }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 rounded-lg text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/20 transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 rounded-lg text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/20 transition-colors shadow-none"
+              // Override variant to match custom red style
+              variant="ghost"
             >
               <X size={14} />
               Delete Fault
-            </button>
+            </Button>
           </div>
         )}
       </div>
 
       {/* Actions Footer */}
       <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] space-y-2 flex-shrink-0">
-        <button className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm">
+        <Button className="w-full flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm" variant="primary">
           <RefreshCw size={14} className="md:w-4 md:h-4" />
           <span className="hidden sm:inline">Retry Connection</span>
           <span className="sm:hidden">Retry</span>
-        </button>
+        </Button>
 
         {onAddNewFault && (
-          <button
+          <Button
             onClick={() => {
               // Pre-select the current device when adding a new fault
               setSelectedDeviceId(fault.device.id)
               setShowAddForm(true)
             }}
-            className="w-full px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center justify-center gap-2"
+            variant="secondary"
+            className="w-full hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] flex items-center justify-center gap-2"
           >
             <Plus size={16} />
             Add Related Fault
-          </button>
+          </Button>
         )}
       </div>
     </div>

@@ -1,0 +1,197 @@
+/* ============================================
+     GLASS-NEUMORPHISM THEME (Deep 3D / High Fidelity)
+     ============================================ */
+[data-theme="glass-neumorphism"] {
+    /* Backgrounds - Classic Neumorphism Gray-Blue */
+    --color-bg: #e0e5ec;
+    --color-bg-elevated: #e0e5ec;
+    --color-surface: #e0e5ec;
+    --color-surface-subtle: #eef2f7;
+
+    /* Borders - None (Shadow defined) or extremely subtle highlight */
+    --color-border-subtle: rgba(255, 255, 255, 0.2);
+    --color-border-strong: rgba(163, 177, 198, 0.3);
+
+    /* Primary brand color - Strong Blue for contrast against subtle bg */
+    --color-primary: #3b82f6;
+    --color-primary-soft: #e0e5ec;
+    /* Background match for inset effect */
+    --color-primary-hover: #2563eb;
+    --color-primary-strong: #1d4ed8;
+
+    /* Accent & status colors - Slightly richer to stand out */
+    --color-accent: #db2777;
+    --color-danger: #ef4444;
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-info: #3b82f6;
+
+    /* Text colors - Deeper contrast for legibility */
+    --color-text: #2d3748;
+    --color-text-muted: #718096;
+    --color-text-soft: #a0aec0;
+    --color-text-on-primary: #ffffff;
+
+    /* Tooltip - Floating 3D Block */
+    --color-tooltip-bg: #e0e5ec;
+    --color-tooltip-border: transparent;
+    --color-tooltip-text: var(--color-text);
+    --color-tooltip-shadow:
+        8px 8px 16px rgba(163, 177, 198, 0.6),
+        -8px -8px 16px rgba(255, 255, 255, 0.8);
+
+    /* Shadows - The "True Neumorphism" 3D Look */
+    /* Key: Dark shadow bottom-right, Light shadow top-left */
+
+    /* Soft - Standard depth */
+    --shadow-soft:
+        9px 9px 16px rgba(163, 177, 198, 0.6),
+        -9px -9px 16px rgba(255, 255, 255, 1.0);
+
+    /* Medium - More extruded */
+    --shadow-md:
+        12px 12px 24px rgba(163, 177, 198, 0.6),
+        -12px -12px 24px rgba(255, 255, 255, 1.0);
+
+    /* Strong - High float */
+    --shadow-strong:
+        20px 20px 40px rgba(163, 177, 198, 0.7),
+        -20px -20px 40px rgba(255, 255, 255, 1.0);
+
+    /* Glows - Actually colored shadows for brand feel */
+    --shadow-glow-primary: 5px 5px 10px rgba(59, 130, 246, 0.3), -5px -5px 10px rgba(255, 255, 255, 0.8);
+    --shadow-glow-accent: 5px 5px 10px rgba(219, 39, 119, 0.3), -5px -5px 10px rgba(255, 255, 255, 0.8);
+
+    /* Interactive inset for hover/active if needed, otherwise outer lift */
+    --shadow-glow-hover:
+        7px 7px 14px rgba(163, 177, 198, 0.5),
+        -7px -7px 14px rgba(255, 255, 255, 0.9);
+
+    /* Glow effects (Focus rings) - Inset style for neumorphism often looks best, or simple colored drop */
+    --glow-primary: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    --glow-modal: 20px 20px 60px rgba(163, 177, 198, 0.7), -20px -20px 60px rgba(255, 255, 255, 1.0);
+    --glow-accent: 0 0 0 4px rgba(219, 39, 119, 0.15);
+    --glow-strong: 10px 10px 20px rgba(163, 177, 198, 0.5);
+
+    /* Glass aesthetics - None */
+    --glass-blur: 0px;
+    --glass-opacity: 1;
+
+    /* Neumorphism specials - Strong Inset (Pressed) */
+    --neumorphism-shadow-inset:
+        inset 6px 6px 12px rgba(163, 177, 198, 0.7),
+        inset -6px -6px 12px rgba(255, 255, 255, 1.0);
+
+    --neumorphism-shadow-outset:
+        9px 9px 16px rgba(163, 177, 198, 0.6),
+        -9px -9px 16px rgba(255, 255, 255, 1.0);
+
+    /* Radius - Soft modern (Standardized) */
+    --radius-xs: 8px;
+    --radius-sm: 12px;
+    --radius-md: 16px;
+    --radius-lg: 20px;
+    --radius-xl: 28px;
+    --radius-2xl: 40px;
+}
+
+[data-theme="glass-neumorphism"] body {
+    background: #e0e5ec;
+}
+
+/* Polished Components */
+/* Tokens: "Pressed" or "Extruded" look depending on context. Let's go Extruded (Outset) for regular tokens */
+[data-theme="glass-neumorphism"] .token-status-online,
+[data-theme="glass-neumorphism"] .token-status-active,
+[data-theme="glass-neumorphism"] .token-status-success {
+    background: #e0e5ec;
+    color: #059669;
+    border: none;
+    box-shadow:
+        5px 5px 10px rgba(163, 177, 198, 0.6),
+        -5px -5px 10px rgba(255, 255, 255, 1.0);
+}
+
+/* Inactive/Offline - Inset ("Pressed") look to feel "off" or "recessed" */
+[data-theme="glass-neumorphism"] .token-status-offline,
+[data-theme="glass-neumorphism"] .token-status-disabled,
+[data-theme="glass-neumorphism"] .token-status-inactive,
+[data-theme="glass-neumorphism"] .token-status-not-assigned {
+    background: #e0e5ec;
+    color: #a0aec0;
+    border: none;
+    box-shadow:
+        inset 3px 3px 6px rgba(163, 177, 198, 0.6),
+        inset -3px -3px 6px rgba(255, 255, 255, 1.0);
+}
+
+[data-theme="glass-neumorphism"] .token-status-error,
+[data-theme="glass-neumorphism"] .token-status-danger,
+[data-theme="glass-neumorphism"] .token-status-missing {
+    background: #e0e5ec;
+    color: #ef4444;
+    border: none;
+    box-shadow:
+        5px 5px 10px rgba(163, 177, 198, 0.6),
+        -5px -5px 10px rgba(255, 255, 255, 1.0);
+}
+
+[data-theme="glass-neumorphism"] .token-status-warning,
+[data-theme="glass-neumorphism"] .token-type-override {
+    background: #e0e5ec;
+    color: #d97706;
+    border: none;
+    box-shadow:
+        5px 5px 10px rgba(163, 177, 198, 0.6),
+        -5px -5px 10px rgba(255, 255, 255, 1.0);
+}
+
+[data-theme="glass-neumorphism"] .token-status-info,
+[data-theme="glass-neumorphism"] .token-type-schedule {
+    background: #e0e5ec;
+    color: #3b82f6;
+    border: none;
+    box-shadow:
+        5px 5px 10px rgba(163, 177, 198, 0.6),
+        -5px -5px 10px rgba(255, 255, 255, 1.0);
+}
+
+/* Type labels - Recessed/Inset for differentiation */
+[data-theme="glass-neumorphism"] .token-type-rule {
+    background: #e0e5ec;
+    color: #718096;
+    border: none;
+    box-shadow:
+        inset 3px 3px 6px rgba(163, 177, 198, 0.5),
+        inset -3px -3px 6px rgba(255, 255, 255, 0.9);
+}
+
+/* Data metrics */
+[data-theme="glass-neumorphism"] .token-data-signal-high,
+[data-theme="glass-neumorphism"] .token-data-battery-high,
+[data-theme="glass-neumorphism"] .token-warranty-in-warranty {
+    color: #059669;
+    /* Stronger green */
+}
+
+[data-theme="glass-neumorphism"] .token-data-signal-medium,
+[data-theme="glass-neumorphism"] .token-data-battery-medium {
+    color: #d97706;
+    /* Stronger amber */
+}
+
+[data-theme="glass-neumorphism"] .token-data-signal-low,
+[data-theme="glass-neumorphism"] .token-data-battery-low {
+    color: #ef4444;
+    /* Stronger red */
+}
+
+[data-theme="glass-neumorphism"] .token-warranty-in-warranty,
+[data-theme="glass-neumorphism"] .token-warranty-out-of-warranty,
+[data-theme="glass-neumorphism"] .token-warranty-near-end {
+    background: #e0e5ec;
+    border: none;
+    box-shadow:
+        5px 5px 10px rgba(163, 177, 198, 0.6),
+        -5px -5px 10px rgba(255, 255, 255, 1.0);
+}

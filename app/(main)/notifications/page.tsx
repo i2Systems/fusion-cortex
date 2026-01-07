@@ -16,6 +16,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { AlertTriangle, Layers, Network, Workflow, Search, Home, X, CheckCheck, Mail, ArrowUpDown, Clock, Filter, Sparkles, List, Grid3x3, LayoutGrid, Columns, Rss, Building2 } from 'lucide-react'
 import Link from 'next/link'
+import { Button } from '@/components/ui/Button'
+import { Toggle } from '@/components/ui/Toggle'
+import { Select } from '@/components/ui/Select'
+import { Badge } from '@/components/ui/Badge'
 
 const typeIcons: Record<string, any> = {
   fault: AlertTriangle,
@@ -43,7 +47,7 @@ export default function NotificationsPage() {
   const { sites, activeSiteId } = useSite()
   const router = useRouter()
   const searchParams = useSearchParams()
-  
+
   // Initialize filters from URL params
   const [filter, setFilter] = useState<'all' | 'unread' | 'faults'>(
     (searchParams.get('filter') as 'all' | 'unread' | 'faults') || 'all'
@@ -54,7 +58,7 @@ export default function NotificationsPage() {
   const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [layout, setLayout] = useState<LayoutOption>('singular')
   const [searchQuery, setSearchQuery] = useState('')
-  
+
   // Update filters when URL params change
   useEffect(() => {
     const filterParam = searchParams.get('filter')
@@ -72,7 +76,7 @@ export default function NotificationsPage() {
     const now = new Date()
     const types: NotificationType[] = ['fault', 'zone', 'bacnet', 'rule', 'device', 'system', 'warranty']
     const type = types[Math.floor(Math.random() * types.length)]
-    
+
     const notifications: Record<NotificationType, { titles: string[], messages: string[], links: string[] }> = {
       fault: {
         titles: [
@@ -128,11 +132,11 @@ export default function NotificationsPage() {
         links: ['/lookup'],
       },
     }
-    
+
     const templates = notifications[type]
     const titleIndex = Math.floor(Math.random() * templates.titles.length)
     const linkIndex = Math.floor(Math.random() * templates.links.length)
-    
+
     const newNotification = {
       id: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type,
@@ -142,13 +146,13 @@ export default function NotificationsPage() {
       read: false,
       link: templates.links[linkIndex],
     }
-    
+
     addNotification(newNotification)
   }
 
   const filteredNotifications = useMemo(() => {
     let filtered = notifications
-    
+
     // Apply read/unread filter
     if (filter === 'unread') {
       filtered = filtered.filter(n => !n.read)
@@ -156,7 +160,7 @@ export default function NotificationsPage() {
       // Show only fault notifications
       filtered = filtered.filter(n => n.type === 'fault')
     }
-    
+
     // Apply site filter
     if (siteFilter !== 'all') {
       const beforeCount = filtered.length
@@ -172,7 +176,7 @@ export default function NotificationsPage() {
       // When showing "All Sites", show all notifications (both site-specific and global)
       // No filtering needed
     }
-    
+
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
@@ -185,7 +189,7 @@ export default function NotificationsPage() {
         return searchableText.includes(query)
       })
     }
-    
+
     // Sort notifications
     const sorted = [...filtered].sort((a, b) => {
       switch (sortBy) {
@@ -202,7 +206,7 @@ export default function NotificationsPage() {
           return 0
       }
     })
-    
+
     return sorted
   }, [notifications, filter, siteFilter, sortBy, searchQuery])
 
@@ -214,7 +218,7 @@ export default function NotificationsPage() {
     }
     return ''
   }
-  
+
   const getCardHeight = (notification: any) => {
     const messageLength = notification.message.length
     // Unread notifications or long messages get more height
@@ -247,8 +251,8 @@ export default function NotificationsPage() {
     <div className="h-full flex flex-col min-h-0 pb-2 overflow-visible">
       {/* Top Search Island */}
       <div className="flex-shrink-0 page-padding-x pt-3 md:pt-4 pb-2 md:pb-3">
-        <SearchIsland 
-          position="top" 
+        <SearchIsland
+          position="top"
           fullWidth={true}
           title="Notifications"
           subtitle={unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
@@ -257,166 +261,149 @@ export default function NotificationsPage() {
           onSearchChange={setSearchQuery}
         />
       </div>
-      
+
       {/* Header Controls */}
       <div className="page-padding-x pb-3 md:pb-4">
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 md:gap-3 flex-wrap">
-            {/* Layout Toggle */}
-            <div className="flex items-center gap-0.5 md:gap-1 bg-[var(--color-surface-subtle)] rounded-lg p-0.5 md:p-1">
-              <button
-                onClick={() => setLayout('singular')}
-                className={`p-1.5 md:p-2 rounded transition-all duration-200 ${
-                  layout === 'singular'
-                    ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[var(--shadow-soft)] scale-105'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
-                }`}
-                title="Feed Layout"
-              >
-                <Rss size={14} className="md:w-4 md:h-4" />
-              </button>
-              <button
-                onClick={() => setLayout('grid')}
-                className={`p-1.5 md:p-2 rounded transition-all duration-200 ${
-                  layout === 'grid'
-                    ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[var(--shadow-soft)] scale-105'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
-                }`}
-                title="Grid Layout"
-              >
-                <LayoutGrid size={14} className="md:w-4 md:h-4" />
-              </button>
-              <button
-                onClick={() => setLayout('double-list')}
-                className={`p-1.5 md:p-2 rounded transition-all duration-200 ${
-                  layout === 'double-list'
-                    ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[var(--shadow-soft)] scale-105'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
-                }`}
-                title="Double List Layout"
-              >
-                <Columns size={14} className="md:w-4 md:h-4" />
-              </button>
-              <button
-                onClick={() => setLayout('mortar')}
-                className={`p-1.5 md:p-2 rounded transition-all duration-200 ${
-                  layout === 'mortar'
-                    ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[var(--shadow-soft)] scale-105'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
-                }`}
-                title="Mortar Layout"
-              >
-                <Grid3x3 size={14} className="md:w-4 md:h-4" />
-              </button>
-            </div>
-
-            {/* Filter */}
-            <div className="flex items-center gap-0.5 md:gap-1 bg-[var(--color-surface-subtle)] rounded-lg p-0.5 md:p-1">
-              <Filter size={12} className="text-[var(--color-text-muted)] ml-0.5 md:ml-1 hidden sm:block" />
-              <button
-                onClick={() => setFilter('all')}
-                className={`px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm transition-all duration-200 ${
-                  filter === 'all'
-                    ? 'bg-[var(--color-surface)] text-[var(--color-text)] font-medium shadow-[var(--shadow-soft)] scale-105'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
-                }`}
-                title="Show all notifications"
-              >
-                All
-              </button>
-              <button
-                onClick={() => setFilter('unread')}
-                className={`px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm transition-all duration-200 ${
-                  filter === 'unread'
-                    ? 'bg-[var(--color-surface)] text-[var(--color-text)] font-medium shadow-[var(--shadow-soft)] scale-105'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
-                }`}
-                title="Show unread notifications"
-              >
-                Unread
-              </button>
-              <button
-                onClick={() => setFilter('faults')}
-                className={`px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm transition-all duration-200 ${
-                  filter === 'faults'
-                    ? 'bg-[var(--color-surface)] text-[var(--color-text)] font-medium shadow-[var(--shadow-soft)] scale-105'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
-                }`}
-                title="Show fault notifications only"
-              >
-                <span className="hidden sm:inline">All Faults</span>
-                <span className="sm:hidden">Faults</span>
-              </button>
-            </div>
-            
-            {/* Site Filter */}
-            <div className="flex items-center gap-0.5 md:gap-1 bg-[var(--color-surface-subtle)] rounded-lg p-0.5 md:p-1 overflow-x-auto scrollbar-hide">
-              <Building2 size={12} className="text-[var(--color-text-muted)] ml-0.5 md:ml-1 hidden sm:block flex-shrink-0" />
-              <button
-                onClick={() => setSiteFilter('all')}
-                className={`px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                  siteFilter === 'all'
-                    ? 'bg-[var(--color-surface)] text-[var(--color-text)] font-medium shadow-[var(--shadow-soft)] scale-105'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
-                }`}
-                title="Show all sites"
-              >
-                <span className="hidden sm:inline">All Sites</span>
-                <span className="sm:hidden">All</span>
-              </button>
-              {sites.map((site) => (
-                <button
-                  key={site.id}
-                  onClick={() => setSiteFilter(site.id)}
-                  className={`px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm transition-all duration-200 truncate max-w-[100px] sm:max-w-[120px] flex-shrink-0 ${
-                    siteFilter === site.id
-                      ? 'bg-[var(--color-surface)] text-[var(--color-text)] font-medium shadow-[var(--shadow-soft)] scale-105'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:scale-105'
-                  }`}
-                  title={site.name}
+              {/* Layout Toggle */}
+              <div className="flex items-center gap-0.5 md:gap-1 bg-[var(--color-surface-subtle)] rounded-lg p-0.5 md:p-1">
+                <Toggle
+                  pressed={layout === 'singular'}
+                  onPressedChange={() => setLayout('singular')}
+                  size="icon"
+                  className="w-7 h-7 md:w-8 md:h-8"
+                  title="Feed Layout"
                 >
-                  {site.name}
-                </button>
-              ))}
-            </div>
-            
-            {/* Sort */}
-            <div className="flex items-center gap-1 md:gap-2 bg-[var(--color-surface-subtle)] rounded-lg p-0.5 md:p-1">
-              <ArrowUpDown size={12} className="text-[var(--color-text-muted)] ml-0.5 md:ml-1 hidden sm:block flex-shrink-0" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm bg-transparent text-[var(--color-text)] border-none outline-none cursor-pointer transition-all duration-200 hover:bg-[var(--color-surface)] focus:bg-[var(--color-surface)]"
-                title="Sort notifications"
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="unread-first">Unread First</option>
-                <option value="type">By Type</option>
-              </select>
-            </div>
+                  <Rss size={14} className="md:w-4 md:h-4" />
+                </Toggle>
+                <Toggle
+                  pressed={layout === 'grid'}
+                  onPressedChange={() => setLayout('grid')}
+                  size="icon"
+                  className="w-7 h-7 md:w-8 md:h-8"
+                  title="Grid Layout"
+                >
+                  <LayoutGrid size={14} className="md:w-4 md:h-4" />
+                </Toggle>
+                <Toggle
+                  pressed={layout === 'double-list'}
+                  onPressedChange={() => setLayout('double-list')}
+                  size="icon"
+                  className="w-7 h-7 md:w-8 md:h-8"
+                  title="Double List Layout"
+                >
+                  <Columns size={14} className="md:w-4 md:h-4" />
+                </Toggle>
+                <Toggle
+                  pressed={layout === 'mortar'}
+                  onPressedChange={() => setLayout('mortar')}
+                  size="icon"
+                  className="w-7 h-7 md:w-8 md:h-8"
+                  title="Mortar Layout"
+                >
+                  <Grid3x3 size={14} className="md:w-4 md:h-4" />
+                </Toggle>
+              </div>
 
-            {/* Generate Random - Surreptitious */}
-            <button
-              onClick={handleGenerateRandom}
-              className="p-1.5 md:p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] text-[var(--color-text-soft)] hover:text-[var(--color-text-muted)] transition-all duration-200 opacity-40 hover:opacity-100 flex-shrink-0"
-              title="Generate random notification"
-            >
-              <Sparkles size={14} className="md:w-4 md:h-4" />
-            </button>
+              {/* Filter */}
+              <div className="flex items-center gap-0.5 md:gap-1 bg-[var(--color-surface-subtle)] rounded-lg p-0.5 md:p-1">
+                <Filter size={12} className="text-[var(--color-text-muted)] ml-0.5 md:ml-1 hidden sm:block" />
+                <Toggle
+                  pressed={filter === 'all'}
+                  onPressedChange={() => setFilter('all')}
+                  size="sm"
+                  title="Show all notifications"
+                >
+                  All
+                </Toggle>
+                <Toggle
+                  pressed={filter === 'unread'}
+                  onPressedChange={() => setFilter('unread')}
+                  size="sm"
+                  title="Show unread notifications"
+                >
+                  Unread
+                </Toggle>
+                <Toggle
+                  pressed={filter === 'faults'}
+                  onPressedChange={() => setFilter('faults')}
+                  size="sm"
+                  title="Show fault notifications only"
+                >
+                  <span className="hidden sm:inline">All Faults</span>
+                  <span className="sm:hidden">Faults</span>
+                </Toggle>
+              </div>
 
-            {/* Mark all as read */}
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllAsRead}
-                className="px-2 md:px-4 py-1.5 md:py-2 rounded-lg bg-[var(--color-surface-subtle)] hover:bg-[var(--color-surface)] text-sm text-[var(--color-text)] transition-all duration-200 flex items-center justify-center gap-1.5 md:gap-2 hover:scale-105 flex-shrink-0"
-                title="Mark all notifications as read"
+              {/* Site Filter */}
+              <div className="flex items-center gap-0.5 md:gap-1 bg-[var(--color-surface-subtle)] rounded-lg p-0.5 md:p-1 overflow-x-auto scrollbar-hide">
+                <Building2 size={12} className="text-[var(--color-text-muted)] ml-0.5 md:ml-1 hidden sm:block flex-shrink-0" />
+                <Toggle
+                  pressed={siteFilter === 'all'}
+                  onPressedChange={() => setSiteFilter('all')}
+                  size="sm"
+                  className="whitespace-nowrap flex-shrink-0"
+                  title="Show all sites"
+                >
+                  <span className="hidden sm:inline">All Sites</span>
+                  <span className="sm:hidden">All</span>
+                </Toggle>
+                {sites.map((site) => (
+                  <Toggle
+                    key={site.id}
+                    pressed={siteFilter === site.id}
+                    onPressedChange={() => setSiteFilter(site.id)}
+                    size="sm"
+                    className="truncate max-w-[100px] sm:max-w-[120px] flex-shrink-0"
+                    title={site.name}
+                  >
+                    {site.name}
+                  </Toggle>
+                ))}
+              </div>
+
+              {/* Sort */}
+              <div className="flex items-center gap-1 md:gap-2 bg-[var(--color-surface-subtle)] rounded-lg p-0.5 md:p-1">
+                <ArrowUpDown size={12} className="text-[var(--color-text-muted)] ml-0.5 md:ml-1 hidden sm:block flex-shrink-0" />
+                <Select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  options={[
+                    { value: 'newest', label: 'Newest First' },
+                    { value: 'oldest', label: 'Oldest First' },
+                    { value: 'unread-first', label: 'Unread First' },
+                    { value: 'type', label: 'By Type' },
+                  ]}
+                  className="bg-transparent border-none py-1 md:py-1.5 h-auto text-xs md:text-sm w-32 md:w-36 focus:ring-0"
+                />
+              </div>
+
+              {/* Generate Random - Surreptitious */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleGenerateRandom}
+                className="w-7 h-7 md:w-8 md:h-8 rounded-lg text-[var(--color-text-soft)] hover:text-[var(--color-text-muted)] transition-all duration-200 opacity-40 hover:opacity-100 flex-shrink-0"
+                title="Generate random notification"
               >
-                <CheckCheck size={16} />
-                <span className="hidden md:inline">Mark all read</span>
-              </button>
-            )}
+                <Sparkles size={14} className="md:w-4 md:h-4" />
+              </Button>
+
+              {/* Mark all as read */}
+              {unreadCount > 0 && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={markAllAsRead}
+                  className="px-2 md:px-4 py-1.5 md:py-2 h-auto text-sm transition-all duration-200 flex items-center justify-center gap-1.5 md:gap-2 hover:scale-105 flex-shrink-0"
+                  title="Mark all notifications as read"
+                >
+                  <CheckCheck size={16} />
+                  <span className="hidden md:inline">Mark all read</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -430,22 +417,22 @@ export default function NotificationsPage() {
               <AlertTriangle size={24} className="text-[var(--color-text-muted)]" />
             </div>
             <h3 className="text-lg font-semibold text-[var(--color-text)] mb-2">
-              {filter === 'unread' 
-                ? 'No unread notifications' 
+              {filter === 'unread'
+                ? 'No unread notifications'
                 : filter === 'faults'
-                ? 'No fault notifications'
-                : 'No notifications'}
+                  ? 'No fault notifications'
+                  : 'No notifications'}
             </h3>
             <p className="text-sm text-[var(--color-text-muted)]">
-              {filter === 'unread' 
-                ? 'You\'re all caught up!' 
+              {filter === 'unread'
+                ? 'You\'re all caught up!'
                 : filter === 'faults'
-                ? siteFilter !== 'all'
-                  ? `No faults found for ${sites.find(s => s.id === siteFilter)?.name || 'this site'}.`
-                  : 'No fault notifications found across all sites.'
-                : siteFilter !== 'all'
-                ? `No notifications found for ${sites.find(s => s.id === siteFilter)?.name || 'this site'}.`
-                : 'Notifications will appear here when events occur.'}
+                  ? siteFilter !== 'all'
+                    ? `No faults found for ${sites.find(s => s.id === siteFilter)?.name || 'this site'}.`
+                    : 'No fault notifications found across all sites.'
+                  : siteFilter !== 'all'
+                    ? `No notifications found for ${sites.find(s => s.id === siteFilter)?.name || 'this site'}.`
+                    : 'Notifications will appear here when events occur.'}
             </p>
           </div>
         ) : (
@@ -455,14 +442,14 @@ export default function NotificationsPage() {
                 {filteredNotifications.map((notification, index) => {
                   const Icon = typeIcons[notification.type] || AlertTriangle
                   const color = typeColors[notification.type] || 'var(--color-text-muted)'
-                  
+
                   return (
                     <div
                       key={notification.id}
                       className={`
                         fusion-card p-5 cursor-pointer transition-all duration-200 group
-                        ${notification.read 
-                          ? 'opacity-75 hover:opacity-100 border-[var(--color-border-subtle)]' 
+                        ${notification.read
+                          ? 'opacity-75 hover:opacity-100 border-[var(--color-border-subtle)]'
                           : 'border-l-4 border-l-[var(--color-primary)] shadow-[var(--shadow-soft)]'
                         }
                         hover:shadow-[var(--shadow-soft)] hover:scale-[1.01]
@@ -474,17 +461,17 @@ export default function NotificationsPage() {
                     >
                       <div className="flex items-start gap-4">
                         {/* Icon */}
-                        <div 
+                        <div
                           className="p-3 rounded-xl flex-shrink-0 transition-all duration-200 group-hover:scale-110"
-                          style={{ 
+                          style={{
                             backgroundColor: notification.read ? 'var(--color-surface-subtle)' : `${color}20`,
                           }}
                         >
-                          <Icon 
-                            size={22} 
-                            style={{ 
-                              color: notification.read ? 'var(--color-text-muted)' : color 
-                            }} 
+                          <Icon
+                            size={22}
+                            style={{
+                              color: notification.read ? 'var(--color-text-muted)' : color
+                            }}
                           />
                         </div>
 
@@ -497,15 +484,13 @@ export default function NotificationsPage() {
                                   {notification.title}
                                 </h3>
                                 {!notification.read && (
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] font-medium flex-shrink-0">
-                                    New
-                                  </span>
+                                  <Badge variant="default" className="text-xs">New</Badge>
                                 )}
                                 {notification.siteId && (
-                                  <span className="text-xs px-2 py-0.5 text-[var(--color-text-soft)] font-normal flex-shrink-0 flex items-center gap-1">
+                                  <Badge variant="secondary" className="text-xs font-normal gap-1">
                                     <Building2 size={10} />
                                     {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
-                                  </span>
+                                  </Badge>
                                 )}
                               </div>
                               <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
@@ -513,7 +498,9 @@ export default function NotificationsPage() {
                               </p>
                             </div>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0">
-                              <button
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   if (notification.read) {
@@ -522,21 +509,23 @@ export default function NotificationsPage() {
                                     markAsRead(notification.id)
                                   }
                                 }}
-                                className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-all duration-200 hover:scale-110"
+                                className="w-8 h-8 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-all duration-200 hover:scale-110"
                                 title={notification.read ? 'Mark as unread' : 'Mark as read'}
                               >
                                 <Mail size={16} className="text-[var(--color-text-muted)]" />
-                              </button>
-                              <button
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   dismissNotification(notification.id)
                                 }}
-                                className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-all duration-200 hover:scale-110"
+                                className="w-8 h-8 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-all duration-200 hover:scale-110"
                                 title="Dismiss"
                               >
                                 <X size={16} className="text-[var(--color-text-muted)]" />
-                              </button>
+                              </Button>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--color-border-subtle)]">
@@ -555,333 +544,331 @@ export default function NotificationsPage() {
 
             {layout === 'grid' && (
               <div className="page-padding-x">
-              <div className="notifications-grid">
-                {filteredNotifications.map((notification, index) => {
-                  const Icon = typeIcons[notification.type] || AlertTriangle
-                  const color = typeColors[notification.type] || 'var(--color-text-muted)'
-                  const cardSize = getCardSize(notification, index)
-                  const cardHeight = getCardHeight(notification)
-                  const messageLength = notification.message.length
-                  const shouldClamp = notification.read && messageLength <= 100
-                  
-                  return (
-                    <div
-                      key={notification.id}
-                      className={`
+                <div className="notifications-grid">
+                  {filteredNotifications.map((notification, index) => {
+                    const Icon = typeIcons[notification.type] || AlertTriangle
+                    const color = typeColors[notification.type] || 'var(--color-text-muted)'
+                    const cardSize = getCardSize(notification, index)
+                    const cardHeight = getCardHeight(notification)
+                    const messageLength = notification.message.length
+                    const shouldClamp = notification.read && messageLength <= 100
+
+                    return (
+                      <div
+                        key={notification.id}
+                        className={`
                         fusion-card p-5 cursor-pointer transition-all duration-300 group h-full flex flex-col
-                        ${notification.read 
-                          ? 'opacity-75 hover:opacity-100 border-[var(--color-border-subtle)]' 
-                          : 'border-[var(--color-primary)]/40 shadow-[var(--shadow-glow-primary)]'
-                        }
+                        ${notification.read
+                            ? 'opacity-75 hover:opacity-100 border-[var(--color-border-subtle)]'
+                            : 'border-[var(--color-primary)]/40 shadow-[var(--shadow-glow-primary)]'
+                          }
                         hover:shadow-[var(--shadow-soft)] hover:scale-[1.02] hover:-translate-y-1
                         ${cardSize} ${cardHeight}
                       `}
-                      onClick={() => handleNotificationClick(notification)}
-                      style={{
-                        animation: `fadeInUp 0.3s ease-out ${index * 0.05}s both`
-                      }}
-                    >
-                      <div className="flex items-start gap-4 flex-1">
-                        {/* Icon */}
-                        <div 
-                          className="p-3 rounded-xl flex-shrink-0 transition-all duration-200 group-hover:scale-110"
-                          style={{ 
-                            backgroundColor: notification.read ? 'var(--color-surface-subtle)' : `${color}20`,
-                          }}
-                        >
-                          <Icon 
-                            size={22} 
-                            style={{ 
-                              color: notification.read ? 'var(--color-text-muted)' : color 
-                            }} 
-                          />
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0 flex flex-col">
-                          <div className="flex items-start justify-between gap-3 mb-2 flex-shrink-0">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                <h3 className={`text-base font-semibold ${notification.read ? 'text-[var(--color-text)]' : 'text-[var(--color-text)]'}`}>
-                                  {notification.title}
-                                </h3>
-                                {!notification.read && (
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] font-medium animate-pulse flex-shrink-0">
-                                    New
-                                  </span>
-                                )}
-                                {notification.siteId && (
-                                  <span className="text-xs px-2 py-0.5 text-[var(--color-text-soft)] font-normal flex-shrink-0 flex items-center gap-1">
-                                    <Building2 size={10} />
-                                    {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
-                                  </span>
-                                )}
-                              </div>
-                              <p className={`text-sm text-[var(--color-text-muted)] leading-relaxed ${shouldClamp ? 'line-clamp-2' : ''}`}>
-                                {notification.message}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  if (notification.read) {
-                                    markAsUnread(notification.id)
-                                  } else {
-                                    markAsRead(notification.id)
-                                  }
-                                }}
-                                className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-all duration-200 hover:scale-110"
-                                title={notification.read ? 'Mark as unread' : 'Mark as read'}
-                              >
-                                <Mail size={16} className="text-[var(--color-text-muted)]" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  dismissNotification(notification.id)
-                                }}
-                                className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-all duration-200 hover:scale-110"
-                                title="Dismiss"
-                              >
-                                <X size={16} className="text-[var(--color-text-muted)]" />
-                              </button>
-                            </div>
+                        onClick={() => handleNotificationClick(notification)}
+                        style={{
+                          animation: `fadeInUp 0.3s ease-out ${index * 0.05}s both`
+                        }}
+                      >
+                        <div className="flex items-start gap-4 flex-1">
+                          {/* Icon */}
+                          <div
+                            className="p-3 rounded-xl flex-shrink-0 transition-all duration-200 group-hover:scale-110"
+                            style={{
+                              backgroundColor: notification.read ? 'var(--color-surface-subtle)' : `${color}20`,
+                            }}
+                          >
+                            <Icon
+                              size={22}
+                              style={{
+                                color: notification.read ? 'var(--color-text-muted)' : color
+                              }}
+                            />
                           </div>
-                          <div className="flex items-center gap-2 mt-auto pt-3 border-t border-[var(--color-border-subtle)] flex-shrink-0">
-                            <Clock size={12} className="text-[var(--color-text-soft)]" />
-                            <span className="text-xs text-[var(--color-text-soft)]">
-                              {formatTime(notification.timestamp)}
-                            </span>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0 flex flex-col">
+                            <div className="flex items-start justify-between gap-3 mb-2 flex-shrink-0">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                  <h3 className={`text-base font-semibold ${notification.read ? 'text-[var(--color-text)]' : 'text-[var(--color-text)]'}`}>
+                                    {notification.title}
+                                  </h3>
+                                  {!notification.read && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] font-medium animate-pulse flex-shrink-0">
+                                      New
+                                    </span>
+                                  )}
+                                  {notification.siteId && (
+                                    <span className="text-xs px-2 py-0.5 text-[var(--color-text-soft)] font-normal flex-shrink-0 flex items-center gap-1">
+                                      <Building2 size={10} />
+                                      {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className={`text-sm text-[var(--color-text-muted)] leading-relaxed ${shouldClamp ? 'line-clamp-2' : ''}`}>
+                                  {notification.message}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (notification.read) {
+                                      markAsUnread(notification.id)
+                                    } else {
+                                      markAsRead(notification.id)
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-all duration-200 hover:scale-110"
+                                  title={notification.read ? 'Mark as unread' : 'Mark as read'}
+                                >
+                                  <Mail size={16} className="text-[var(--color-text-muted)]" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    dismissNotification(notification.id)
+                                  }}
+                                  className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-all duration-200 hover:scale-110"
+                                  title="Dismiss"
+                                >
+                                  <X size={16} className="text-[var(--color-text-muted)]" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 mt-auto pt-3 border-t border-[var(--color-border-subtle)] flex-shrink-0">
+                              <Clock size={12} className="text-[var(--color-text-soft)]" />
+                              <span className="text-xs text-[var(--color-text-soft)]">
+                                {formatTime(notification.timestamp)}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
                 </div>
               </div>
             )}
 
             {layout === 'double-list' && (
               <div className="page-padding-x">
-              <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
-                {filteredNotifications.map((notification, index) => {
-                  const Icon = typeIcons[notification.type] || AlertTriangle
-                  const color = typeColors[notification.type] || 'var(--color-text-muted)'
-                  
-                  return (
-                    <div
-                      key={notification.id}
-                      className={`
+                <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+                  {filteredNotifications.map((notification, index) => {
+                    const Icon = typeIcons[notification.type] || AlertTriangle
+                    const color = typeColors[notification.type] || 'var(--color-text-muted)'
+
+                    return (
+                      <div
+                        key={notification.id}
+                        className={`
                         fusion-card p-4 cursor-pointer transition-all duration-200 group
-                        ${notification.read 
-                          ? 'opacity-75 hover:opacity-100 border-[var(--color-border-subtle)]' 
-                          : 'border-l-4 border-l-[var(--color-primary)] shadow-[var(--shadow-soft)]'
-                        }
+                        ${notification.read
+                            ? 'opacity-75 hover:opacity-100 border-[var(--color-border-subtle)]'
+                            : 'border-l-4 border-l-[var(--color-primary)] shadow-[var(--shadow-soft)]'
+                          }
                         hover:shadow-[var(--shadow-soft)] hover:scale-[1.01]
                       `}
-                      onClick={() => handleNotificationClick(notification)}
-                      style={{
-                        animation: `fadeInUp 0.3s ease-out ${index * 0.03}s both`
-                      }}
-                    >
-                      <div className="flex items-start gap-3">
-                        {/* Icon */}
-                        <div 
-                          className="p-2 rounded-lg flex-shrink-0 transition-all duration-200"
-                          style={{ 
-                            backgroundColor: notification.read ? 'var(--color-surface-subtle)' : `${color}20`,
-                          }}
-                        >
-                          <Icon 
-                            size={18} 
-                            style={{ 
-                              color: notification.read ? 'var(--color-text-muted)' : color 
-                            }} 
-                          />
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <h3 className="text-sm font-semibold text-[var(--color-text)]">
-                                  {notification.title}
-                                </h3>
-                                {!notification.read && (
-                                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] font-medium flex-shrink-0">
-                                    New
-                                  </span>
-                                )}
-                                {notification.siteId && (
-                                  <span className="text-xs px-1.5 py-0.5 text-[var(--color-text-soft)] font-normal flex-shrink-0 flex items-center gap-1">
-                                    <Building2 size={9} />
-                                    {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-sm text-[var(--color-text-muted)] leading-relaxed line-clamp-2">
-                                {notification.message}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  if (notification.read) {
-                                    markAsUnread(notification.id)
-                                  } else {
-                                    markAsRead(notification.id)
-                                  }
-                                }}
-                                className="p-1 rounded hover:bg-[var(--color-surface-subtle)] transition-all"
-                                title={notification.read ? 'Mark as unread' : 'Mark as read'}
-                              >
-                                <Mail size={14} className="text-[var(--color-text-muted)]" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  dismissNotification(notification.id)
-                                }}
-                                className="p-1 rounded hover:bg-[var(--color-surface-subtle)] transition-all"
-                                title="Dismiss"
-                              >
-                                <X size={14} className="text-[var(--color-text-muted)]" />
-                              </button>
-                            </div>
+                        onClick={() => handleNotificationClick(notification)}
+                        style={{
+                          animation: `fadeInUp 0.3s ease-out ${index * 0.03}s both`
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          {/* Icon */}
+                          <div
+                            className="p-2 rounded-lg flex-shrink-0 transition-all duration-200"
+                            style={{
+                              backgroundColor: notification.read ? 'var(--color-surface-subtle)' : `${color}20`,
+                            }}
+                          >
+                            <Icon
+                              size={18}
+                              style={{
+                                color: notification.read ? 'var(--color-text-muted)' : color
+                              }}
+                            />
                           </div>
-                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--color-border-subtle)]">
-                            <div className="flex items-center gap-2">
-                            <Clock size={11} className="text-[var(--color-text-soft)]" />
-                            <span className="text-xs text-[var(--color-text-soft)]">
-                              {formatTime(notification.timestamp)}
-                            </span>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <h3 className="text-sm font-semibold text-[var(--color-text)]">
+                                    {notification.title}
+                                  </h3>
+                                  {!notification.read && (
+                                    <Badge variant="default" className="text-xs">New</Badge>
+                                  )}
+                                  {notification.siteId && (
+                                    <Badge variant="secondary" className="text-xs font-normal gap-1">
+                                      <Building2 size={10} />
+                                      {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed line-clamp-2">
+                                  {notification.message}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (notification.read) {
+                                      markAsUnread(notification.id)
+                                    } else {
+                                      markAsRead(notification.id)
+                                    }
+                                  }}
+                                  className="p-1 rounded hover:bg-[var(--color-surface-subtle)] transition-all"
+                                  title={notification.read ? 'Mark as unread' : 'Mark as read'}
+                                >
+                                  <Mail size={14} className="text-[var(--color-text-muted)]" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    dismissNotification(notification.id)
+                                  }}
+                                  className="p-1 rounded hover:bg-[var(--color-surface-subtle)] transition-all"
+                                  title="Dismiss"
+                                >
+                                  <X size={14} className="text-[var(--color-text-muted)]" />
+                                </button>
+                              </div>
                             </div>
-                            {notification.siteId && (
-                              <span className="text-xs text-[var(--color-text-soft)] font-normal flex items-center gap-1">
-                                <Building2 size={9} />
-                                {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
-                              </span>
-                            )}
+                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-[var(--color-border-subtle)]">
+                              <div className="flex items-center gap-2">
+                                <Clock size={11} className="text-[var(--color-text-soft)]" />
+                                <span className="text-xs text-[var(--color-text-soft)]">
+                                  {formatTime(notification.timestamp)}
+                                </span>
+                              </div>
+                              {notification.siteId && (
+                                <span className="text-xs text-[var(--color-text-soft)] font-normal flex items-center gap-1">
+                                  <Building2 size={9} />
+                                  {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
                 </div>
               </div>
             )}
 
             {layout === 'mortar' && (
               <div className="page-padding-x">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {filteredNotifications.map((notification, index) => {
-                  const Icon = typeIcons[notification.type] || AlertTriangle
-                  const color = typeColors[notification.type] || 'var(--color-text-muted)'
-                  
-                  return (
-                    <div
-                      key={notification.id}
-                      className={`
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {filteredNotifications.map((notification, index) => {
+                    const Icon = typeIcons[notification.type] || AlertTriangle
+                    const color = typeColors[notification.type] || 'var(--color-text-muted)'
+
+                    return (
+                      <div
+                        key={notification.id}
+                        className={`
                         fusion-card p-4 cursor-pointer transition-all duration-200 group flex flex-col
-                        ${notification.read 
-                          ? 'opacity-75 hover:opacity-100 border-[var(--color-border-subtle)]' 
-                          : 'border-[var(--color-primary)]/30 shadow-[var(--shadow-soft)]'
-                        }
+                        ${notification.read
+                            ? 'opacity-75 hover:opacity-100 border-[var(--color-border-subtle)]'
+                            : 'border-[var(--color-primary)]/30 shadow-[var(--shadow-soft)]'
+                          }
                         hover:shadow-[var(--shadow-soft)] hover:scale-[1.02] hover:-translate-y-0.5
                         min-h-[140px]
                       `}
-                      onClick={() => handleNotificationClick(notification)}
-                      style={{
-                        animation: `fadeInUp 0.3s ease-out ${index * 0.03}s both`
-                      }}
-                    >
-                      {/* Icon and Title */}
-                      <div className="flex items-start gap-3 mb-2">
-                        <div 
-                          className="p-2 rounded-lg flex-shrink-0 transition-all duration-200 group-hover:scale-110"
-                          style={{ 
-                            backgroundColor: notification.read ? 'var(--color-surface-subtle)' : `${color}20`,
-                          }}
-                        >
-                          <Icon 
-                            size={16} 
-                            style={{ 
-                              color: notification.read ? 'var(--color-text-muted)' : color 
-                            }} 
-                          />
+                        onClick={() => handleNotificationClick(notification)}
+                        style={{
+                          animation: `fadeInUp 0.3s ease-out ${index * 0.03}s both`
+                        }}
+                      >
+                        {/* Icon and Title */}
+                        <div className="flex items-start gap-3 mb-2">
+                          <div
+                            className="p-2 rounded-lg flex-shrink-0 transition-all duration-200 group-hover:scale-110"
+                            style={{
+                              backgroundColor: notification.read ? 'var(--color-surface-subtle)' : `${color}20`,
+                            }}
+                          >
+                            <Icon
+                              size={16}
+                              style={{
+                                color: notification.read ? 'var(--color-text-muted)' : color
+                              }}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                              <h3 className="text-sm font-semibold text-[var(--color-text)] line-clamp-1">
+                                {notification.title}
+                              </h3>
+                              {!notification.read && (
+                                <Badge variant="default" className="w-1.5 h-1.5 p-0 rounded-full animate-pulse" />
+                              )}
+                              {notification.siteId && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 font-normal gap-1">
+                                  <Building2 size={8} />
+                                  {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                            <h3 className="text-sm font-semibold text-[var(--color-text)] line-clamp-1">
-                              {notification.title}
-                            </h3>
-                            {!notification.read && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)] flex-shrink-0 animate-pulse" />
-                            )}
-                            {notification.siteId && (
-                              <span className="text-[10px] px-1.5 py-0.5 text-[var(--color-text-soft)] font-normal flex-shrink-0 flex items-center gap-1">
-                                <Building2 size={8} />
-                                {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
-                              </span>
-                            )}
+
+                        {/* Message */}
+                        <p className="text-xs text-[var(--color-text-muted)] leading-relaxed line-clamp-3 mb-3 flex-1">
+                          {notification.message}
+                        </p>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border-subtle)]">
+                          <div className="flex items-center gap-1.5">
+                            <Clock size={10} className="text-[var(--color-text-soft)]" />
+                            <span className="text-xs text-[var(--color-text-soft)]">
+                              {formatTime(notification.timestamp)}
+                            </span>
+                          </div>
+                          {notification.siteId && (
+                            <span className="text-[10px] text-[var(--color-text-soft)] font-normal flex items-center gap-1">
+                              <Building2 size={8} />
+                              {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (notification.read) {
+                                  markAsUnread(notification.id)
+                                } else {
+                                  markAsRead(notification.id)
+                                }
+                              }}
+                              className="p-1 rounded hover:bg-[var(--color-surface-subtle)] transition-all"
+                              title={notification.read ? 'Mark as unread' : 'Mark as read'}
+                            >
+                              <Mail size={12} className="text-[var(--color-text-muted)]" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                dismissNotification(notification.id)
+                              }}
+                              className="p-1 rounded hover:bg-[var(--color-surface-subtle)] transition-all"
+                              title="Dismiss"
+                            >
+                              <X size={12} className="text-[var(--color-text-muted)]" />
+                            </button>
                           </div>
                         </div>
                       </div>
-
-                      {/* Message */}
-                      <p className="text-xs text-[var(--color-text-muted)] leading-relaxed line-clamp-3 mb-3 flex-1">
-                        {notification.message}
-                      </p>
-
-                      {/* Footer */}
-                      <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border-subtle)]">
-                        <div className="flex items-center gap-1.5">
-                          <Clock size={10} className="text-[var(--color-text-soft)]" />
-                          <span className="text-xs text-[var(--color-text-soft)]">
-                            {formatTime(notification.timestamp)}
-                          </span>
-                        </div>
-                        {notification.siteId && (
-                          <span className="text-[10px] text-[var(--color-text-soft)] font-normal flex items-center gap-1">
-                            <Building2 size={8} />
-                            {sites.find(s => s.id === notification.siteId)?.name || 'Site'}
-                          </span>
-                        )}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              if (notification.read) {
-                                markAsUnread(notification.id)
-                              } else {
-                                markAsRead(notification.id)
-                              }
-                            }}
-                            className="p-1 rounded hover:bg-[var(--color-surface-subtle)] transition-all"
-                            title={notification.read ? 'Mark as unread' : 'Mark as read'}
-                          >
-                            <Mail size={12} className="text-[var(--color-text-muted)]" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              dismissNotification(notification.id)
-                            }}
-                            className="p-1 rounded hover:bg-[var(--color-surface-subtle)] transition-all"
-                            title="Dismiss"
-                          >
-                            <X size={12} className="text-[var(--color-text-muted)]" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
                 </div>
               </div>
             )}

@@ -12,6 +12,8 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 
 interface LoginModalProps {
   isOpen: boolean
@@ -25,7 +27,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  
+
   const { login, signup } = useAuth()
 
   if (!isOpen) return null
@@ -90,12 +92,11 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
               <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
                 Name
               </label>
-              <input
+              <Input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full px-4 py-2.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
                 placeholder="John Doe"
               />
             </div>
@@ -105,12 +106,11 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
               Email
             </label>
-            <input
+            <Input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-2.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
               placeholder="you@example.com"
             />
           </div>
@@ -119,13 +119,12 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
               Password
             </label>
-            <input
+            <Input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full px-4 py-2.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
               placeholder="••••••••"
             />
           </div>
@@ -136,13 +135,14 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             </div>
           )}
 
-          <button
+          <Button
             type="submit"
-            disabled={isLoading}
-            className="w-full fusion-button fusion-button-primary mt-6"
+            isLoading={isLoading}
+            variant="primary"
+            className="w-full mt-6"
           >
-            {isLoading ? 'Please wait...' : isSignup ? 'Create Account' : 'Sign In'}
-          </button>
+            {isSignup ? 'Create Account' : 'Sign In'}
+          </Button>
         </form>
 
         {/* Toggle */}

@@ -1,0 +1,125 @@
+/* ============================================
+     HIGH CONTRAST THEME (Max Visibility Refined)
+     ============================================ */
+[data-theme="high-contrast"] {
+    /* Backgrounds - Absolute Black/White */
+    --color-bg: #000000;
+    --color-bg-elevated: #000000;
+    --color-surface: #000000;
+    --color-surface-subtle: #000000;
+
+    /* Borders - Stark White Lines (2px min) */
+    --color-border-subtle: #ffffff;
+    --color-border-strong: #ffffff;
+    border-width: 2px;
+
+    /* Primary brand color - Pure Cyan */
+    --color-primary: #00ffff;
+    --color-primary-soft: rgba(0, 255, 255, 0.2);
+    --color-primary-hover: #00cccc;
+    --color-primary-strong: #009999;
+
+    /* Accent & status colors - Primary Standards */
+    --color-accent: #ffff00;
+    /* Yellow */
+    --color-danger: #ff0000;
+    /* Red */
+    --color-success: #00ff00;
+    /* Green */
+    --color-warning: #ffcc00;
+    /* Orange-Yellow */
+    --color-info: #00ffff;
+    /* Cyan */
+
+    /* Text colors - Maximum Contrast */
+    --color-text: #ffffff;
+    --color-text-muted: #ffffff;
+    --color-text-soft: #eeeeee;
+    --color-text-on-primary: #000000;
+
+    /* Tooltip */
+    --color-tooltip-bg: #000000;
+    --color-tooltip-border: #ffffff;
+    --color-tooltip-text: #ffffff;
+    --color-tooltip-shadow: none;
+
+    /* Shadows - Disabled for flatness/clarity */
+    --shadow-soft: none;
+    --shadow-md: none;
+    --shadow-strong: none;
+    --shadow-glow-primary: none;
+    --shadow-glow-accent: none;
+    --shadow-glow-hover: none;
+
+    /* Glow effects - Converted to Borders/Outlines */
+    --glow-primary: none;
+    --glow-modal: 0 0 0 2px #ffffff;
+    --glow-accent: none;
+    --glow-strong: none;
+
+    /* Force high contrast settings */
+    --border-width-thin: 2px;
+    --border-width-thick: 4px;
+    --glass-blur: 0px;
+    --glass-opacity: 1;
+}
+
+[data-theme="high-contrast"] body {
+    background: #000000;
+}
+
+/* Extracted from components.css - Preserved Strict Visibility */
+[data-theme="high-contrast"] .token {
+    border: 2px solid #ffffff;
+    font-weight: 700;
+    background: #000000 !important;
+}
+
+[data-theme="high-contrast"] .token-status-online,
+[data-theme="high-contrast"] .token-status-active,
+[data-theme="high-contrast"] .token-status-success {
+    color: #00ff00;
+    border-color: #00ff00;
+}
+
+[data-theme="high-contrast"] .token-status-offline,
+[data-theme="high-contrast"] .token-status-disabled,
+[data-theme="high-contrast"] .token-status-inactive,
+[data-theme="high-contrast"] .token-status-not-assigned {
+    color: #ffffff;
+    border-color: #ffffff;
+}
+
+[data-theme="high-contrast"] .token-status-error,
+[data-theme="high-contrast"] .token-status-danger,
+[data-theme="high-contrast"] .token-status-missing,
+[data-theme="high-contrast"] .token-warranty-out-of-warranty {
+    color: #ff0000;
+    border-color: #ff0000;
+}
+
+[data-theme="high-contrast"] .token-status-warning,
+[data-theme="high-contrast"] .token-warranty-near-end {
+    color: #ffff00;
+    border-color: #ffff00;
+}
+
+[data-theme="high-contrast"] .token-status-info,
+[data-theme="high-contrast"] .token-warranty-in-warranty {
+    color: #00ffff;
+    border-color: #00ffff;
+}
+
+[data-theme="high-contrast"] .fusion-alert-warning {
+    background: #000000;
+    border-color: var(--color-warning);
+    border-width: 4px;
+    color: #ffff00;
+}
+
+[data-theme="high-contrast"] .fusion-alert-danger {
+    background: #000000;
+    border-color: var(--color-danger);
+    border-width: 4px;
+    color: #ff0000;
+}

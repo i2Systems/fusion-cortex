@@ -11,6 +11,7 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { DisplayDeviceType as DeviceType, isDisplayFixtureType as isFixtureType } from '@/lib/types'
+import { Button } from '@/components/ui/Button'
 
 interface ManualDeviceEntryProps {
   isOpen: boolean
@@ -113,20 +114,21 @@ export function ManualDeviceEntry({ isOpen, onClose, onAdd }: ManualDeviceEntryP
           </div>
 
           <div className="flex gap-3 pt-4">
-            <button
+            <Button
               type="button"
               onClick={onClose}
-              className="flex-1 fusion-button"
-              style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text)', border: '1px solid var(--color-border-subtle)' }}
+              variant="secondary"
+              className="flex-1"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="flex-1 fusion-button fusion-button-primary"
+              variant="primary"
+              className="flex-1"
             >
               Add Device
-            </button>
+            </Button>
           </div>
         </form>
       </div>

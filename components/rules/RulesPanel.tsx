@@ -17,6 +17,7 @@ import { useZones } from '@/lib/ZoneContext'
 import { useDevices } from '@/lib/DeviceContext'
 import { RuleFlowEditor } from './RuleFlowEditor'
 import { RulePreview } from './RulePreview'
+import { Button } from '@/components/ui/Button'
 
 interface RulesPanelProps {
   selectedRule: Rule | null
@@ -679,47 +680,50 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
       <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] space-y-2 flex-shrink-0">
         {(mode === 'create' && creationStep === 'configure') || mode === 'edit' ? (
           <>
-            <button
+            <Button
               onClick={handleSave}
-              className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
+              variant="primary"
+              className="w-full flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
               title={selectedRule ? 'Save Changes' : 'Create Rule'}
             >
               <Save size={14} className="md:w-4 md:h-4" />
               <span className="hidden md:inline">{selectedRule ? 'Save Changes' : 'Create'}</span>
               <span className="md:hidden">{selectedRule ? 'Save' : 'Create'}</span>
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleCancel}
-              className="w-full fusion-button flex items-center justify-center text-xs md:text-sm"
-              style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text-muted)' }}
+              variant="secondary"
+              className="w-full flex items-center justify-center text-xs md:text-sm"
               title="Cancel"
             >
               <span className="hidden md:inline">Cancel</span>
               <span className="md:hidden">
                 <X size={14} className="md:w-4 md:h-4" />
               </span>
-            </button>
+            </Button>
           </>
         ) : mode === 'view' && selectedRule ? (
-          <button
+          <Button
             onClick={handleEdit}
-            className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
+            variant="primary"
+            className="w-full flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
             title="Edit Rule"
           >
             <Edit2 size={14} className="md:w-4 md:h-4" />
             <span className="hidden md:inline">Edit Rule</span>
             <span className="md:hidden">Edit</span>
-          </button>
+          </Button>
         ) : (
-          <button
+          <Button
             onClick={handleCreateNew}
-            className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
+            variant="primary"
+            className="w-full flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
             title="Create New Rule"
           >
             <Plus size={14} className="md:w-4 md:h-4" />
             <span className="hidden md:inline">Create New</span>
             <span className="md:hidden">Create</span>
-          </button>
+          </Button>
         )}
       </div>
     </div>

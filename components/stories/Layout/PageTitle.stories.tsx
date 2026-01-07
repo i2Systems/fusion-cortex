@@ -1,5 +1,6 @@
 import { Meta, StoryObj } from '@storybook/react'
 import { PageTitle } from '@/components/layout/PageTitle'
+import { Button } from '@/components/ui/Button'
 
 const meta: Meta<typeof PageTitle> = {
   title: 'Layout/PageTitle',
@@ -28,10 +29,9 @@ export const WithAction: Story = {
     title: 'Zones',
     subtitle: 'Manage zones for site-1234',
     action: (
-      <button className="fusion-button fusion-button-primary">
+      <Button variant="primary">
         Create Zone
-      </button>
+      </Button>
     ),
   },
 }
-

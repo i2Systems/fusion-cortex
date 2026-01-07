@@ -15,9 +15,7 @@ import { AuthProvider } from '@/lib/auth'
 import { ThemeProvider } from '@/lib/theme'
 import { RoleProvider } from '@/lib/role'
 import { SiteProvider } from '@/lib/SiteContext'
-import { DeviceProvider } from '@/lib/DeviceContext'
-import { ZoneProvider } from '@/lib/ZoneContext'
-import { RuleProvider } from '@/lib/RuleContext'
+import { DomainProvider } from '@/lib/DomainContext'
 import { NotificationProvider } from '@/lib/NotificationContext'
 import { MapProvider } from '@/lib/MapContext'
 import { FontProvider } from '@/lib/FontContext'
@@ -25,6 +23,7 @@ import { I18nProvider } from '@/lib/i18n'
 import { AdvancedSettingsProvider } from '@/lib/AdvancedSettingsContext'
 // Import exportData to make exportFusionData() available in browser console
 import '@/lib/exportData'
+import { ComposeProviders } from '@/components/shared/ComposeProviders'
 
 export const metadata: Metadata = {
   title: 'Fusion / Cortex — Commissioning & Configuration',
@@ -50,35 +49,24 @@ export default function RootLayout({
         <link href="https://fonts.bunny.net/css?family=atkinson-hyperlegible:400,700" rel="stylesheet" />
       </head>
       <body>
-                <TRPCProvider>
-                  <ThemeProvider>
-                    <FontProvider>
-                      <I18nProvider>
-                        <AdvancedSettingsProvider>
-                          <RoleProvider>
-                            <AuthProvider>
-                              <SiteProvider>
-                                <MapProvider>
-                                  <DeviceProvider>
-                                    <ZoneProvider>
-                                      <RuleProvider>
-                                        <NotificationProvider>
-                                          {children}
-                                        </NotificationProvider>
-                                      </RuleProvider>
-                                    </ZoneProvider>
-                                  </DeviceProvider>
-                                </MapProvider>
-                              </SiteProvider>
-                            </AuthProvider>
-                          </RoleProvider>
-                        </AdvancedSettingsProvider>
-                      </I18nProvider>
-                    </FontProvider>
-                  </ThemeProvider>
-                </TRPCProvider>
+        <ComposeProviders
+          components={[
+            TRPCProvider,
+            ThemeProvider,
+            FontProvider,
+            I18nProvider,
+            AdvancedSettingsProvider,
+            RoleProvider,
+            AuthProvider,
+            SiteProvider,
+            MapProvider,
+            DomainProvider,
+            NotificationProvider,
+          ]}
+        >
+          {children}
+        </ComposeProviders>
       </body>
     </html>
   )
 }
-

@@ -9,6 +9,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/Button'
 
 export default function StorybookPage() {
   const router = useRouter()
@@ -26,10 +27,10 @@ export default function StorybookPage() {
   }, [router])
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       minHeight: '100vh',
       flexDirection: 'column',
       gap: 'var(--space-4)',
@@ -42,7 +43,7 @@ export default function StorybookPage() {
         <p style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-4)' }}>
           If Storybook doesn't open automatically, make sure it's running:
         </p>
-        <code style={{ 
+        <code style={{
           display: 'block',
           padding: 'var(--space-3)',
           backgroundColor: 'var(--color-bg-elevated)',
@@ -52,17 +53,13 @@ export default function StorybookPage() {
         }}>
           npm run storybook
         </code>
-        <a
-          href="http://localhost:6006"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="fusion-button fusion-button-primary"
-          style={{ textDecoration: 'none' }}
+        <Button
+          onClick={() => window.open('http://localhost:6006', '_blank')}
+          variant="primary"
         >
           Open Storybook
-        </a>
+        </Button>
       </div>
     </div>
   )
 }
-

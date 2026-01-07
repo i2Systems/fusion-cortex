@@ -1,0 +1,148 @@
+/* ============================================
+     ON-BRAND GLASS THEME (Crystal-Violet Refined)
+     ============================================ */
+[data-theme="on-brand-glass"] {
+    /* Backgrounds - Frosted Crystal */
+    --color-bg: rgba(255, 255, 255, 0.6);
+    --color-bg-elevated: rgba(255, 255, 255, 0.8);
+    --color-surface: rgba(255, 255, 255, 0.5);
+    --color-surface-subtle: rgba(255, 255, 255, 0.3);
+
+    /* Borders - Thin Violet Ice */
+    --color-border-subtle: rgba(139, 92, 246, 0.2);
+    --color-border-strong: rgba(139, 92, 246, 0.4);
+
+    /* Primary brand color - Vivid Violet */
+    --color-primary: #8b5cf6;
+    --color-primary-soft: rgba(139, 92, 246, 0.1);
+    --color-primary-hover: #7c3aed;
+    --color-primary-strong: #6d28d9;
+
+    /* Accent & status colors - Jewel Tones */
+    --color-accent: #db2777;
+    /* Ruby */
+    --color-danger: #dc2626;
+    --color-success: #059669;
+    /* Emerald */
+    --color-warning: #d97706;
+    /* Topaz */
+    --color-info: #7c3aed;
+    /* Amethyst */
+
+    /* Text colors - Deep Indigo */
+    --color-text: #1e1b4b;
+    --color-text-muted: #5b21b6;
+    --color-text-soft: #6d28d9;
+    --color-text-on-primary: #ffffff;
+
+    /* Tooltip - Frosted white */
+    --color-tooltip-bg: rgba(255, 255, 255, 0.85);
+    --color-tooltip-border: var(--color-primary);
+    --color-tooltip-text: var(--color-text);
+    --color-tooltip-shadow: 0 8px 32px rgba(139, 92, 246, 0.15);
+
+    /* Shadows - Colored light passing through glass */
+    --shadow-soft: 0 4px 12px rgba(139, 92, 246, 0.1);
+    --shadow-md: 0 12px 24px rgba(139, 92, 246, 0.15);
+    --shadow-strong: 0 20px 40px rgba(139, 92, 246, 0.2);
+
+    /* Glows - Soft iridescence */
+    --shadow-glow-primary: 0 0 20px rgba(139, 92, 246, 0.2);
+    --shadow-glow-accent: 0 0 20px rgba(219, 39, 119, 0.2);
+    --shadow-glow-hover: 0 0 25px rgba(139, 92, 246, 0.3);
+
+    /* Glow effects */
+    --glow-primary: 0 0 15px rgba(139, 92, 246, 0.15);
+    --glow-modal: 0 0 40px rgba(139, 92, 246, 0.15);
+    --glow-accent: 0 0 15px rgba(219, 39, 119, 0.15);
+    --glow-strong: 0 0 30px rgba(139, 92, 246, 0.2);
+
+    /* Glass aesthetics */
+    --glass-blur: 20px;
+    --glass-blur-strong: 40px;
+    --glass-opacity: 0.5;
+    --glass-opacity-strong: 0.75;
+
+    /* Radius - Friendly & Rounded */
+    --radius-xs: 8px;
+    --radius-sm: 12px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    --radius-xl: 32px;
+    --radius-2xl: 48px;
+}
+
+[data-theme="on-brand-glass"] body {
+    /* Prismatic gradient */
+    background: linear-gradient(120deg, #e0e7ff 0%, #f3e8ff 50%, #fce7f3 100%);
+}
+
+/* Extracted from components.css - Preserved & Polished */
+[data-theme="on-brand-glass"] .token-status-online,
+[data-theme="on-brand-glass"] .token-status-active,
+[data-theme="on-brand-glass"] .token-status-success {
+    background: rgba(5, 150, 105, 0.1);
+    color: #064e3b;
+    border: var(--border-width-thin) solid rgba(5, 150, 105, 0.3);
+}
+
+[data-theme="on-brand-glass"] .token-status-offline,
+[data-theme="on-brand-glass"] .token-status-disabled,
+[data-theme="on-brand-glass"] .token-status-inactive,
+[data-theme="on-brand-glass"] .token-status-not-assigned {
+    background: rgba(107, 114, 128, 0.1);
+    color: #374151;
+    border: var(--border-width-thin) solid rgba(107, 114, 128, 0.2);
+}
+
+[data-theme="on-brand-glass"] .token-status-error,
+[data-theme="on-brand-glass"] .token-status-danger,
+[data-theme="on-brand-glass"] .token-status-missing {
+    background: rgba(220, 38, 38, 0.1);
+    color: #7f1d1d;
+    border: var(--border-width-thin) solid rgba(220, 38, 38, 0.3);
+}
+
+[data-theme="on-brand-glass"] .token-status-warning,
+[data-theme="on-brand-glass"] .token-type-override,
+[data-theme="on-brand-glass"] .token-warranty-near-end {
+    background: rgba(217, 119, 6, 0.1);
+    color: #92400e;
+    border: var(--border-width-thin) solid rgba(217, 119, 6, 0.3);
+}
+
+[data-theme="on-brand-glass"] .token-status-info,
+[data-theme="on-brand-glass"] .token-type-schedule {
+    background: rgba(124, 58, 237, 0.1);
+    color: #5b21b6;
+    border: var(--border-width-thin) solid rgba(124, 58, 237, 0.3);
+}
+
+[data-theme="on-brand-glass"] .token-type-rule {
+    background: rgba(107, 114, 128, 0.1);
+    color: #374151;
+    border: var(--border-width-thin) solid rgba(107, 114, 128, 0.2);
+}
+
+/* Data - Deep jewel tones */
+[data-theme="on-brand-glass"] .token-data-signal-high,
+[data-theme="on-brand-glass"] .token-data-battery-high,
+[data-theme="on-brand-glass"] .token-warranty-in-warranty {
+    color: #064e3b;
+}
+
+[data-theme="on-brand-glass"] .token-data-signal-medium,
+[data-theme="on-brand-glass"] .token-data-battery-medium {
+    color: #92400e;
+}
+
+[data-theme="on-brand-glass"] .token-data-signal-low,
+[data-theme="on-brand-glass"] .token-data-battery-low,
+[data-theme="on-brand-glass"] .token-warranty-out-of-warranty {
+    color: #7f1d1d;
+}
+
+[data-theme="on-brand-glass"] .token-warranty-in-warranty {
+    background: rgba(5, 150, 105, 0.1);
+    border: var(--border-width-thin) solid rgba(5, 150, 105, 0.3);
+}

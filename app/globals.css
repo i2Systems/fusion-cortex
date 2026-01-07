@@ -1,4 +1,16 @@
 @import './styles/base.css';
+
+/* Themes */
+@import './styles/themes/dark.css';
+/* Default */
+@import './styles/themes/light.css';
+@import './styles/themes/high-contrast.css';
+@import './styles/themes/warm-night.css';
+@import './styles/themes/warm-day.css';
+@import './styles/themes/glass-neumorphism.css';
+@import './styles/themes/business-fluent.css';
+@import './styles/themes/on-brand.css';
+@import './styles/themes/on-brand-glass.css';
 @import './styles/components.css';
 @import './styles/utilities.css';
 

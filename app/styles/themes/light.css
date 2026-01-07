@@ -1,0 +1,173 @@
+/* ============================================
+     LIGHT THEME (Clean SaaS Refined)
+     ============================================ */
+[data-theme="light"] {
+    /* Backgrounds - Professional clean white */
+    --color-bg: #f8fafc;
+    /* Slate-50 */
+    --color-bg-elevated: #ffffff;
+    --color-surface: #ffffff;
+    --color-surface-subtle: #f1f5f9;
+    /* Slate-100 */
+
+    /* Borders - Crisp Slate */
+    --color-border-subtle: #e2e8f0;
+    /* Slate-200 */
+    --color-border-strong: #cbd5e1;
+    /* Slate-300 */
+
+    /* Primary brand color - Enterprise Blue */
+    --color-primary: #2563eb;
+    /* Blue-600 */
+    --color-primary-soft: rgba(37, 99, 235, 0.1);
+    --color-primary-hover: #1d4ed8;
+    --color-primary-strong: #1e40af;
+
+    /* Accent & status colors - Accessible Standard */
+    --color-accent: #f97316;
+    /* Orange-500 */
+    --color-danger: #ef4444;
+    /* Red-500 */
+    --color-success: #10b981;
+    /* Emerald-500 */
+    --color-warning: #f59e0b;
+    /* Amber-500 */
+    --color-info: #3b82f6;
+    /* Blue-500 */
+
+    /* Text colors - Sharp Contrast */
+    --color-text: #0f172a;
+    /* Slate-900 */
+    --color-text-muted: #64748b;
+    /* Slate-500 */
+    --color-text-soft: #94a3b8;
+    /* Slate-400 */
+    --color-text-on-primary: #ffffff;
+
+    /* Tooltip - Clean White */
+    --color-tooltip-bg: #ffffff;
+    --color-tooltip-border: var(--color-border-strong);
+    --color-tooltip-text: var(--color-text);
+    --color-tooltip-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+    /* Shadows - Subtle Diffuse */
+    --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --shadow-strong: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+
+    /* Glows - Subtle highlight rings */
+    --shadow-glow-primary: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    --shadow-glow-accent: 0 0 0 2px rgba(249, 115, 22, 0.2);
+    --shadow-glow-hover: 0 0 0 4px rgba(37, 99, 235, 0.1);
+
+    /* Glow effects - Focus rings mostly */
+    --glow-primary: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    --glow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --glow-accent: 0 0 0 3px rgba(249, 115, 22, 0.15);
+    --glow-strong: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+    /* Radius - Professional consistency */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-2xl: 20px;
+}
+
+[data-theme="light"] body {
+    background: #f8fafc;
+}
+
+/* Extracted from components.css - Preserved & Polished */
+[data-theme="light"] .token-status-online,
+[data-theme="light"] .token-status-active,
+[data-theme="light"] .token-status-success,
+[data-theme="light"] .token-warranty-in-warranty {
+    background: rgba(16, 185, 129, 0.1);
+    color: #065f46;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+[data-theme="light"] .token-status-offline,
+[data-theme="light"] .token-status-disabled,
+[data-theme="light"] .token-status-inactive,
+[data-theme="light"] .token-status-not-assigned {
+    background: rgba(100, 116, 139, 0.1);
+    color: #475569;
+    border: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+[data-theme="light"] .token-status-error,
+[data-theme="light"] .token-status-danger,
+[data-theme="light"] .token-status-missing,
+[data-theme="light"] .token-warranty-out-of-warranty {
+    background: rgba(239, 68, 68, 0.1);
+    color: #991b1b;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+[data-theme="light"] .token-status-warning,
+[data-theme="light"] .token-warranty-near-end {
+    background: rgba(245, 158, 11, 0.1);
+    color: #92400e;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+[data-theme="light"] .token-status-info {
+    background: rgba(59, 130, 246, 0.1);
+    color: #1e40af;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* Data & Types */
+[data-theme="light"] .token-type-rule {
+    background: rgba(100, 116, 139, 0.05);
+    color: #475569;
+    border: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+[data-theme="light"] .token-type-override {
+    background: rgba(245, 158, 11, 0.1);
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+[data-theme="light"] .token-type-schedule {
+    background: rgba(37, 99, 235, 0.1);
+    color: #1e40af;
+    border: 1px solid rgba(37, 99, 235, 0.25);
+}
+
+[data-theme="light"] .token-type-fixture {
+    background: rgba(236, 72, 153, 0.1);
+    color: #9d174d;
+    border: 1px solid rgba(236, 72, 153, 0.25);
+}
+
+[data-theme="light"] .token-type-motion-sensor {
+    background: rgba(249, 115, 22, 0.1);
+    color: #9a3412;
+    border: 1px solid rgba(249, 115, 22, 0.25);
+}
+
+[data-theme="light"] .token-type-light-sensor {
+    background: rgba(16, 185, 129, 0.1);
+    color: #065f46;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+[data-theme="light"] .token-data-signal-high,
+[data-theme="light"] .token-data-battery-high {
+    color: #065f46;
+}
+
+[data-theme="light"] .token-data-signal-medium,
+[data-theme="light"] .token-data-battery-medium {
+    color: #92400e;
+}
+
+[data-theme="light"] .token-data-signal-low,
+[data-theme="light"] .token-data-battery-low {
+    color: #991b1b;
+}

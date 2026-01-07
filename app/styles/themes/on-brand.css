@@ -1,0 +1,72 @@
+/* ============================================
+     ON-BRAND THEME (Cyber-Violet Refined)
+     ============================================ */
+[data-theme="on-brand"] {
+    /* Backgrounds - Deepest Void Violet */
+    --color-bg: #05040a;
+    --color-bg-elevated: #0f0a16;
+    --color-surface: rgba(20, 10, 30, 0.85);
+    --color-surface-subtle: rgba(40, 20, 60, 0.6);
+
+    /* Borders - Electric hairline */
+    --color-border-subtle: rgba(139, 92, 246, 0.15);
+    --color-border-strong: rgba(139, 92, 246, 0.4);
+
+    /* Primary brand color - Electric Violet */
+    --color-primary: #a855f7;
+    --color-primary-soft: rgba(168, 85, 247, 0.15);
+    --color-primary-hover: #c084fc;
+    --color-primary-strong: #9333ea;
+
+    /* Accent & status colors - Neon Palette */
+    --color-accent: #f472b6;
+    /* Pink Neon */
+    --color-danger: #f87171;
+    /* Red Neon */
+    --color-success: #34d399;
+    /* Green Neon */
+    --color-warning: #fbbf24;
+    /* Amber Neon */
+    --color-info: #818cf8;
+    /* Indigo Neon */
+
+    /* Text colors - Ice White */
+    --color-text: #ffffff;
+    --color-text-muted: #e9d5ff;
+    --color-text-soft: #c4b5fd;
+    --color-text-on-primary: #000000;
+
+    /* Tooltip - Deep Violet Glass */
+    --color-tooltip-bg: rgba(15, 10, 22, 0.95);
+    --color-tooltip-border: var(--color-primary);
+    --color-tooltip-text: var(--color-text);
+    --color-tooltip-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+
+    /* Shadows - Violet Haze */
+    --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.8);
+    --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.9);
+    --shadow-strong: 0 24px 60px rgba(0, 0, 0, 0.95);
+
+    /* Glows - Intense Neon */
+    --shadow-glow-primary: 0 0 15px rgba(168, 85, 247, 0.4), 0 0 30px rgba(168, 85, 247, 0.2);
+    --shadow-glow-accent: 0 0 15px rgba(244, 114, 182, 0.4);
+    --shadow-glow-hover: 0 0 20px rgba(192, 132, 252, 0.5);
+
+    /* Glow effects */
+    --glow-primary: 0 0 20px rgba(168, 85, 247, 0.3);
+    --glow-modal: 0 0 50px rgba(139, 92, 246, 0.25);
+    --glow-accent: 0 0 20px rgba(244, 114, 182, 0.3);
+    --glow-strong: 0 0 40px rgba(168, 85, 247, 0.4);
+
+    /* Radius - Smooth Tech */
+    --radius-xs: 4px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-2xl: 32px;
+}
+
+[data-theme="on-brand"] body {
+    background: linear-gradient(160deg, #05040a 0%, #0f0a16 100%);
+}

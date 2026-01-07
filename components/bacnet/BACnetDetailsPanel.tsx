@@ -10,10 +10,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Power, Sun, Clock, Radio, CheckCircle2, AlertCircle, XCircle, Edit2, Trash2, RefreshCw, Plus, Layers, Save } from 'lucide-react'
 import type { ControlCapability } from '@/lib/initialBACnetMappings'
 import { PanelEmptyState } from '@/components/shared/PanelEmptyState'
+import { Button } from '@/components/ui/Button'
 
 interface BACnetMapping {
   zoneId: string
@@ -78,6 +80,7 @@ export function BACnetDetailsPanel({
   onAdd,
   hasZones = true
 }: BACnetDetailsPanelProps) {
+  const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState<Partial<BACnetMapping>>({
     bacnetObjectId: null,
@@ -143,13 +146,14 @@ export function BACnetDetailsPanel({
             title="No Zones Yet"
             description="Add at least one zone first to create BACnet mappings."
             action={
-              <Link
-                href="/zones"
-                className="fusion-button fusion-button-primary flex items-center justify-center gap-2 px-4"
+              <Button
+                onClick={() => router.push('/zones')}
+                className="flex items-center justify-center gap-2 px-4"
+                variant="primary"
               >
                 <Layers size={16} />
                 Go to Zones
-              </Link>
+              </Button>
             }
           />
         </div>
@@ -167,13 +171,14 @@ export function BACnetDetailsPanel({
             Select a zone from the table to view detailed BACnet connection information and configure BMS integration.
           </p>
           {/* Add Mapping Button - In header like RulesPanel */}
-          <button
+          <Button
             onClick={onAdd}
-            className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+            variant="primary"
+            className="w-full flex items-center justify-center gap-2"
           >
             <Plus size={16} />
             Add Mapping
-          </button>
+          </Button>
         </div>
         <PanelEmptyState
           icon={Radio}
@@ -451,41 +456,43 @@ export function BACnetDetailsPanel({
       <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] space-y-2 flex-shrink-0">
         {isEditing ? (
           <>
-            <button
+            <Button
               onClick={handleSave}
-              className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
+              variant="primary"
+              className="w-full flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
             >
               <Save size={14} className="md:w-4 md:h-4" />
               <span className="hidden sm:inline">Save Changes</span>
               <span className="sm:hidden">Save</span>
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleCancel}
-              className="w-full fusion-button text-xs md:text-sm"
-              style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text-muted)' }}
+              variant="secondary"
+              className="w-full text-xs md:text-sm"
             >
               Cancel
-            </button>
+            </Button>
           </>
         ) : (
           <>
-            <button
+            <Button
               onClick={onTestConnection}
               disabled={mapping.status === 'not-assigned'}
-              className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              variant="primary"
+              className="w-full flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
             >
               <RefreshCw size={14} className="md:w-4 md:h-4" />
               <span className="hidden sm:inline">Test Connection</span>
               <span className="sm:hidden">Test</span>
-            </button>
+            </Button>
             {mapping.status === 'error' && (
-              <button
+              <Button
                 onClick={handleEditClick}
-                className="w-full fusion-button"
-                style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text-muted)' }}
+                variant="secondary"
+                className="w-full"
               >
                 Troubleshoot Connection
-              </button>
+              </Button>
             )}
           </>
         )}

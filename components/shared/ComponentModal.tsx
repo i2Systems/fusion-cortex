@@ -16,6 +16,7 @@ import { X, Package, Shield, Calendar, CheckCircle2, AlertCircle, XCircle, FileT
 import { Component, Device } from '@/lib/mockData'
 import { calculateWarrantyStatus, getWarrantyStatusLabel, getWarrantyStatusTokenClass, formatWarrantyExpiry } from '@/lib/warranty'
 import { getComponentLibraryUrl, getComponentImage } from '@/lib/libraryUtils'
+import { Button } from '@/components/ui/Button'
 
 interface ComponentModalProps {
   component: Component | null
@@ -73,7 +74,7 @@ export function ComponentModal({ component, parentDevice, isOpen, onClose }: Com
             setComponentImage(syncImage)
             return
           }
-          
+
           // If sync returned null, try async (for IndexedDB)
           const { getComponentImageAsync } = await import('@/lib/libraryUtils')
           const asyncImage = await getComponentImageAsync(componentType)
@@ -224,28 +225,28 @@ export function ComponentModal({ component, parentDevice, isOpen, onClose }: Com
                   {warrantyInfo.daysRemaining !== null && (
                     <div className="mt-3 pt-3 border-t border-[var(--color-border-subtle)]">
                       <p className="text-xs text-[var(--color-text-muted)] mb-1">Days Remaining</p>
-                      <p className={`text-sm font-medium ${
-                        warrantyInfo.isNearEnd
+                      <p className={`text-sm font-medium ${warrantyInfo.isNearEnd
                           ? 'text-[var(--color-warning)]'
                           : 'text-[var(--color-text)]'
-                      }`}>
+                        }`}>
                         {warrantyInfo.daysRemaining} days
                       </p>
                     </div>
                   )}
                   {warrantyInfo.status !== 'out-of-warranty' && component.warrantyExpiry && (
                     <div className="mt-3 pt-3 border-t border-[var(--color-border-subtle)]">
-                      <button
-                        className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-2"
+                      <Button
                         onClick={() => {
                           // Navigate to i2systems.com for replacement parts
                           window.open('https://i2systems.com', '_blank')
                         }}
+                        variant="primary"
+                        className="w-full flex items-center justify-center gap-2"
                       >
                         <Package size={14} />
                         Request Replacement
                         <ExternalLink size={12} />
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -269,10 +270,10 @@ export function ComponentModal({ component, parentDevice, isOpen, onClose }: Com
                   <div>
                     <p className="text-xs text-[var(--color-text-muted)]">Build Date</p>
                     <p className="text-sm font-medium text-[var(--color-text)]">
-                      {component.buildDate.toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
+                      {component.buildDate.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
                       })}
                     </p>
                   </div>

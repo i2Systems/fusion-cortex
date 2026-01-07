@@ -14,6 +14,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { Button } from '@/components/ui/Button'
 import dynamic from 'next/dynamic'
 import { X, Lightbulb, Loader2 } from 'lucide-react'
 import { SearchIsland } from '@/components/layout/SearchIsland'
@@ -927,10 +928,12 @@ export default function MapPage() {
           {mapUploaded && role !== 'Manager' && role !== 'Technician' && (
             <div className="absolute top-0 right-4 z-30 pointer-events-none flex gap-2" style={{ transform: 'translateY(-50%)' }}>
               <div className="pointer-events-auto">
-                <button
+                <Button
+                  variant="secondary"
+                  size="md"
                   onClick={handleDetectLights}
                   disabled={isDetectingLights}
-                  className="flex items-center justify-center gap-2 px-3 md:px-4 py-2 rounded-lg bg-[var(--color-surface)] backdrop-blur-xl border border-[var(--color-border-subtle)] text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)] hover:border-[var(--color-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-[var(--shadow-soft)]"
+                  className="bg-[var(--color-surface)] backdrop-blur-xl border-border-subtle shadow-[var(--shadow-soft)] hover:bg-[var(--color-primary-soft)] hover:border-[var(--color-primary)]"
                   title={isDetectingLights ? 'Detecting lights...' : detectedLightsCount !== null ? `Detect Lights (${detectedLightsCount} found)` : 'Auto-detect light fixtures from the map'}
                 >
                   {isDetectingLights ? (
@@ -946,17 +949,19 @@ export default function MapPage() {
                       </span>
                     </>
                   )}
-                </button>
+                </Button>
               </div>
               <div className="pointer-events-auto">
-                <button
+                <Button
+                  variant="secondary"
+                  size="md"
                   onClick={handleClearMap}
-                  className="flex items-center justify-center gap-2 px-3 md:px-4 py-2 rounded-lg bg-[var(--color-surface)] backdrop-blur-xl border border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-danger)] transition-all duration-200 shadow-[var(--shadow-soft)]"
+                  className="bg-[var(--color-surface)] backdrop-blur-xl border-border-subtle shadow-[var(--shadow-soft)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-danger)]"
                   title="Clear map and show upload"
                 >
                   <X size={18} />
                   <span className="hidden md:inline text-sm font-medium">Clear</span>
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -978,12 +983,13 @@ export default function MapPage() {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <button
+                  <Button
+                    variant="primary"
+                    size="lg"
                     onClick={() => setShowUploadModal(true)}
-                    className="fusion-button fusion-button-primary"
                   >
                     Upload First Location
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>

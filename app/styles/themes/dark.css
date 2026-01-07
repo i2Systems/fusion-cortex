@@ -1,0 +1,209 @@
+    :root {
+        /* ============================================
+       COLOR PALETTE - DARK THEME (default)
+       Tech Noir Refined - 80's Neon Glass
+       ============================================ */
+
+        /* Backgrounds - Deep Cyber Dark */
+        --color-bg: #090b11;
+        --color-bg-elevated: #11141e;
+        --color-surface: rgba(17, 20, 30, 0.7);
+        --color-surface-subtle: rgba(25, 30, 45, 0.5);
+
+        /* Borders - Cyan Haze */
+        --color-border-subtle: rgba(0, 217, 255, 0.15);
+        --color-border-strong: rgba(0, 217, 255, 0.35);
+
+        /* Primary brand color - Neon Cyan */
+        --color-primary: #00e5ff;
+        --color-primary-soft: rgba(0, 229, 255, 0.15);
+        --color-primary-hover: #33ebff;
+        --color-primary-strong: #00b8cc;
+
+        /* Accent & status colors - Neon Arcade */
+        --color-accent: #d946ef;
+        /* Fuschia Neon */
+        --color-danger: #ff1744;
+        /* Red Neon */
+        --color-success: #00e676;
+        /* Green Neon */
+        --color-warning: #ffea00;
+        /* Yellow Neon */
+        --color-info: #2979ff;
+        /* Blue Neon */
+
+        /* Text colors - Monitor White */
+        --color-text: #f0f4f8;
+        --color-text-muted: #94a3b8;
+        --color-text-soft: #64748b;
+        --color-text-on-primary: #000000;
+
+        /* Tooltip colors - Huds */
+        --color-tooltip-bg: rgba(10, 14, 23, 0.95);
+        --color-tooltip-border: var(--color-primary);
+        --color-tooltip-text: var(--color-text);
+        --color-tooltip-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
+
+        /* ============================================
+       SPACING SCALE (scales automatically with root font-size)
+       ============================================ */
+        --font-size-multiplier: 1.125;
+        --space-0: 0;
+        --space-1: 0.25rem;
+        --space-2: 0.5rem;
+        --space-3: 0.75rem;
+        --space-4: 1rem;
+        --space-5: 1.25rem;
+        --space-6: 1.5rem;
+        --space-8: 2rem;
+        --space-10: 2.5rem;
+        --space-12: 3rem;
+        --space-16: 4rem;
+        --space-20: 5rem;
+
+        /* ============================================
+       BORDER RADIUS
+       ============================================ */
+        --radius-xs: 4px;
+        --radius-sm: 6px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+        --radius-xl: 18px;
+        --radius-2xl: 24px;
+        --radius-pill: 999px;
+
+        /* ============================================
+       SHADOWS & GLOWS (Refined Neon)
+       ============================================ */
+        --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.5);
+        --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.7);
+        --shadow-strong: 0 24px 60px rgba(0, 0, 0, 0.8);
+
+        /* Glows - Intense & Sharp */
+        --shadow-glow-primary: 0 0 10px rgba(0, 229, 255, 0.4), 0 0 20px rgba(0, 229, 255, 0.2);
+        --shadow-glow-accent: 0 0 10px rgba(217, 70, 239, 0.4);
+        --shadow-glow-hover: 0 0 15px rgba(0, 229, 255, 0.5);
+
+        /* Glow effects */
+        --glow-primary: 0 0 15px rgba(0, 229, 255, 0.3);
+        --glow-modal: 0 0 40px rgba(0, 229, 255, 0.25);
+        --glow-accent: 0 0 15px rgba(217, 70, 239, 0.3);
+        --glow-strong: 0 0 50px rgba(0, 229, 255, 0.4);
+
+        /* ============================================
+       BORDERS
+       ============================================ */
+        --border-width-thin: 1px;
+        --border-width-thick: 2px;
+
+        /* ============================================
+       TYPOGRAPHY
+       ============================================ */
+        --font-family-primary: var(--font-sans, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif);
+        --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+        --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+        --font-size-base: 16px;
+        --font-size-multiplier: 1.0;
+
+        --font-size-xs: calc(0.75 * var(--font-size-base));
+        --font-size-sm: calc(0.875 * var(--font-size-base));
+        --font-size-md: var(--font-size-base);
+        --font-size-lg: calc(1.125 * var(--font-size-base));
+        --font-size-xl: calc(1.25 * var(--font-size-base));
+        --font-size-2xl: calc(1.5 * var(--font-size-base));
+        --font-size-3xl: calc(1.875 * var(--font-size-base));
+
+        --font-size-h1: calc(2.25 * var(--font-size-base));
+        --font-size-h2: calc(1.875 * var(--font-size-base));
+        --font-size-h3: calc(1.5 * var(--font-size-base));
+        --font-size-h4: calc(1.25 * var(--font-size-base));
+        --font-size-body: var(--font-size-base);
+        --font-size-small: calc(0.875 * var(--font-size-base));
+        --font-size-caption: calc(0.75 * var(--font-size-base));
+
+        --line-height-tight: 1.1;
+        --line-height-snug: 1.25;
+        --line-height-normal: 1.5;
+        --line-height-relaxed: 1.75;
+
+        --typography-h1-line-height: var(--line-height-tight);
+        --typography-h1-padding-bottom: var(--space-4);
+        --typography-h2-line-height: var(--line-height-snug);
+        --typography-h2-padding-bottom: var(--space-3);
+        --typography-h3-line-height: var(--line-height-snug);
+        --typography-h3-padding-bottom: var(--space-2);
+        --typography-body-line-height: var(--line-height-normal);
+        --typography-small-line-height: var(--line-height-normal);
+
+        /* ============================================
+       TRANSITIONS & ANIMATIONS
+       ============================================ */
+        --transition-fast: 120ms ease-out;
+        --transition-normal: 180ms ease;
+        --transition-slow: 240ms ease-in-out;
+        --transition-panel: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+        /* ============================================
+       Z-INDEX LAYERS
+       ============================================ */
+        --z-base: 0;
+        --z-nav: 100;
+        --z-panel: 200;
+        --z-dropdown: 350;
+        --z-drawer: 300;
+        --z-modal: 400;
+        --z-toast: 500;
+
+        /* ============================================
+       GLASS & MATERIALITY EFFECTS
+       ============================================ */
+        --glass-blur: 24px;
+        --glass-blur-strong: 48px;
+        --glass-opacity: 0.65;
+        --glass-opacity-strong: 0.85;
+
+        --neumorphism-shadow-inset: inset 2px 2px 5px rgba(0, 0, 0, 0.1), inset -2px -2px 5px rgba(255, 255, 255, 0.1);
+        --neumorphism-shadow-outset: 8px 8px 16px rgba(0, 0, 0, 0.1), -8px -8px 16px rgba(255, 255, 255, 0.1);
+        --neumorphism-shadow-pressed: inset 4px 4px 8px rgba(0, 0, 0, 0.15), inset -4px -4px 8px rgba(255, 255, 255, 0.1);
+
+        --acrylic-tint: rgba(255, 255, 255, 0.1);
+        --acrylic-tint-dark: rgba(0, 0, 0, 0.1);
+        --acrylic-blur: 32px;
+        --acrylic-opacity: 0.7;
+    }
+
+    /* Explicit Dark Theme Overrides */
+    [data-theme="dark"] {
+        --color-bg: #090b11;
+        --color-bg-elevated: #11141e;
+        --color-surface: rgba(17, 20, 30, 0.7);
+        --color-surface-subtle: rgba(25, 30, 45, 0.5);
+
+        --color-border-subtle: rgba(0, 217, 255, 0.15);
+        --color-border-strong: rgba(0, 217, 255, 0.35);
+
+        --color-primary: #00e5ff;
+        --color-primary-soft: rgba(0, 229, 255, 0.15);
+        --color-primary-hover: #33ebff;
+        --color-primary-strong: #00b8cc;
+
+        --color-accent: #d946ef;
+        --color-danger: #ff1744;
+        --color-success: #00e676;
+        --color-warning: #ffea00;
+
+        --color-text: #f0f4f8;
+        --color-text-muted: #94a3b8;
+        --color-text-soft: #64748b;
+        --color-text-on-primary: #000000;
+
+        --color-tooltip-bg: rgba(10, 14, 23, 0.95);
+        --color-tooltip-border: var(--color-primary);
+        --color-tooltip-text: var(--color-text);
+    }
+
+    /* Dark theme body override */
+    [data-theme="dark"] body {
+        background: linear-gradient(135deg, #090b11 0%, #11141e 100%);
+    }

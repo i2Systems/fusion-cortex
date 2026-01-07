@@ -23,6 +23,7 @@ import { isFixtureType } from '@/lib/deviceUtils'
 import { getDeviceLibraryUrl, getDeviceImage, getDeviceImageAsync } from '@/lib/libraryUtils'
 import { SelectSwitcher } from '@/components/shared/SelectSwitcher'
 import { getStatusTokenClass, getSignalTokenClass, getBatteryTokenClass } from '@/lib/styleUtils'
+import { Button } from '@/components/ui/Button'
 
 interface DeviceProfilePanelProps {
   device: Device | null
@@ -531,19 +532,20 @@ export function DeviceProfilePanel({ device, onDeviceSelect, onComponentClick, o
                   </div>
                 )}
                 <div className="pt-2 border-t border-[var(--color-border-subtle)]">
-                  <button
+                  <Button
                     onClick={() => {
                       // Navigate to i2systems.com for replacement parts
                       window.open('https://i2systems.com', '_blank')
                     }}
-                    className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
+                    variant="primary"
+                    className="w-full flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
                     title="Request Replacement Parts"
                   >
                     <Package size={12} className="md:w-3.5 md:h-3.5" />
                     <span className="hidden md:inline">Request Replacement</span>
                     <span className="md:hidden">Request Parts</span>
                     <ExternalLink size={10} className="md:w-3 md:h-3" />
-                  </button>
+                  </Button>
                 </div>
               </>
             )}

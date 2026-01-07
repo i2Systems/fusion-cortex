@@ -19,6 +19,7 @@ import { Layers, Edit2, Trash2, MapPin, X, Save, CheckSquare, Square } from 'luc
 import { SelectSwitcher } from '@/components/shared/SelectSwitcher'
 import { PanelEmptyState } from '@/components/shared/PanelEmptyState'
 import { ZONE_COLORS, DEFAULT_ZONE_COLOR } from '@/lib/zoneColors'
+import { Button } from '@/components/ui/Button'
 
 interface Zone {
   id: string
@@ -602,15 +603,16 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
 
       {/* Actions Footer */}
       <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] flex-shrink-0">
-        <button
+        <Button
           onClick={handleCreateZone}
-          className="w-full fusion-button fusion-button-primary flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
+          variant="primary"
+          className="w-full flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm"
           title="Create New Zone"
         >
           <Layers size={14} className="md:w-4 md:h-4" />
           <span className="hidden md:inline">Create New Zone</span>
           <span className="md:hidden">Create Zone</span>
-        </button>
+        </Button>
       </div>
     </div>
   )

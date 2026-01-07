@@ -1,0 +1,83 @@
+/* ============================================
+     BUSINESS FLUENT THEME (Mica/Acrylic Refined)
+     ============================================ */
+[data-theme="business-fluent"] {
+    /* Backgrounds - Dark Mica */
+    --color-bg: #202020;
+    --color-bg-elevated: #2b2b2b;
+    --color-surface: rgba(45, 45, 45, 0.75);
+    /* Acrylic */
+    --color-surface-subtle: rgba(55, 55, 55, 0.5);
+
+    /* Borders - Subtle structured lines */
+    --color-border-subtle: rgba(255, 255, 255, 0.08);
+    /* 1px line */
+    --color-border-strong: rgba(255, 255, 255, 0.15);
+
+    /* Primary brand color - Windows Blue */
+    --color-primary: #0078d4;
+    --color-primary-soft: rgba(0, 120, 212, 0.15);
+    --color-primary-hover: #106ebe;
+    --color-primary-strong: #005a9e;
+
+    /* Accent & status colors - Production Palette */
+    --color-accent: #b4a0ff;
+    /* Purple */
+    --color-danger: #d13438;
+    /* Office Red */
+    --color-success: #107c10;
+    /* Office Green */
+    --color-warning: #ffb900;
+    /* Office Yellow */
+    --color-info: #0078d4;
+    /* Office Blue */
+
+    /* Text colors - High legibility */
+    --color-text: #ffffff;
+    --color-text-muted: #cccccc;
+    --color-text-soft: #aaaaaa;
+    --color-text-on-primary: #ffffff;
+
+    /* Tooltip - Acrylic */
+    --color-tooltip-bg: rgba(32, 32, 32, 0.9);
+    --color-tooltip-border: var(--color-border-subtle);
+    --color-tooltip-text: var(--color-text);
+    --color-tooltip-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+
+    /* Shadows - Measured, depth-based */
+    --shadow-soft: 0 2px 4px rgba(0, 0, 0, 0.15);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.2);
+    --shadow-strong: 0 8px 16px rgba(0, 0, 0, 0.3);
+
+    /* Glows - Only interactive focus rings */
+    --shadow-glow-primary: 0 0 0 2px rgba(0, 120, 212, 0.4);
+    --shadow-glow-accent: 0 0 0 2px rgba(180, 160, 255, 0.4);
+    --shadow-glow-hover: 0 0 0 2px rgba(255, 255, 255, 0.2);
+
+    /* Glow effects */
+    --glow-primary: 0 0 0 1px var(--color-primary);
+    --glow-modal: 0 24px 54px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    --glow-accent: 0 0 0 1px var(--color-accent);
+    --glow-strong: 0 32px 64px rgba(0, 0, 0, 0.6);
+
+    /* Glass aesthetics - Heavy Blur Acrylic */
+    --glass-blur: 30px;
+    --glass-blur-strong: 60px;
+    --glass-opacity: 0.8;
+    --glass-opacity-strong: 0.9;
+
+    /* Radius - Sharp/Rounded Mix (Win11) */
+    --radius-xs: 2px;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-2xl: 16px;
+}
+
+[data-theme="business-fluent"] body {
+    background: #202020;
+    background-image:
+        radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.03) 0%, transparent 20%),
+        radial-gradient(circle at 90% 80%, rgba(0, 120, 212, 0.05) 0%, transparent 20%);
+}

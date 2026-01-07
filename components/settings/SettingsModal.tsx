@@ -19,6 +19,7 @@ import { useRole } from '@/lib/role'
 import { useFont, FontFamily, FontSize } from '@/lib/FontContext'
 import { useI18n, languageNames, Language } from '@/lib/i18n'
 import { useAdvancedSettings } from '@/lib/AdvancedSettingsContext'
+import { Button } from '@/components/ui/Button'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -91,8 +92,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <span className="text-[var(--color-text-on-primary)] font-bold text-xl">F</span>
             </div>
             <div>
-            <h2 className="text-2xl font-bold text-[var(--color-text)]">{t('settings')}</h2>
-                      <p className="text-xs text-[var(--color-text-muted)]">Fusion</p>
+              <h2 className="text-2xl font-bold text-[var(--color-text)]">{t('settings')}</h2>
+              <p className="text-xs text-[var(--color-text-muted)]">Fusion</p>
             </div>
           </div>
           <button
@@ -157,9 +158,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     const Icon = activeSectionData.icon
                     return <Icon size={24} className="text-[var(--color-primary)]" />
                   })()}
-                          <h3 className="text-xl font-semibold text-[var(--color-text)]">
-                            {t(activeSectionData.labelKey)}
-                          </h3>
+                  <h3 className="text-xl font-semibold text-[var(--color-text)]">
+                    {t(activeSectionData.labelKey)}
+                  </h3>
                 </div>
 
                 {/* Section Content */}
@@ -247,9 +248,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                             className="w-full px-4 py-2.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
                           />
                         </div>
-                        <button className="fusion-button fusion-button-primary">
+                        <Button variant="primary">
                           Update Password
-                        </button>
+                        </Button>
                       </>
                     ) : (
                       <div className="p-6 bg-[var(--color-surface-subtle)] rounded-lg text-center">
@@ -369,7 +370,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         </label>
                       </div>
                     </div>
-                    
+
                     {/* Font Family */}
                     <div>
                       <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-3 flex items-center gap-2">
@@ -398,7 +399,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         Preview: The quick brown fox jumps over the lazy dog
                       </p>
                     </div>
-                    
+
                     {/* Font Size */}
                     <div>
                       <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-3">
@@ -417,7 +418,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         Affects text size and spacing throughout the application
                       </p>
                     </div>
-                    
+
                     {/* Language */}
                     <div>
                       <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-3">
@@ -436,7 +437,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         Changes the language of the interface
                       </p>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-3">
                         {t('role')}
@@ -489,9 +490,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         <div className="h-full bg-[var(--color-primary)] rounded-full" style={{ width: '24%' }}></div>
                       </div>
                     </div>
-                    <button className="fusion-button" style={{ background: 'var(--color-surface-subtle)', color: 'var(--color-text)' }}>
+                    <Button variant="secondary">
                       Clear Cache
-                    </button>
+                    </Button>
                   </div>
                 )}
 
@@ -502,7 +503,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         These settings control experimental features. Change with caution.
                       </p>
                     </div>
-                    
+
                     {/* PDF Processing Section */}
                     <div>
                       <h4 className="text-sm font-medium text-[var(--color-text)] mb-3">PDF Processing</h4>
@@ -519,8 +520,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                               Enable SVG Vector Extraction
                             </div>
                             <div className="text-xs text-[var(--color-text-muted)] mt-1">
-                              When uploading PDFs, attempt to extract vector graphics (lines, paths) as SVG. 
-                              This can provide higher quality floor plans but may be slow or produce incorrect results 
+                              When uploading PDFs, attempt to extract vector graphics (lines, paths) as SVG.
+                              This can provide higher quality floor plans but may be slow or produce incorrect results
                               for some PDFs. When disabled, PDFs are converted to high-resolution images instead.
                             </div>
                             <div className="text-xs text-[var(--color-warning)] mt-2 flex items-center gap-1">
@@ -554,16 +555,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       <p className="text-xs text-[var(--color-text-muted)] mb-3">
                         View and inspect all design tokens and atomic components in Storybook.
                       </p>
-                      <a
-                        href="/storybook"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="fusion-button fusion-button-primary inline-flex items-center gap-2"
-                        style={{ textDecoration: 'none' }}
+                      <Button
+                        onClick={() => window.open('/storybook', '_blank')}
+                        className="inline-flex items-center gap-2 no-underline"
+                        variant="primary"
                       >
                         <BookOpen size={16} />
                         Open Storybook
-                      </a>
+                      </Button>
                     </div>
 
                     {/* README Content */}
@@ -681,16 +680,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     {/* Sign Out Button */}
                     {isAuthenticated && (
                       <div className="pt-4 border-t border-[var(--color-border-subtle)]">
-                      <button
-                        onClick={() => {
-                          logout()
-                          onClose()
-                        }}
-                          className="fusion-button w-full"
-                        style={{ background: 'var(--color-danger)', color: 'var(--color-text-on-primary)' }}
-                      >
-                        Sign Out
-                      </button>
+                        <Button
+                          onClick={() => {
+                            logout()
+                            onClose()
+                          }}
+                          variant="danger"
+                          className="w-full"
+                        >
+                          Sign Out
+                        </Button>
                       </div>
                     )}
                   </div>

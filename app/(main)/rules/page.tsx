@@ -15,6 +15,8 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { Button } from '@/components/ui/Button'
+import { Toggle } from '@/components/ui/Toggle'
 import dynamic from 'next/dynamic'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { MapViewToggle, type MapViewMode } from '@/components/shared/MapViewToggle'
@@ -53,7 +55,7 @@ export default function RulesPage() {
   const mapImageUrl = mapData.mapImageUrl
   const vectorData = mapData.vectorData
   const mapUploaded = mapData.mapUploaded
-  
+
   const [viewMode, setViewMode] = useState<MapViewMode>('list')
   const [selectedZoneName, setSelectedZoneName] = useState<string | null>(null)
   const [showRules, setShowRules] = useState(true)
@@ -65,22 +67,22 @@ export default function RulesPage() {
   // Map data is now loaded from MapContext - no need to load it here
   const { refreshMapData } = useMap()
   const { uploadMap, uploadVectorData } = useMapUpload()
-  
+
   const handleMapUpload = async (imageUrl: string) => {
     try {
       await uploadMap(imageUrl)
       // Refresh map data to show the new upload
-    await refreshMapData()
+      await refreshMapData()
     } catch (error: any) {
       alert(error.message || 'Failed to upload map')
     }
   }
-  
+
   const handleVectorDataUpload = async (data: any) => {
     try {
       await uploadVectorData(data)
       // Refresh map data to show the new upload
-    await refreshMapData()
+      await refreshMapData()
     } catch (error: any) {
       alert(error.message || 'Failed to upload vector data')
     }
@@ -98,7 +100,7 @@ export default function RulesPage() {
   // Filter rules based on selected zone, search, and type filters
   const filteredRules = useMemo(() => {
     let filtered = rules
-    
+
     // Apply type filters (rules, overrides, schedules)
     filtered = filtered.filter(rule => {
       if (rule.ruleType === 'rule' && !showRules) return false
@@ -106,7 +108,7 @@ export default function RulesPage() {
       if (rule.ruleType === 'schedule' && !showSchedules) return false
       return true
     })
-    
+
     // Apply search filter - partial match on all fields
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
@@ -124,21 +126,21 @@ export default function RulesPage() {
           rule.trigger,
           rule.enabled ? 'enabled' : 'disabled',
         ].filter(Boolean).join(' ').toLowerCase()
-        
+
         return searchableText.includes(query)
       })
     }
-    
+
     // Apply zone filter (only if zone name is provided and zones are loaded)
     if (selectedZoneName && zones.length > 0) {
-      filtered = filtered.filter(rule => 
+      filtered = filtered.filter(rule =>
         rule.condition.zone === selectedZoneName ||
         rule.targetName === selectedZoneName ||
         rule.action.zones?.includes(selectedZoneName) ||
         false
       )
     }
-    
+
     return filtered
   }, [rules, searchQuery, selectedZoneName, zones.length, showRules, showOverrides, showSchedules])
 
@@ -165,7 +167,7 @@ export default function RulesPage() {
         // All fixture types map to 'fixture'
         simplifiedType = 'fixture'
       }
-      
+
       return {
         id: d.id,
         x: d.x || 0,
@@ -243,8 +245,8 @@ export default function RulesPage() {
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island - In flow */}
       <div className="flex-shrink-0 page-padding-x pt-3 md:pt-4 pb-2 md:pb-3">
-        <SearchIsland 
-          position="top" 
+        <SearchIsland
+          position="top"
           fullWidth={true}
           title="Rules, Overrides & Scheduling"
           subtitle="Create automation rules, overrides, and schedules for lighting control"
@@ -260,13 +262,13 @@ export default function RulesPage() {
       </div>
 
       {/* Main Content: Rules List/Map + Details Panel */}
-      <div 
-        className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pb-12 md:pb-14" 
+      <div
+        className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pb-12 md:pb-14"
         style={{ overflow: 'visible' }}
         onClick={handleMainContentClick}
       >
         {/* Rules List/Map - Left Side */}
-        <div 
+        <div
           ref={listContainerRef}
           className="flex-1 min-w-0 flex flex-col"
         >
@@ -274,68 +276,52 @@ export default function RulesPage() {
           <div className="mb-3 flex items-center justify-between gap-3">
             {/* Left side: View Toggle */}
             <MapViewToggle currentView={viewMode} onViewChange={setViewMode} />
-            
+
             {/* Right side: Type Filter Toggles */}
             <div className="flex items-center gap-3">
               {/* Type Filter Toggles */}
               <div className="flex items-center gap-1 p-0.5 bg-[var(--color-surface-subtle)] rounded-lg border border-[var(--color-border-subtle)]">
-                <button
-                  onClick={() => setShowRules(!showRules)}
-                  className={`
-                    px-2 md:px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200
-                    ${
-                      showRules
-                        ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-soft)]'
-                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
-                    }
-                  `}
+                <Toggle
+                  pressed={showRules}
+                  onPressedChange={setShowRules}
+                  size="sm"
                   title="Show/Hide Rules"
                 >
                   <span className="hidden sm:inline">Rules</span>
                   <span className="sm:hidden">R</span>
-                </button>
-                <button
-                  onClick={() => setShowOverrides(!showOverrides)}
-                  className={`
-                    px-2 md:px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200
-                    ${
-                      showOverrides
-                        ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-soft)]'
-                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
-                    }
-                  `}
+                </Toggle>
+                <Toggle
+                  pressed={showOverrides}
+                  onPressedChange={setShowOverrides}
+                  size="sm"
                   title="Show/Hide Overrides"
                 >
                   <span className="hidden sm:inline">Overrides</span>
                   <span className="sm:hidden">O</span>
-                </button>
-                <button
-                  onClick={() => setShowSchedules(!showSchedules)}
-                  className={`
-                    px-2 md:px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200
-                    ${
-                      showSchedules
-                        ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-soft)]'
-                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
-                    }
-                  `}
+                </Toggle>
+                <Toggle
+                  pressed={showSchedules}
+                  onPressedChange={setShowSchedules}
+                  size="sm"
                   title="Show/Hide Schedules"
                 >
                   <span className="hidden sm:inline">Schedules</span>
                   <span className="sm:hidden">S</span>
-                </button>
+                </Toggle>
               </div>
-              
-            {selectedZoneName && viewMode === 'map' && (
-              <button
-                onClick={() => setSelectedZoneName(null)}
-                className="text-xs md:text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors px-2 py-1 rounded-md hover:bg-[var(--color-surface-subtle)]"
-                title="Clear zone filter"
-              >
-                <span className="hidden sm:inline">Clear filter</span>
-                <span className="sm:hidden">Clear</span>
-              </button>
-            )}
+
+              {selectedZoneName && viewMode === 'map' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedZoneName(null)}
+                  className="text-xs md:text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] px-2 py-1 h-auto hover:bg-[var(--color-surface-subtle)]"
+                  title="Clear zone filter"
+                >
+                  <span className="hidden sm:inline">Clear filter</span>
+                  <span className="sm:hidden">Clear</span>
+                </Button>
+              )}
             </div>
           </div>
 

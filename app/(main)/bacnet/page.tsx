@@ -11,6 +11,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { Button } from '@/components/ui/Button'
 import dynamic from 'next/dynamic'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { MapViewToggle, type MapViewMode } from '@/components/shared/MapViewToggle'
@@ -21,7 +22,30 @@ import { useSite } from '@/lib/SiteContext'
 import { BACnetDetailsPanel } from '@/components/bacnet/BACnetDetailsPanel'
 import { initialBACnetMappings, type ControlCapability } from '@/lib/initialBACnetMappings'
 import { ResizablePanel } from '@/components/layout/ResizablePanel'
-import { Power, Sun, Clock, Radio, CheckCircle2, AlertCircle, XCircle, Plus } from 'lucide-react'
+import { Badge } from '@/components/ui/Badge'
+import {
+  RefreshCw,
+  Search,
+  Filter,
+  MoreHorizontal,
+  Plus,
+  Trash2,
+  Edit2,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  Link as LinkIcon,
+  ChevronDown,
+  ChevronRight,
+  Settings,
+  Zap,
+  Thermometer,
+  Activity,
+  Power,
+  Sun,
+  Clock,
+  Radio
+} from 'lucide-react'
 import { useMap } from '@/lib/MapContext'
 import { useMapUpload } from '@/lib/useMapUpload'
 
@@ -63,16 +87,16 @@ function generateMappingForZone(zoneName: string, zoneId: string, deviceCount: n
       deviceCount,
     }
   }
-  
+
   const zoneLower = zoneName.toLowerCase()
-  
+
   // Determine capabilities based on zone type
   let capabilities: ControlCapability[] = ['on-off']
   let description = ''
   let status: 'connected' | 'error' | 'not-assigned' = 'not-assigned'
   let bacnetObjectId: string | null = null
   let lastConnected: Date | undefined = undefined
-  
+
   if (zoneLower.includes('electronics') || zoneLower.includes('grocery')) {
     capabilities = ['on-off', 'dimming', 'scheduled']
     description = 'Connected to main lighting panel. Can be turned on/off, dimmed, and follows store hours schedule. BMS has full control during business hours.'
@@ -101,14 +125,14 @@ function generateMappingForZone(zoneName: string, zoneId: string, deviceCount: n
     bacnetObjectId = `400${zoneIndex + 1}`
     lastConnected = new Date(Date.now() - 1000 * 60 * (5 + Math.floor(Math.random() * 15)))
   }
-  
+
   // Randomly add some error states (but less frequently)
   if (status === 'connected' && Math.random() < 0.1) {
     status = 'error'
     description = 'Connection error detected. BMS can control on/off but communication is intermittent. Check network connection and BACnet device status.'
     lastConnected = new Date(Date.now() - 1000 * 60 * 60 * (1 + Math.floor(Math.random() * 3)))
   }
-  
+
   return {
     zoneId,
     zoneName,
@@ -144,7 +168,7 @@ export default function BACnetPage() {
   const mapImageUrl = mapData.mapImageUrl
   const vectorData = mapData.vectorData
   const mapUploaded = mapData.mapUploaded
-  
+
   const [viewMode, setViewMode] = useState<MapViewMode>('list')
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -176,16 +200,16 @@ export default function BACnetPage() {
   // Auto-create BACnet mappings when new zones are detected or store changes
   useEffect(() => {
     if (!activeSiteId) return // Wait for store to be initialized
-    
+
     if (typeof window !== 'undefined' && zones.length > 0) {
       const storageKey = getStorageKey('bacnet_mappings')
       const savedKey = getStorageKey('bacnet_mappings_saved')
-      
+
       // Check if mappings are saved - if so, always load them and don't auto-create
       const mappingsSaved = localStorage.getItem(savedKey) === 'true'
       const saved = localStorage.getItem(storageKey)
       let existingMappings: BACnetMapping[] = []
-      
+
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
@@ -193,12 +217,12 @@ export default function BACnetPage() {
             ...m,
             lastConnected: m.lastConnected ? new Date(m.lastConnected) : undefined,
           })) as BACnetMapping[]
-          
+
           // Remove mappings for zones that no longer exist
-          existingMappings = existingMappings.filter(m => 
+          existingMappings = existingMappings.filter(m =>
             zones.some(z => z.id === m.zoneId)
           )
-          
+
           // If mappings are saved, use them and don't auto-create
           if (mappingsSaved && existingMappings.length > 0) {
             setMappings(existingMappings)
@@ -211,7 +235,7 @@ export default function BACnetPage() {
 
       // Find zones without mappings (limit to first 12 zones)
       const zonesToMap = zones.slice(0, 12)
-      const zonesWithoutMappings = zonesToMap.filter(zone => 
+      const zonesWithoutMappings = zonesToMap.filter(zone =>
         !existingMappings.find(m => m.zoneId === zone.id)
       )
 
@@ -225,7 +249,7 @@ export default function BACnetPage() {
           const initialMapping = initialBACnetMappings.find(m => m.zoneName === zone.name)
           const deviceCount = devices.filter(d => d.zone === zone.name).length
           const zoneIndex = zonesToMap.indexOf(zone)
-          
+
           if (initialMapping) {
             return {
               zoneId: zone.id,
@@ -234,11 +258,11 @@ export default function BACnetPage() {
               status: initialMapping.status,
               controlCapabilities: initialMapping.controlCapabilities,
               description: initialMapping.description,
-              lastConnected: initialMapping.status === 'connected' 
+              lastConnected: initialMapping.status === 'connected'
                 ? new Date(Date.now() - 1000 * 60 * (5 + Math.floor(Math.random() * 10)))
                 : initialMapping.status === 'error'
-                ? new Date(Date.now() - 1000 * 60 * 60 * (1 + Math.floor(Math.random() * 3)))
-                : undefined,
+                  ? new Date(Date.now() - 1000 * 60 * 60 * (1 + Math.floor(Math.random() * 3)))
+                  : undefined,
               deviceCount,
               networkAddress: initialMapping.networkAddress,
               priority: initialMapping.priority,
@@ -284,23 +308,23 @@ export default function BACnetPage() {
 
   const handleEditSave = (mappingData: Partial<BACnetMapping>) => {
     if (!selectedMappingId) return
-    
-    const updated: BACnetMapping[] = zoneMappings.map(m => 
-      m.zoneId === selectedMappingId 
-        ? { 
-            ...m, 
-            ...mappingData,
-            status: mappingData.bacnetObjectId 
-              ? (mappingData.status || 'connected') as 'connected' | 'error' | 'not-assigned'
-              : 'not-assigned',
-            lastConnected: mappingData.bacnetObjectId ? new Date() : m.lastConnected,
-            networkAddress: mappingData.bacnetObjectId 
-              ? mappingData.networkAddress || `192.168.1.${100 + parseInt(selectedMappingId.slice(-1))}`
-              : undefined,
-            priority: mappingData.bacnetObjectId 
-              ? (mappingData.priority || Math.floor(Math.random() * 5) + 1)
-              : undefined,
-          }
+
+    const updated: BACnetMapping[] = zoneMappings.map(m =>
+      m.zoneId === selectedMappingId
+        ? {
+          ...m,
+          ...mappingData,
+          status: mappingData.bacnetObjectId
+            ? (mappingData.status || 'connected') as 'connected' | 'error' | 'not-assigned'
+            : 'not-assigned',
+          lastConnected: mappingData.bacnetObjectId ? new Date() : m.lastConnected,
+          networkAddress: mappingData.bacnetObjectId
+            ? mappingData.networkAddress || `192.168.1.${100 + parseInt(selectedMappingId.slice(-1))}`
+            : undefined,
+          priority: mappingData.bacnetObjectId
+            ? (mappingData.priority || Math.floor(Math.random() * 5) + 1)
+            : undefined,
+        }
         : m
     )
     setMappings(updated)
@@ -324,8 +348,8 @@ export default function BACnetPage() {
 
   const handleDelete = () => {
     if (selectedMappingId) {
-      const updated: BACnetMapping[] = zoneMappings.map(m => 
-        m.zoneId === selectedMappingId 
+      const updated: BACnetMapping[] = zoneMappings.map(m =>
+        m.zoneId === selectedMappingId
           ? { ...m, bacnetObjectId: null, status: 'not-assigned' as const, lastConnected: undefined }
           : m
       )
@@ -341,8 +365,8 @@ export default function BACnetPage() {
   const handleTestConnection = () => {
     if (selectedMapping) {
       // Simulate connection test
-      const updated: BACnetMapping[] = zoneMappings.map(m => 
-        m.zoneId === selectedMapping.zoneId 
+      const updated: BACnetMapping[] = zoneMappings.map(m =>
+        m.zoneId === selectedMapping.zoneId
           ? { ...m, lastConnected: new Date(), status: 'connected' as const }
           : m
       )
@@ -366,14 +390,16 @@ export default function BACnetPage() {
     }
   }
 
-  const getStatusTokenClass = (status: BACnetMapping['status']) => {
+  const getStatusBadgeVariant = (status: BACnetMapping['status']): "success" | "destructive" | "secondary" | "default" => {
     switch (status) {
       case 'connected':
-        return 'token token-status-success'
+        return 'success'
       case 'error':
-        return 'token token-status-error'
+        return 'destructive'
       case 'not-assigned':
-        return 'token token-status-not-assigned'
+        return 'secondary'
+      default:
+        return 'default'
     }
   }
 
@@ -390,22 +416,22 @@ export default function BACnetPage() {
   // Map data is now loaded from MapContext - no need to load it here
   const { refreshMapData } = useMap()
   const { uploadMap, uploadVectorData } = useMapUpload()
-  
+
   const handleMapUpload = async (imageUrl: string) => {
     try {
       await uploadMap(imageUrl)
       // Refresh map data to show the new upload
-    await refreshMapData()
+      await refreshMapData()
     } catch (error: any) {
       alert(error.message || 'Failed to upload map')
     }
   }
-  
+
   const handleVectorDataUpload = async (data: any) => {
     try {
       await uploadVectorData(data)
       // Refresh map data to show the new upload
-    await refreshMapData()
+      await refreshMapData()
     } catch (error: any) {
       alert(error.message || 'Failed to upload vector data')
     }
@@ -442,14 +468,14 @@ export default function BACnetPage() {
   const filteredMappings = useMemo(() => {
     // If zones are still initializing, return empty array
     if (zones.length === 0) return []
-    
+
     let filtered = zoneMappings
-    
+
     // Apply zone filter
     if (selectedZoneId) {
       filtered = filtered.filter(m => m.zoneId === selectedZoneId)
     }
-    
+
     // Apply search filter - partial match on all fields including numeric values
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
@@ -465,11 +491,11 @@ export default function BACnetPage() {
           mapping.priority !== undefined ? String(mapping.priority) : '',
           mapping.controlCapabilities.map(cap => capabilityLabels[cap].label).join(' '),
         ].filter(Boolean).join(' ').toLowerCase()
-        
+
         return searchableText.includes(query)
       })
     }
-    
+
     return filtered
   }, [zoneMappings, selectedZoneId, zones.length, searchQuery])
 
@@ -526,7 +552,7 @@ export default function BACnetPage() {
         // All fixture types map to 'fixture'
         simplifiedType = 'fixture'
       }
-      
+
       return {
         id: d.id,
         x: d.x || 0,
@@ -544,8 +570,8 @@ export default function BACnetPage() {
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island - In flow */}
       <div className="flex-shrink-0 page-padding-x pt-3 md:pt-4 pb-2 md:pb-3">
-        <SearchIsland 
-          position="top" 
+        <SearchIsland
+          position="top"
           fullWidth={true}
           title="BACnet Mapping"
           subtitle="Map zones to BACnet objects for BMS integration"
@@ -561,29 +587,30 @@ export default function BACnetPage() {
       </div>
 
       {/* Main Content: Table/Map + Details Panel */}
-      <div 
-        className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pb-12 md:pb-14" 
+      <div
+        className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pb-12 md:pb-14"
         style={{ overflow: 'visible' }}
         onClick={handleMainContentClick}
       >
         {/* Table/Map - Left Side */}
-        <div 
+        <div
           ref={listContainerRef}
-          className="flex-1 min-w-0 flex flex-col"
         >
           {/* View Toggle */}
           <div className="mb-3 flex items-center justify-between">
             <MapViewToggle currentView={viewMode} onViewChange={setViewMode} />
             {selectedZoneId && viewMode === 'map' && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setSelectedZoneId(null)
                   setSelectedMappingId(null)
                 }}
-                className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+                className="text-sm h-auto text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors px-2 py-1"
               >
                 Clear filter
-              </button>
+              </Button>
             )}
           </div>
 
@@ -591,7 +618,7 @@ export default function BACnetPage() {
           <div className="flex-1 min-h-0">
             {viewMode === 'list' ? (
               <div className="fusion-card overflow-hidden h-full flex flex-col">
-                <div 
+                <div
                   className="flex-1 overflow-auto"
                   onClick={(e) => {
                     // If clicking on the container itself (not a table row), deselect
@@ -636,9 +663,9 @@ export default function BACnetPage() {
                       ) : (
                         filteredMappings.map((mapping) => {
                           const isSelected = selectedMappingId === mapping.zoneId
-                          
+
                           return (
-                            <tr 
+                            <tr
                               key={mapping.zoneId}
                               onClick={(e) => {
                                 e.stopPropagation() // Prevent container click handler
@@ -648,8 +675,8 @@ export default function BACnetPage() {
                               className={`
                                 border-b border-[var(--color-border-subtle)] 
                                 transition-colors cursor-pointer
-                                ${isSelected 
-                                  ? 'bg-[var(--color-primary-soft)] hover:bg-[var(--color-primary-soft)]' 
+                                ${isSelected
+                                  ? 'bg-[var(--color-primary-soft)] hover:bg-[var(--color-primary-soft)]'
                                   : 'hover:bg-[var(--color-surface-subtle)]'
                                 }
                               `}
@@ -668,13 +695,15 @@ export default function BACnetPage() {
                                     {mapping.controlCapabilities.map((cap) => {
                                       const { label, icon: Icon } = capabilityLabels[cap]
                                       return (
-                                        <span
+                                        <Badge
                                           key={cap}
-                                          className="token token-status-info"
+                                          variant="default"
+                                          appearance="soft"
+                                          className="gap-1"
                                         >
                                           <Icon size={12} />
                                           {label}
-                                        </span>
+                                        </Badge>
                                       )
                                     })}
                                   </div>
@@ -699,10 +728,14 @@ export default function BACnetPage() {
                               {/* Status */}
                               <td className="py-4 px-4">
                                 <div className="flex items-center gap-2">
-                                  <span className={getStatusTokenClass(mapping.status)}>
-                                  {getStatusIcon(mapping.status)}
+                                  <Badge
+                                    appearance="soft"
+                                    variant={getStatusBadgeVariant(mapping.status)}
+                                    className="gap-1"
+                                  >
+                                    {getStatusIcon(mapping.status)}
                                     <span className="capitalize">{mapping.status === 'not-assigned' ? 'Not Assigned' : mapping.status}</span>
-                                  </span>
+                                  </Badge>
                                   {mapping.lastConnected && (
                                     <span className="text-xs text-[var(--color-text-muted)]">
                                       {formatLastConnected(mapping.lastConnected)}

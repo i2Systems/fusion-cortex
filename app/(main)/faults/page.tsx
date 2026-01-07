@@ -11,6 +11,11 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Toggle } from '@/components/ui/Toggle'
+import { Badge } from '@/components/ui/Badge'
+import { SelectSwitcher } from '@/components/shared/SelectSwitcher'
 import dynamic from 'next/dynamic'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { MapViewToggle, type MapViewMode } from '@/components/shared/MapViewToggle'
@@ -600,7 +605,12 @@ export default function FaultsPage() {
         newCount: trendingCategoryInfo.newCount,
         totalCount: trendingCategoryInfo.totalCount,
         label: 'Trending Up',
-        description: `${faultCategories[trendingCategoryInfo.category].shortLabel} with ${trendingCategoryInfo.newCount} new`,
+        description: (
+          <div className="flex items-center gap-1.5">
+            {faultCategories[trendingCategoryInfo.category].shortLabel}
+            <Badge variant="outline" className="text-[10px] h-4 px-1 py-0">+{trendingCategoryInfo.newCount}</Badge>
+          </div>
+        ),
       } : null,
       criticalFaults: {
         count: criticalCount,
@@ -697,26 +707,30 @@ export default function FaultsPage() {
             {/* Right side: Category Filter Toggles */}
             <div className="flex items-center gap-3">
               {/* Show Resolved Toggle */}
-              <button
+              <Button
+                variant={showResolved ? 'primary' : 'ghost'}
+                size="sm"
                 onClick={() => setShowResolved(prev => !prev)}
-                className={`text-sm px-3 py-1.5 rounded-lg border transition-all ${showResolved
+                className={`text-sm px-3 py-1.5 h-auto transition-all ${showResolved
                   ? 'bg-[var(--color-primary-soft)] border-[var(--color-primary)] text-[var(--color-primary)]'
                   : 'bg-transparent border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:border-[var(--color-border)]'
                   }`}
               >
                 {showResolved ? 'Hide Resolved' : 'Show Resolved'}
-              </button>
+              </Button>
 
               {selectedDeviceId && viewMode === 'map' && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setSelectedDeviceId(null)
                     setSelectedFaultId(null)
                   }}
-                  className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+                  className="text-sm h-auto text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
                 >
                   Clear filter
-                </button>
+                </Button>
               )}
 
               {/* Category Filter Toggles - only show in list view */}
@@ -744,27 +758,20 @@ export default function FaultsPage() {
                     }
 
                     return (
-                      <button
+                      <Toggle
                         key={category}
-                        onClick={() => {
+                        pressed={isActive}
+                        onPressedChange={(pressed) => {
                           if (!isDisabled) {
-                            setShowCategories(prev => ({ ...prev, [category]: !prev[category] }))
+                            setShowCategories(prev => ({ ...prev, [category]: pressed }))
                           }
                         }}
+                        size="icon"
                         disabled={isDisabled}
-                        className={`
-                          p-1.5 rounded-md transition-all duration-200
-                          ${isDisabled
-                            ? 'opacity-40 cursor-not-allowed text-[var(--color-text-soft)]'
-                            : isActive
-                              ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-soft)]'
-                              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
-                          }
-                        `}
                         title={isDisabled ? `${categoryInfo.shortLabel} (no faults)` : categoryInfo.shortLabel}
                       >
                         {getIcon()}
-                      </button>
+                      </Toggle>
                     )
                   })}
                 </div>

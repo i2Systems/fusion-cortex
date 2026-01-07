@@ -11,6 +11,7 @@
 'use client'
 
 import { Layers, X, Plus } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 
 interface SelectionToolbarProps {
   selectedCount: number
@@ -31,18 +32,18 @@ export function SelectionToolbar({
 
   const toolbarStyle: React.CSSProperties = position
     ? {
-        position: 'absolute',
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        transform: 'translate(-50%, -100%)',
-        marginTop: '-12px',
-      }
+      position: 'absolute',
+      left: `${position.x}px`,
+      top: `${position.y}px`,
+      transform: 'translate(-50%, -100%)',
+      marginTop: '-12px',
+    }
     : {
-        position: 'absolute',
-        bottom: '20px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-      }
+      position: 'absolute',
+      bottom: '20px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+    }
 
   return (
     <div
@@ -52,38 +53,44 @@ export function SelectionToolbar({
       <div className="px-3 py-1 text-sm font-semibold text-[var(--color-text)] border-r border-[var(--color-border-subtle)]">
         {selectedCount} selected
       </div>
-      
+
       {onCreateZone && (
-        <button
+        <Button
           onClick={onCreateZone}
-          className="fusion-button fusion-button-primary flex items-center gap-2 px-3 py-1.5 text-sm"
+          variant="primary"
+          size="sm"
+          className="flex items-center gap-2"
           title="Create zone from selection"
         >
           <Layers size={14} />
           <span>Create Zone</span>
-        </button>
+        </Button>
       )}
-      
+
       {onAddToZone && (
-        <button
+        <Button
           onClick={onAddToZone}
-          className="fusion-button fusion-button-secondary flex items-center gap-2 px-3 py-1.5 text-sm"
+          variant="secondary"
+          size="sm"
+          className="flex items-center gap-2"
           title="Add to existing zone"
         >
           <Plus size={14} />
           <span>Add to Zone</span>
-        </button>
+        </Button>
       )}
-      
+
       {onClearSelection && (
-        <button
+        <Button
           onClick={onClearSelection}
-          className="fusion-button-ghost flex items-center gap-2 px-3 py-1.5 text-sm"
+          variant="ghost"
+          size="sm"
+          className="flex items-center gap-2"
           title="Clear selection"
         >
           <X size={14} />
           <span>Clear</span>
-        </button>
+        </Button>
       )}
     </div>
   )

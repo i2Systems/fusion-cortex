@@ -14,6 +14,8 @@ import { skipToken } from '@tanstack/react-query'
 import { X, Building2, MapPin, Phone, User, Calendar, Hash, Image as ImageIcon, Upload, Trash2 } from 'lucide-react'
 import { Site } from '@/lib/SiteContext'
 import { trpc } from '@/lib/trpc/client'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 
 interface AddSiteModalProps {
   isOpen: boolean
@@ -521,17 +523,14 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
               Site Name *
             </label>
-            <div className="relative">
-              <Building2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Site #1234 - Main St"
-                className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
-                required
-              />
-            </div>
+            <Input
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g., Site #1234 - Main St"
+              fullWidth
+              icon={<Building2 size={16} className="text-[var(--color-text-muted)]" />}
+              required
+            />
           </div>
 
           {/* Site Number */}
@@ -539,17 +538,14 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
               Site Number *
             </label>
-            <div className="relative">
-              <Hash size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-              <input
-                type="text"
-                value={formData.siteNumber}
-                onChange={(e) => setFormData({ ...formData, siteNumber: e.target.value })}
-                placeholder="e.g., 1234"
-                className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
-                required
-              />
-            </div>
+            <Input
+              value={formData.siteNumber}
+              onChange={(e) => setFormData({ ...formData, siteNumber: e.target.value })}
+              placeholder="e.g., 1234"
+              fullWidth
+              icon={<Hash size={16} className="text-[var(--color-text-muted)]" />}
+              required
+            />
           </div>
 
           {/* Address */}
@@ -557,16 +553,13 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
               Street Address
             </label>
-            <div className="relative">
-              <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-              <input
-                type="text"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                placeholder="e.g., 1250 Main Street"
-                className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
-              />
-            </div>
+            <Input
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              placeholder="e.g., 1250 Main Street"
+              fullWidth
+              icon={<MapPin size={16} className="text-[var(--color-text-muted)]" />}
+            />
           </div>
 
           {/* City, State, Zip */}
@@ -575,38 +568,36 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
               <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
                 City
               </label>
-              <input
-                type="text"
+              <Input
                 value={formData.city}
                 onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                 placeholder="City"
-                className="w-full px-4 py-2.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+                fullWidth
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
                 State
               </label>
-              <input
-                type="text"
+              <Input
                 value={formData.state}
                 onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                 placeholder="State"
                 maxLength={2}
-                className="w-full px-4 py-2.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent uppercase"
+                fullWidth
+                className="uppercase"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
                 ZIP Code
               </label>
-              <input
-                type="text"
+              <Input
                 value={formData.zipCode}
                 onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
                 placeholder="ZIP"
                 maxLength={10}
-                className="w-full px-4 py-2.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+                fullWidth
               />
             </div>
           </div>
@@ -616,16 +607,14 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
               Phone Number
             </label>
-            <div className="relative">
-              <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-              <input
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="e.g., (555) 123-4567"
-                className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
-              />
-            </div>
+            <Input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              placeholder="e.g., (555) 123-4567"
+              fullWidth
+              icon={<Phone size={16} className="text-[var(--color-text-muted)]" />}
+            />
           </div>
 
           {/* Manager */}
@@ -633,16 +622,13 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
               Site Manager
             </label>
-            <div className="relative">
-              <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-              <input
-                type="text"
-                value={formData.manager}
-                onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
-                placeholder="e.g., John Smith"
-                className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
-              />
-            </div>
+            <Input
+              value={formData.manager}
+              onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
+              placeholder="e.g., John Smith"
+              fullWidth
+              icon={<User size={16} className="text-[var(--color-text-muted)]" />}
+            />
           </div>
 
           {/* Square Footage */}
@@ -650,13 +636,13 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
             <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
               Square Footage
             </label>
-            <input
+            <Input
               type="number"
               value={formData.squareFootage}
               onChange={(e) => setFormData({ ...formData, squareFootage: e.target.value })}
               placeholder="e.g., 180000"
               min="0"
-              className="w-full px-4 py-2.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+              fullWidth
             />
           </div>
 
@@ -685,7 +671,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
                     />
                     {previewImage ? (
                       <>
-                        <button
+                        <Button
                           type="button"
                           onClick={async (e) => {
                             e.preventDefault()
@@ -698,30 +684,33 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
                             }
                           }}
                           disabled={isUploading}
-                          className="px-3 py-1.5 text-xs rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-[var(--color-text-on-primary)] transition-colors flex items-center gap-1.5 shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          variant="primary"
+                          className="h-8 text-xs px-3 py-1.5 shadow-lg"
                         >
                           {isUploading ? 'Saving...' : '💾 Save Image'}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
                           onClick={handleCancelPreview}
                           disabled={isUploading}
-                          className="px-3 py-1.5 text-xs rounded-lg bg-[var(--color-surface)]/90 backdrop-blur-sm hover:bg-[var(--color-surface)] border border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          variant="secondary"
+                          className="h-8 text-xs px-3 py-1.5 bg-[var(--color-surface)]/90 backdrop-blur-sm hover:bg-[var(--color-surface)] shadow-lg"
                         >
                           Cancel
-                        </button>
+                        </Button>
                       </>
                     ) : (
                       <>
-                        <button
+                        <Button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={isUploading}
-                          className="px-3 py-1.5 text-xs rounded-lg bg-[var(--color-surface)]/90 backdrop-blur-sm hover:bg-[var(--color-surface)] border border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                          variant="secondary"
+                          className="h-8 text-xs px-3 py-1.5 bg-[var(--color-surface)]/90 backdrop-blur-sm hover:bg-[var(--color-surface)] shadow-lg gap-1.5"
                         >
                           <Upload size={14} />
                           {isUploading ? 'Uploading...' : 'Replace Image'}
-                        </button>
+                        </Button>
                         <button
                           type="button"
                           onClick={handleRemoveImage}
@@ -764,7 +753,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
                     Preview - Click "Save Image" button below to save
                   </p>
                   <div className="flex justify-center gap-2">
-                    <button
+                    <Button
                       type="button"
                       onClick={async (e) => {
                         e.preventDefault()
@@ -777,18 +766,18 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
                         }
                       }}
                       disabled={isUploading}
-                      className="px-4 py-2 text-sm rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-[var(--color-text-on-primary)] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg font-medium"
+                      variant="primary"
                     >
                       {isUploading ? 'Saving...' : '💾 Save Image'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={handleCancelPreview}
                       disabled={isUploading}
-                      className="px-4 py-2 text-sm rounded-lg bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      variant="secondary"
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -798,21 +787,22 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 p-4 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)]">
-          <button
+          <Button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)] transition-colors"
+            variant="ghost"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             onClick={handleSubmit}
-            className="px-6 py-2 rounded-lg bg-[var(--color-primary)] text-white text-sm font-medium hover:bg-[var(--color-primary)]/90 transition-colors flex items-center gap-2"
+            variant="primary"
+            className="flex items-center gap-2"
           >
             <Building2 size={16} />
             {editingSite ? 'Save Changes' : 'Add Site'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

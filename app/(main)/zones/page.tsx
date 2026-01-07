@@ -11,6 +11,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { Button } from '@/components/ui/Button'
 import dynamic from 'next/dynamic'
 import { X } from 'lucide-react'
 import { SearchIsland } from '@/components/layout/SearchIsland'
@@ -47,7 +48,7 @@ export default function ZonesPage() {
   const { zones, addZone, updateZone, deleteZone, getDevicesInZone, syncZoneDeviceIds, saveZones, isZonesSaved } = useZones()
   const { activeSiteId } = useSite()
   const { role } = useRole()
-  
+
   // tRPC mutations for database persistence
   const saveZonesMutation = trpc.zone.saveAll.useMutation()
 
@@ -56,7 +57,7 @@ export default function ZonesPage() {
   const mapImageUrl = mapData.mapImageUrl
   const vectorData = mapData.vectorData
   const mapUploaded = mapData.mapUploaded
-  
+
   const [selectedZone, setSelectedZone] = useState<string | null>(null)
   const [toolMode, setToolMode] = useState<ZoneToolMode>('select')
   const [viewMode, setViewMode] = useState<MapViewMode>('map')
@@ -79,12 +80,12 @@ export default function ZonesPage() {
   // Map data is now loaded from MapContext - no need to load it here
   const { refreshMapData } = useMap()
   const { uploadMap, uploadVectorData } = useMapUpload()
-  
+
   const handleMapUpload = async (imageUrl: string) => {
     try {
       await uploadMap(imageUrl)
       // Refresh map data to show the new upload
-    await refreshMapData()
+      await refreshMapData()
     } catch (error: any) {
       alert(error.message || 'Failed to upload map')
     }
@@ -94,7 +95,7 @@ export default function ZonesPage() {
     try {
       await uploadVectorData(data)
       // Refresh map data to show the new upload
-    await refreshMapData()
+      await refreshMapData()
     } catch (error: any) {
       alert(error.message || 'Failed to upload vector data')
     }
@@ -107,11 +108,11 @@ export default function ZonesPage() {
     if (typeof window !== 'undefined' && activeSiteId) {
       const imageKey = activeSiteId ? `fusion_map-image-url_${activeSiteId}` : 'map-image-url'
       const vectorKey = `${imageKey}_vector`
-      
+
       // Delete from localStorage
       localStorage.removeItem(imageKey)
       localStorage.removeItem(vectorKey)
-      
+
       // Delete from IndexedDB
       try {
         const { deleteVectorData } = await import('@/lib/indexedDB')
@@ -156,7 +157,7 @@ export default function ZonesPage() {
             updates: { zone: newZone.name }
           }))
         )
-        
+
         // Sync zone deviceIds after updating devices
         setTimeout(() => {
           syncZoneDeviceIds(devices)
@@ -247,7 +248,7 @@ export default function ZonesPage() {
       }
     })
   }, [zones, devices, getDevicesInZone])
-  
+
   // Debug: Log zones on mount
   useEffect(() => {
     console.log('Zones page - zones count:', zones.length)
@@ -270,10 +271,10 @@ export default function ZonesPage() {
     const selectedZoneObj = zones.find(z => z.id === selectedZone)
     let filteredDevices = selectedZoneObj
       ? devices.filter(d => {
-          // Check if device is in the selected zone by position
-          if (d.x === undefined || d.y === undefined) return false
-          return getDevicesInZone(selectedZoneObj.id, devices).some(zoneDevice => zoneDevice.id === d.id)
-        })
+        // Check if device is in the selected zone by position
+        if (d.x === undefined || d.y === undefined) return false
+        return getDevicesInZone(selectedZoneObj.id, devices).some(zoneDevice => zoneDevice.id === d.id)
+      })
       : devices
 
     // Apply layer visibility filters
@@ -283,7 +284,7 @@ export default function ZonesPage() {
       if (device.type === 'light-sensor' && !filters.showLightSensors) return false
       return true
     })
-    
+
     return filteredDevices.map(d => ({
       id: d.id,
       x: d.x || 0,
@@ -317,26 +318,26 @@ export default function ZonesPage() {
     const maxX = Math.max(...polygon.map(p => p.x))
     const minY = Math.min(...polygon.map(p => p.y))
     const maxY = Math.max(...polygon.map(p => p.y))
-    
+
     // Calculate center
     const centerX = (minX + maxX) / 2
     const centerY = (minY + maxY) / 2
-    
+
     // Add some padding from edges
     const padding = 0.02
     const paddedMinX = minX + padding
     const paddedMaxX = maxX - padding
     const paddedMinY = minY + padding
     const paddedMaxY = maxY - padding
-    
+
     // Use center if it's within padded bounds, otherwise use a random point within bounds
     let x = centerX
     let y = centerY
-    
+
     // Clamp to padded bounds
     x = Math.max(paddedMinX, Math.min(paddedMaxX, x))
     y = Math.max(paddedMinY, Math.min(paddedMaxY, y))
-    
+
     return { x, y }
   }
 
@@ -348,13 +349,13 @@ export default function ZonesPage() {
     // Find the zone objects
     const fromZone = fromZoneId ? zones.find(z => z.id === fromZoneId) : null
     const toZone = zones.find(z => z.id === toZoneId)
-    
+
     // Calculate new position if moving to a zone
     let newPosition: { x: number; y: number } | undefined
     if (toZone) {
       newPosition = calculatePositionInZone(toZone.polygon)
     }
-    
+
     // Create updated device object for syncing
     const updatedDevice = { ...device }
     if (toZone) {
@@ -365,12 +366,12 @@ export default function ZonesPage() {
       updatedDevice.zone = undefined
       // Keep current position when moving to unassigned
     }
-    
+
     // Update device in state
     if (toZone) {
       updateMultipleDevices([{
         deviceId,
-        updates: { 
+        updates: {
           zone: toZone.name,
           x: newPosition!.x,
           y: newPosition!.y
@@ -382,7 +383,7 @@ export default function ZonesPage() {
         updates: { zone: undefined }
       }])
     }
-    
+
     // Immediately sync zones with the updated device
     // This ensures deviceIds arrays are updated right away
     const updatedDevices = devices.map(d => d.id === deviceId ? updatedDevice : d)
@@ -396,8 +397,8 @@ export default function ZonesPage() {
         <div className="flex items-center justify-between gap-3 mb-3">
           <MapViewToggle currentView={viewMode} onViewChange={setViewMode} />
         </div>
-        <SearchIsland 
-          position="top" 
+        <SearchIsland
+          position="top"
           fullWidth={true}
           showActions={mapUploaded}
           title="Zones"
@@ -407,14 +408,14 @@ export default function ZonesPage() {
           onSearchChange={setSearchQuery}
           onLayersClick={() => setShowFilters(!showFilters)}
           filterCount={
-            filters.selectedZones.length > 0 || 
-            !filters.showFixtures || 
-            !filters.showMotion || 
-            !filters.showLightSensors ||
-            !filters.showZones ||
-            !filters.showWalls ||
-            !filters.showAnnotations ||
-            !filters.showText
+            filters.selectedZones.length > 0 ||
+              !filters.showFixtures ||
+              !filters.showMotion ||
+              !filters.showLightSensors ||
+              !filters.showZones ||
+              !filters.showWalls ||
+              !filters.showAnnotations ||
+              !filters.showText
               ? 1 : 0
           }
           onActionDetected={(action) => {
@@ -440,15 +441,15 @@ export default function ZonesPage() {
       </div>
 
       {/* Main Content: Map/List + Zones Panel */}
-      <div 
-        className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pb-12 md:pb-14" 
+      <div
+        className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pb-12 md:pb-14"
         style={{ overflow: 'visible' }}
         onClick={handleMainContentClick}
       >
         {/* Map/List View - Left Side */}
-        <div 
+        <div
           ref={mapContainerRef}
-          className="flex-1 relative min-w-0 rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)]" 
+          className="flex-1 relative min-w-0 rounded-2xl shadow-[var(--shadow-strong)] border border-[var(--color-border-subtle)]"
           style={{ overflow: 'visible', minHeight: 0 }}
         >
           {viewMode === 'list' ? (
@@ -471,63 +472,63 @@ export default function ZonesPage() {
           ) : (
             /* Map View */
             <>
-          {/* Zone Toolbar - Top center (hidden for Manager and Technician) */}
-          {mapUploaded && role !== 'Manager' && role !== 'Technician' && (
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 pointer-events-none" style={{ transform: 'translateX(-50%) translateY(-50%)' }}>
-              <ZoneToolbar
-                mode={toolMode}
-                onModeChange={setToolMode}
-                onDeleteZone={handleDeleteZone}
-                canDelete={!!selectedZone}
-                onSave={async () => {
-                  if (!activeSiteId) {
-                    alert('No active store selected')
-                    return
-                  }
-                  
-                  // Always save to localStorage first (primary storage)
-                  saveZones()
-                  
-                  // Also save devices to ensure their positions and zone assignments are preserved
-                  saveDevices()
-                  
-                  // Mark BACnet mappings as saved too (they're already in localStorage)
-                  if (typeof window !== 'undefined' && activeSiteId) {
-                    const bacnetKey = activeSiteId ? `fusion_bacnet_mappings_${activeSiteId}` : 'fusion_bacnet_mappings'
-                    const bacnetSavedKey = activeSiteId ? `fusion_bacnet_mappings_saved_${activeSiteId}` : 'fusion_bacnet_mappings_saved'
-                    const bacnetMappings = localStorage.getItem(bacnetKey)
-                    if (bacnetMappings) {
-                      localStorage.setItem(bacnetSavedKey, 'true')
-                    }
-                  }
-                  
-                  // Try to save to database via tRPC (optional - database may not be configured)
-                  let dbSaveSuccess = false
-                  try {
-                    await saveZonesMutation.mutateAsync({
-                      siteId: activeSiteId,
-                      zones: zones.map(zone => ({
-                        id: zone.id,
-                        name: zone.name,
-                        color: zone.color,
-                        description: zone.description,
-                        polygon: zone.polygon,
-                        deviceIds: zone.deviceIds,
-                      })),
-                    })
-                    dbSaveSuccess = true
-                  } catch (error) {
-                    // Database save failed - this is okay, localStorage is the primary storage
-                    console.warn('Database save failed (database may not be configured):', error)
-                    // Don't show error to user - localStorage save succeeded
-                  }
-                  
-                  // Show success notification
-                  const notification = document.createElement('div')
-                  notification.textContent = dbSaveSuccess
-                    ? `✅ Saved ${zones.length} zones and ${devices.length} devices! Layout preserved.`
-                    : `✅ Saved ${zones.length} zones and ${devices.length} devices to localStorage! Layout preserved.`
-                  notification.style.cssText = `
+              {/* Zone Toolbar - Top center (hidden for Manager and Technician) */}
+              {mapUploaded && role !== 'Manager' && role !== 'Technician' && (
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 pointer-events-none" style={{ transform: 'translateX(-50%) translateY(-50%)' }}>
+                  <ZoneToolbar
+                    mode={toolMode}
+                    onModeChange={setToolMode}
+                    onDeleteZone={handleDeleteZone}
+                    canDelete={!!selectedZone}
+                    onSave={async () => {
+                      if (!activeSiteId) {
+                        alert('No active store selected')
+                        return
+                      }
+
+                      // Always save to localStorage first (primary storage)
+                      saveZones()
+
+                      // Also save devices to ensure their positions and zone assignments are preserved
+                      saveDevices()
+
+                      // Mark BACnet mappings as saved too (they're already in localStorage)
+                      if (typeof window !== 'undefined' && activeSiteId) {
+                        const bacnetKey = activeSiteId ? `fusion_bacnet_mappings_${activeSiteId}` : 'fusion_bacnet_mappings'
+                        const bacnetSavedKey = activeSiteId ? `fusion_bacnet_mappings_saved_${activeSiteId}` : 'fusion_bacnet_mappings_saved'
+                        const bacnetMappings = localStorage.getItem(bacnetKey)
+                        if (bacnetMappings) {
+                          localStorage.setItem(bacnetSavedKey, 'true')
+                        }
+                      }
+
+                      // Try to save to database via tRPC (optional - database may not be configured)
+                      let dbSaveSuccess = false
+                      try {
+                        await saveZonesMutation.mutateAsync({
+                          siteId: activeSiteId,
+                          zones: zones.map(zone => ({
+                            id: zone.id,
+                            name: zone.name,
+                            color: zone.color,
+                            description: zone.description,
+                            polygon: zone.polygon,
+                            deviceIds: zone.deviceIds,
+                          })),
+                        })
+                        dbSaveSuccess = true
+                      } catch (error) {
+                        // Database save failed - this is okay, localStorage is the primary storage
+                        console.warn('Database save failed (database may not be configured):', error)
+                        // Don't show error to user - localStorage save succeeded
+                      }
+
+                      // Show success notification
+                      const notification = document.createElement('div')
+                      notification.textContent = dbSaveSuccess
+                        ? `✅ Saved ${zones.length} zones and ${devices.length} devices! Layout preserved.`
+                        : `✅ Saved ${zones.length} zones and ${devices.length} devices to localStorage! Layout preserved.`
+                      notification.style.cssText = `
                     position: fixed;
                     top: 20px;
                     right: 20px;
@@ -541,72 +542,74 @@ export default function ZonesPage() {
                     font-weight: 500;
                     max-width: 350px;
                   `
-                  document.body.appendChild(notification)
-                  setTimeout(() => {
-                    notification.style.opacity = '0'
-                    notification.style.transition = 'opacity 0.3s'
-                    setTimeout(() => notification.remove(), 300)
-                  }, 4000)
-                }}
-              />
-            </div>
-          )}
-          
-          {/* Clear button - Top right (hidden for Manager and Technician) */}
-          {mapUploaded && role !== 'Manager' && role !== 'Technician' && (
-            <div className="absolute top-0 right-4 z-30 pointer-events-none" style={{ transform: 'translateY(-50%)' }}>
-              <div className="pointer-events-auto">
-                <button
-                  onClick={handleClearMap}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--color-surface)] backdrop-blur-xl border border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-danger)] transition-all duration-200 shadow-[var(--shadow-soft)]"
-                  title="Clear map and show upload"
-                >
-                  <X size={18} />
-                  <span className="text-sm font-medium">Clear</span>
-                </button>
-              </div>
-            </div>
-          )}
-          {!mapUploaded ? (
-            <div className="w-full h-full">
-              <MapUpload 
-                onMapUpload={handleMapUpload} 
-                onVectorDataUpload={handleVectorDataUpload}
-              />
-            </div>
-          ) : (
-            <div className="w-full h-full rounded-2xl overflow-hidden" style={{ minHeight: 0 }}>
-              <ZoneCanvas 
-                onDeviceSelect={setSelectedZone}
-                selectedDeviceId={selectedZone}
-                mapImageUrl={filters.showMap ? mapImageUrl : null}
-                vectorData={filters.showMap ? vectorData : null}
-                devices={zoneDevices}
-                zones={zones.map(z => ({
-                  id: z.id,
-                  name: z.name,
-                  color: z.color,
-                  polygon: z.polygon,
-                }))}
-                selectedZoneId={selectedZone}
-                onZoneSelect={setSelectedZone}
-                onModeChange={setToolMode}
-                mode={toolMode}
-                onZoneCreated={handleZoneCreated}
-                onZoneUpdated={async (zoneId, polygon) => {
-                  try {
-                    await updateZone(zoneId, { polygon })
-                  } catch (error) {
-                    console.error('Failed to update zone:', error)
-                  }
-                }}
-                showWalls={filters.showWalls}
-                showAnnotations={filters.showAnnotations}
-                showText={filters.showText}
-                showZones={filters.showZones}
-              />
-            </div>
-          )}
+                      document.body.appendChild(notification)
+                      setTimeout(() => {
+                        notification.style.opacity = '0'
+                        notification.style.transition = 'opacity 0.3s'
+                        setTimeout(() => notification.remove(), 300)
+                      }, 4000)
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Clear button - Top right (hidden for Manager and Technician) */}
+              {mapUploaded && role !== 'Manager' && role !== 'Technician' && (
+                <div className="absolute top-0 right-4 z-30 pointer-events-none" style={{ transform: 'translateY(-50%)' }}>
+                  <div className="pointer-events-auto">
+                    <Button
+                      variant="secondary"
+                      size="md"
+                      onClick={handleClearMap}
+                      className="bg-[var(--color-surface)] backdrop-blur-xl border-border-subtle shadow-[var(--shadow-soft)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-danger)]"
+                      title="Clear map and show upload"
+                    >
+                      <X size={18} />
+                      <span className="text-sm font-medium">Clear</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {!mapUploaded ? (
+                <div className="w-full h-full">
+                  <MapUpload
+                    onMapUpload={handleMapUpload}
+                    onVectorDataUpload={handleVectorDataUpload}
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-full rounded-2xl overflow-hidden" style={{ minHeight: 0 }}>
+                  <ZoneCanvas
+                    onDeviceSelect={setSelectedZone}
+                    selectedDeviceId={selectedZone}
+                    mapImageUrl={filters.showMap ? mapImageUrl : null}
+                    vectorData={filters.showMap ? vectorData : null}
+                    devices={zoneDevices}
+                    zones={zones.map(z => ({
+                      id: z.id,
+                      name: z.name,
+                      color: z.color,
+                      polygon: z.polygon,
+                    }))}
+                    selectedZoneId={selectedZone}
+                    onZoneSelect={setSelectedZone}
+                    onModeChange={setToolMode}
+                    mode={toolMode}
+                    onZoneCreated={handleZoneCreated}
+                    onZoneUpdated={async (zoneId, polygon) => {
+                      try {
+                        await updateZone(zoneId, { polygon })
+                      } catch (error) {
+                        console.error('Failed to update zone:', error)
+                      }
+                    }}
+                    showWalls={filters.showWalls}
+                    showAnnotations={filters.showAnnotations}
+                    showText={filters.showText}
+                    showZones={filters.showZones}
+                  />
+                </div>
+              )}
             </>
           )}
         </div>

@@ -20,6 +20,7 @@ import {
   Undo2,
   Redo2
 } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 
 export type MapToolMode =
   | 'select'
@@ -108,22 +109,26 @@ export function MapToolbar({
     <div className="pointer-events-auto flex items-center gap-2 bg-[var(--color-surface)] backdrop-blur-xl rounded-xl border border-[var(--color-border-subtle)] p-2 shadow-[var(--shadow-strong)]">
       {/* Undo/Redo */}
       <div className="flex items-center gap-1 pr-2 border-r border-[var(--color-border-subtle)]">
-        <button
+        <Button
           onClick={onUndo}
           disabled={!canUndo}
-          className="flex items-center justify-center w-8 h-8 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-text)] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+          variant="ghost"
+          size="icon"
+          className="w-8 h-8 rounded-lg"
           title="Undo last action"
         >
           <Undo2 size={16} />
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={onRedo}
           disabled={!canRedo}
-          className="flex items-center justify-center w-8 h-8 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-text)] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+          variant="ghost"
+          size="icon"
+          className="w-8 h-8 rounded-lg"
           title="Redo last action"
         >
           <Redo2 size={16} />
-        </button>
+        </Button>
       </div>
 
       {/* Tool Buttons */}
@@ -133,22 +138,16 @@ export function MapToolbar({
           const isActive = mode === tool.id && tool.isToggle
 
           return (
-            <button
+            <Button
               key={tool.id}
               onClick={() => handleToolClick(tool)}
-              className={`
-                  flex items-center justify-center gap-2 px-2 md:px-3 py-2 rounded-lg
-                  transition-all duration-200
-                  ${isActive
-                  ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-glow-primary)]'
-                  : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-primary)]'
-                }
-                `}
+              variant={isActive ? 'primary' : 'ghost'}
+              className={`gap-2 px-2 md:px-3 py-2 ${!isActive ? 'text-[var(--color-text-muted)] hover:text-[var(--color-primary)]' : ''}`}
               title={tool.description}
             >
               <Icon size={16} className={isActive ? 'opacity-100' : 'opacity-70'} />
               <span className="hidden md:inline text-sm font-medium whitespace-nowrap">{tool.label}</span>
-            </button>
+            </Button>
           )
         })}
       </div>

@@ -1,0 +1,72 @@
+/* ============================================
+     WARM NIGHT THEME (Cozy/Solar Refined)
+     ============================================ */
+[data-theme="warm-night"] {
+    /* Backgrounds - Deep organic coffee/charcoal */
+    --color-bg: #1c1512;
+    --color-bg-elevated: #281e1a;
+    --color-surface: rgba(40, 30, 26, 0.85);
+    --color-surface-subtle: rgba(56, 42, 36, 0.6);
+
+    /* Borders - Soft amber glow, less harsh */
+    --color-border-subtle: rgba(255, 160, 60, 0.15);
+    --color-border-strong: rgba(255, 160, 60, 0.3);
+
+    /* Primary brand color - Solar Orange */
+    --color-primary: #ff9f43;
+    --color-primary-soft: rgba(255, 159, 67, 0.15);
+    --color-primary-hover: #ffb166;
+    --color-primary-strong: #e67e22;
+
+    /* Accent & status colors - Autumn/Warm Palette */
+    --color-accent: #ff6b6b;
+    /* Warm coral/red */
+    --color-danger: #ee5253;
+    /* Soft red */
+    --color-success: #1dd1a1;
+    /* Soft mint/green */
+    --color-warning: #feca57;
+    /* Warm yellow */
+    --color-info: #54a0ff;
+    /* Soft blue (cooler sibling) */
+
+    /* Text colors - Warm whites/creams */
+    --color-text: #f7f1e3;
+    --color-text-muted: #d1ccc0;
+    --color-text-soft: #aaa69d;
+    --color-text-on-primary: #2d3436;
+
+    /* Tooltip - Glassy amber */
+    --color-tooltip-bg: rgba(40, 30, 26, 0.98);
+    --color-tooltip-border: var(--color-primary);
+    --color-tooltip-text: var(--color-text);
+    --color-tooltip-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+
+    /* Shadows - Deep, cozy diffusion */
+    --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 12px 24px rgba(0, 0, 0, 0.6);
+    --shadow-strong: 0 24px 48px rgba(0, 0, 0, 0.7);
+
+    /* Glows - Candlelight effect */
+    --shadow-glow-primary: 0 0 16px rgba(255, 159, 67, 0.2), 0 0 32px rgba(255, 159, 67, 0.1);
+    --shadow-glow-accent: 0 0 16px rgba(255, 107, 107, 0.2);
+    --shadow-glow-hover: 0 0 20px rgba(255, 159, 67, 0.3);
+
+    /* Glow effects (Edge/Modal) */
+    --glow-primary: 0 0 16px rgba(255, 159, 67, 0.2);
+    --glow-modal: 0 0 40px rgba(255, 159, 67, 0.15);
+    --glow-accent: 0 0 16px rgba(255, 107, 107, 0.2);
+    --glow-strong: 0 0 50px rgba(255, 159, 67, 0.2);
+
+    /* Radius - Slightly rounded, organic */
+    --radius-xs: 6px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-2xl: 32px;
+}
+
+[data-theme="warm-night"] body {
+    background: linear-gradient(145deg, #1c1512 0%, #281e1a 100%);
+}

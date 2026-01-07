@@ -49,6 +49,9 @@ import {
   ArrowUp,
   ArrowDown
 } from 'lucide-react'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
 
 interface SiteSummary {
   siteId: string
@@ -820,13 +823,13 @@ export default function DashboardPage() {
               {filteredSiteSummaries.map((summary) => {
                 const site = sites.find(s => s.id === summary.siteId)
                 return (
-                  <div
+                  <Card
                     key={summary.siteId}
                     onClick={(e) => {
                       e.stopPropagation()
                       handleSiteClick(summary.siteId)
                     }}
-                    className={`fusion-card fusion-card-tile cursor-pointer transition-all hover:border-[var(--color-primary)]/50 hover:shadow-[var(--shadow-strong)] ${summary.siteId === selectedSiteId
+                    className={`fusion-card-tile cursor-pointer transition-all hover:border-[var(--color-primary)]/50 hover:shadow-[var(--shadow-strong)] ${summary.siteId === selectedSiteId
                       ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] shadow-[var(--shadow-glow-primary)] ring-1 ring-[var(--color-primary)]/20'
                       : 'border-[var(--color-border-subtle)]'
                       } ${summary.needsAttention && summary.siteId !== selectedSiteId ? 'ring-1 ring-[var(--color-warning)]/20' : ''}`}
@@ -863,16 +866,18 @@ export default function DashboardPage() {
                       {/* Header Actions - Simplified, no menu */}
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         {getHealthIcon(summary.healthPercentage, 18)}
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleSiteClick(summary.siteId, '/map')
                           }}
-                          className="fusion-button-ghost p-1.5"
+                          className="h-8 w-8"
                           title="Explore Site"
                         >
                           <Search size={14} />
-                        </button>
+                        </Button>
                       </div>
                     </div>
 
@@ -904,8 +909,10 @@ export default function DashboardPage() {
                     <div className="flex flex-wrap items-center gap-1.5">
                       {/* Critical Issues */}
                       {summary.criticalFaults.length > 0 && (
-                        <div
-                          className="token token-status-error cursor-pointer text-xs py-1 px-2"
+                        <Badge
+                          variant="destructive"
+                          appearance="soft"
+                          className="cursor-pointer text-xs gap-1"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleSiteClick(summary.siteId, '/faults')
@@ -913,30 +920,30 @@ export default function DashboardPage() {
                         >
                           <AlertTriangle size={11} />
                           <span>{summary.criticalFaults.length} Critical</span>
-                        </div>
+                        </Badge>
                       )}
 
                       {/* Warranties */}
                       {(summary.warrantiesExpiring > 0 || summary.warrantiesExpired > 0) && (
-                        <div className="token token-status-warning text-xs py-1 px-2">
+                        <Badge variant="warning" appearance="soft" className="text-xs gap-1">
                           <Shield size={11} />
                           <span>
                             {summary.warrantiesExpiring > 0 && `${summary.warrantiesExpiring} expiring`}
                             {summary.warrantiesExpiring > 0 && summary.warrantiesExpired > 0 && ' • '}
                             {summary.warrantiesExpired > 0 && `${summary.warrantiesExpired} expired`}
                           </span>
-                        </div>
+                        </Badge>
                       )}
 
                       {/* Map Status */}
                       {!summary.mapUploaded && (
-                        <div className="token token-status-warning text-xs py-1 px-2">
+                        <Badge variant="warning" appearance="soft" className="text-xs gap-1">
                           <Map size={11} />
                           <span>No map</span>
-                        </div>
+                        </Badge>
                       )}
                     </div>
-                  </div>
+                  </Card>
                 )
               })}
             </div>
