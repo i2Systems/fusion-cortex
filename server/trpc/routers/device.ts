@@ -470,9 +470,6 @@ export const deviceRouter = router({
                 warrantyStatus: deviceData.warrantyStatus,
                 warrantyExpiry: deviceData.warrantyExpiry,
                 updatedAt: new Date(),
-                Site: {
-                  connect: { id: deviceData.siteId },
-                },
                 other_Device: components
                   ? {
                     create: components.map(comp => ({
@@ -488,9 +485,6 @@ export const deviceRouter = router({
                       warrantyExpiry: comp.warrantyExpiry,
                       buildDate: comp.buildDate,
                       updatedAt: new Date(),
-                      Site: {
-                        connect: { id: deviceData.siteId },
-                      },
                     })),
                   }
                   : undefined,
