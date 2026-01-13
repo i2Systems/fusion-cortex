@@ -37,7 +37,7 @@ const toPrismaDeviceStatus = fromDisplayStatus
 
 // Helper to transform database device to frontend format
 function transformDevice(dbDevice: any) {
-  const components = dbDevice.components?.map((comp: any) => ({
+  const components = dbDevice.other_Device?.map((comp: any) => ({
     id: comp.id,
     componentType: comp.componentType || '',
     componentSerialNumber: comp.componentSerialNumber || '',
@@ -230,7 +230,7 @@ export const deviceRouter = router({
           ],
         },
         include: {
-          components: {
+          other_Device: {
             orderBy: {
               createdAt: 'asc',
             },
@@ -254,7 +254,7 @@ export const deviceRouter = router({
         where: { id: input.id },
         include: input.includeComponents
           ? {
-              components: {
+              other_Device: {
                 orderBy: {
                   createdAt: 'asc',
                 },
