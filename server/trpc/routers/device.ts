@@ -454,6 +454,7 @@ export const deviceRouter = router({
 
             const device = await prisma.device.create({
               data: {
+                id: randomUUID(),
                 siteId: deviceData.siteId,
                 deviceId: deviceData.deviceId,
                 serialNumber: deviceData.serialNumber,
@@ -465,6 +466,10 @@ export const deviceRouter = router({
                 y: deviceData.y,
                 warrantyStatus: deviceData.warrantyStatus,
                 warrantyExpiry: deviceData.warrantyExpiry,
+                updatedAt: new Date(),
+                Site: {
+                  connect: { id: deviceData.siteId },
+                },
                 other_Device: components
                   ? {
                     create: components.map(comp => ({
