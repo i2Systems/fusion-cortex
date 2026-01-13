@@ -19,6 +19,7 @@
 import { z } from 'zod'
 import { router, publicProcedure } from '../trpc'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 import { DeviceType, DeviceStatus } from '@prisma/client'
 import {
   toDisplayType,
@@ -391,6 +392,7 @@ export const deviceRouter = router({
                             : `${input.serialNumber}-${comp.componentType}-${Date.now()}-${index}`
 
                           return {
+                            id: randomUUID(),
                             siteId: input.siteId,
                             deviceId: `${input.deviceId}-${comp.componentType}`,
                             serialNumber: uniqueSerialNumber,
@@ -401,6 +403,7 @@ export const deviceRouter = router({
                             warrantyStatus: comp.warrantyStatus,
                             warrantyExpiry: comp.warrantyExpiry,
                             buildDate: comp.buildDate,
+                            updatedAt: new Date(),
                           }
                         }),
                       },
