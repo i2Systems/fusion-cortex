@@ -22,7 +22,7 @@ export const faultRouter = router({
       // Use select instead of include to avoid fetching firmware fields that may not exist
       const faults = await prisma.fault.findMany({
         where: {
-          device: {
+          Device: {
             siteId: input.siteId,
           },
           ...(input.includeResolved ? {} : { resolved: false }),
@@ -37,7 +37,7 @@ export const faultRouter = router({
           detectedAt: true,
           createdAt: true,
           updatedAt: true,
-          device: {
+          Device: {
             select: {
               id: true,
               serialNumber: true,
@@ -60,7 +60,7 @@ export const faultRouter = router({
               siteId: true,
               createdAt: true,
               updatedAt: true,
-              components: {
+              other_Device: {
                 select: {
                   id: true,
                   serialNumber: true,
@@ -100,7 +100,7 @@ export const faultRouter = router({
           detectedAt: true,
           createdAt: true,
           updatedAt: true,
-          device: {
+          Device: {
             select: {
               id: true,
               serialNumber: true,
@@ -123,7 +123,7 @@ export const faultRouter = router({
               siteId: true,
               createdAt: true,
               updatedAt: true,
-              components: {
+              other_Device: {
                 select: {
                   id: true,
                   serialNumber: true,
@@ -194,7 +194,7 @@ export const faultRouter = router({
           detectedAt: true,
           createdAt: true,
           updatedAt: true,
-          device: {
+          Device: {
             select: {
               id: true,
               serialNumber: true,
@@ -217,7 +217,7 @@ export const faultRouter = router({
               siteId: true,
               createdAt: true,
               updatedAt: true,
-              components: {
+              other_Device: {
                 select: {
                   id: true,
                   serialNumber: true,
@@ -268,7 +268,7 @@ export const faultRouter = router({
           detectedAt: true,
           createdAt: true,
           updatedAt: true,
-          device: {
+          Device: {
             select: {
               id: true,
               serialNumber: true,
@@ -291,7 +291,7 @@ export const faultRouter = router({
               siteId: true,
               createdAt: true,
               updatedAt: true,
-              components: {
+              other_Device: {
                 select: {
                   id: true,
                   serialNumber: true,

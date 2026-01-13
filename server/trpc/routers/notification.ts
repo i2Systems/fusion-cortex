@@ -16,7 +16,7 @@ export const notificationRouter = router({
             const faults = await prisma.fault.findMany({
                 where: {
                     resolved: false,
-                    device: siteId ? { siteId } : undefined,
+                    Device: siteId ? { siteId } : undefined,
                 },
                 select: {
                     id: true,
@@ -24,11 +24,11 @@ export const notificationRouter = router({
                     faultType: true,
                     description: true,
                     detectedAt: true,
-                    device: {
+                    Device: {
                         select: {
                             deviceId: true,
                             siteId: true,
-                            site: { select: { name: true } },
+                            Site: { select: { name: true } },
                         },
                     },
                 },
@@ -41,11 +41,11 @@ export const notificationRouter = router({
                     id: `fault-${fault.id}`,
                     type: 'fault',
                     title: `${fault.faultType.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')} Detected`,
-                    message: `${fault.description} (Device: ${fault.device.deviceId})`,
+                    message: `${fault.description} (Device: ${fault.Device.deviceId})`,
                     timestamp: fault.detectedAt,
                     read: false,
-                    link: `/faults?id=${fault.id}&siteId=${fault.device.siteId}`, // Assuming /faults can handle query param, or just /faults
-                    siteId: fault.device.siteId,
+                    link: `/faults?id=${fault.id}&siteId=${fault.Device.siteId}`, // Assuming /faults can handle query param, or just /faults
+                    siteId: fault.Device.siteId,
                 });
             }
 
