@@ -80,7 +80,7 @@ export default function FirmwarePage() {
         campaign.name,
         campaign.description,
         campaign.version,
-        campaign.site?.name,
+        (campaign as any).site?.name,
         campaign.status,
       ].filter(Boolean).join(' ').toLowerCase()
       

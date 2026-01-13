@@ -117,11 +117,11 @@ export const deviceRouter = router({
             firmwareTarget: true,
             firmwareStatus: true,
             lastFirmwareUpdate: true,
-            components: {
+            components: input.includeComponents ? {
               orderBy: {
                 createdAt: 'asc',
               },
-            },
+            } : false,
           },
           orderBy: {
             createdAt: 'asc',
@@ -229,32 +229,7 @@ export const deviceRouter = router({
             { serialNumber: { contains: searchTerm, mode: 'insensitive' } },
           ],
         },
-        select: {
-          id: true,
-          serialNumber: true,
-          deviceId: true,
-          type: true,
-          status: true,
-          x: true,
-          y: true,
-          orientation: true,
-          signal: true,
-          battery: true,
-          buildDate: true,
-          cct: true,
-          warrantyStatus: true,
-          warrantyExpiry: true,
-          partsList: true,
-          parentId: true,
-          componentType: true,
-          componentSerialNumber: true,
-          siteId: true,
-          createdAt: true,
-          updatedAt: true,
-          firmwareVersion: true,
-          firmwareTarget: true,
-          firmwareStatus: true,
-          lastFirmwareUpdate: true,
+        include: {
           components: {
             orderBy: {
               createdAt: 'asc',
@@ -277,42 +252,15 @@ export const deviceRouter = router({
     .query(async ({ input }) => {
       const device = await prisma.device.findUnique({
         where: { id: input.id },
-        select: {
-          id: true,
-          serialNumber: true,
-          deviceId: true,
-          type: true,
-          status: true,
-          x: true,
-          y: true,
-          orientation: true,
-          signal: true,
-          battery: true,
-          buildDate: true,
-          cct: true,
-          warrantyStatus: true,
-          warrantyExpiry: true,
-          partsList: true,
-          parentId: true,
-          componentType: true,
-          componentSerialNumber: true,
-          siteId: true,
-          createdAt: true,
-          updatedAt: true,
-          firmwareVersion: true,
-          firmwareTarget: true,
-          firmwareStatus: true,
-          lastFirmwareUpdate: true,
-          ...(input.includeComponents
-            ? {
-                components: {
-                  orderBy: {
-                    createdAt: 'asc',
-                  },
+        include: input.includeComponents
+          ? {
+              components: {
+                orderBy: {
+                  createdAt: 'asc',
                 },
-              }
-            : {}),
-        },
+              },
+            }
+          : undefined,
       })
 
       if (!device) {
