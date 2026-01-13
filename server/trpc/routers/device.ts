@@ -265,6 +265,7 @@ export const deviceRouter = router({
 
         // Build the data object explicitly to ensure type is included
         const deviceDataForPrisma = {
+          id: randomUUID(),
           siteId: deviceData.siteId,
           deviceId: deviceData.deviceId,
           serialNumber: deviceData.serialNumber,
@@ -277,6 +278,7 @@ export const deviceRouter = router({
           orientation: deviceData.orientation,
           warrantyStatus: deviceData.warrantyStatus,
           warrantyExpiry: deviceData.warrantyExpiry,
+          updatedAt: new Date(),
         }
 
         console.log('Device data for Prisma (with type):', JSON.stringify(deviceDataForPrisma, null, 2))
