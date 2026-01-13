@@ -754,6 +754,7 @@ export async function seedDatabase() {
           manager: storeConfig.manager,
           squareFootage: storeConfig.squareFootage,
           openedDate: storeConfig.openedDate,
+          updatedAt: new Date(),
         },
       })
 
