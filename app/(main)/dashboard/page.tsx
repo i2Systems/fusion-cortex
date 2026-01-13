@@ -286,10 +286,11 @@ export default function DashboardPage() {
     }
   }, [sites, selectedSiteId, activeSiteId, setActiveSite])
 
-  // Fetch devices, zones, and faults for all sites - create queries dynamically
+  // Fetch devices, zones, faults, and locations for all sites - create queries dynamically
   // Note: We'll fetch data in the useEffect to avoid hook rule violations
   const [siteDevicesMap, setSiteDevicesMap] = useState<Record<string, Device[]>>({})
   const [siteZonesMap, setSiteZonesMap] = useState<Record<string, Zone[]>>({})
+  const [siteLocationsMap, setSiteLocationsMap] = useState<Record<string, boolean>>({})
   const [siteFaultsMap, setSiteFaultsMap] = useState<Record<string, Array<{
     deviceId: string
     deviceName: string
@@ -306,6 +307,7 @@ export default function DashboardPage() {
     const fetchAllSiteData = async () => {
       const devicesMap: Record<string, Device[]> = {}
       const zonesMap: Record<string, Zone[]> = {}
+      const locationsMap: Record<string, boolean> = {}
       const faultsMap: Record<string, Array<{
         deviceId: string
         deviceName: string
@@ -340,6 +342,12 @@ export default function DashboardPage() {
               includeResolved: false,
             })
 
+            // Fetch locations (to check if map is uploaded)
+            const locations = await trpcUtils.location.list.fetch({
+              siteId: site.id,
+            })
+            locationsMap[site.id] = locations ? locations.some(loc => loc.imageUrl || loc.vectorDataUrl) : false
+
             // Convert database faults to critical faults format
             const criticalFaults = (faults || []).slice(0, 3).map(fault => {
               const device = devices?.find(d => d.id === fault.deviceId)
@@ -356,6 +364,7 @@ export default function DashboardPage() {
             console.error(`Failed to fetch data for site ${site.id}:`, error)
             devicesMap[site.id] = []
             zonesMap[site.id] = []
+            locationsMap[site.id] = false
             faultsMap[site.id] = []
           }
         })
@@ -363,6 +372,7 @@ export default function DashboardPage() {
 
       setSiteDevicesMap(devicesMap)
       setSiteZonesMap(zonesMap)
+      setSiteLocationsMap(locationsMap)
       setSiteFaultsMap(faultsMap)
     }
 
@@ -384,10 +394,8 @@ export default function DashboardPage() {
       const zones: Zone[] = siteZonesMap[site.id] || []
       const criticalFaults = siteFaultsMap[site.id] || []
 
-      // Check map status from localStorage (for backward compatibility)
-      // TODO: Could also check location storage, but for now we'll use localStorage
-      const mapImageKey = `fusion_map-image-url_${site.id}`
-      const mapUploaded = typeof window !== 'undefined' ? !!localStorage.getItem(mapImageKey) : false
+      // Get map status from the locations map (fetched with other data)
+      const mapUploaded = siteLocationsMap[site.id] ?? false
 
       // Calculate stats
       const onlineDevices = devices.filter(d => d.status === 'online').length
@@ -450,7 +458,7 @@ export default function DashboardPage() {
     })
 
     setSiteSummaries(summaries)
-  }, [sites, siteDevicesMap, siteZonesMap, siteFaultsMap])
+  }, [sites, siteDevicesMap, siteZonesMap, siteFaultsMap, siteLocationsMap])
 
   const handleSiteClick = (siteId: string, targetPage?: string) => {
     // If navigating to a page, always select

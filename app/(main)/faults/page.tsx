@@ -442,8 +442,11 @@ export default function FaultsPage() {
       }
     }
 
-    // Otherwise, try to find by device ID (for device-generated faults)
-    return faults.find(f => f.device.id === selectedFaultId) || null
+    // For device-generated faults, match by composite key: deviceId-faultType-timestamp
+    return faults.find(f => {
+      const faultId = f.id || `${f.device.id}-${f.faultType}-${f.detectedAt.getTime()}`
+      return faultId === selectedFaultId
+    }) || null
   }, [faults, selectedFaultId, dbFaults, devices])
 
   // Filter faults based on selected device, search, and category filters
@@ -791,13 +794,13 @@ export default function FaultsPage() {
                     setSelectedFaultId(faultId)
                     // Also set device ID for map filtering
                     if (faultId) {
+                      // Find the fault by matching the composite key
                       const fault = faults.find(f => {
                         // Check if it's a database fault ID
-                        const dbFault = dbFaults?.find(df => df.id === faultId)
-                        if (dbFault) {
-                          return f.device.id === dbFault.deviceId
-                        }
-                        return f.device.id === faultId
+                        if (f.id === faultId) return true
+                        // Match by composite key
+                        const compositeId = `${f.device.id}-${f.faultType}-${f.detectedAt.getTime()}`
+                        return compositeId === faultId
                       })
                       if (fault) {
                         setSelectedDeviceId(fault.device.id)
