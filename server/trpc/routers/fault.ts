@@ -19,6 +19,7 @@ export const faultRouter = router({
       includeResolved: z.boolean().optional().default(false),
     }))
     .query(async ({ input }) => {
+      // Use select instead of include to avoid fetching firmware fields that may not exist
       const faults = await prisma.fault.findMany({
         where: {
           device: {
@@ -26,7 +27,16 @@ export const faultRouter = router({
           },
           ...(input.includeResolved ? {} : { resolved: false }),
         },
-        include: {
+        select: {
+          id: true,
+          deviceId: true,
+          faultType: true,
+          description: true,
+          resolved: true,
+          resolvedAt: true,
+          detectedAt: true,
+          createdAt: true,
+          updatedAt: true,
           device: {
             select: {
               id: true,
@@ -70,7 +80,16 @@ export const faultRouter = router({
     .query(async ({ input }) => {
       const fault = await prisma.fault.findUnique({
         where: { id: input.id },
-        include: {
+        select: {
+          id: true,
+          deviceId: true,
+          faultType: true,
+          description: true,
+          resolved: true,
+          resolvedAt: true,
+          detectedAt: true,
+          createdAt: true,
+          updatedAt: true,
           device: {
             select: {
               id: true,
@@ -145,7 +164,16 @@ export const faultRouter = router({
           detectedAt: input.detectedAt || new Date(),
           resolved: false,
         },
-        include: {
+        select: {
+          id: true,
+          deviceId: true,
+          faultType: true,
+          description: true,
+          resolved: true,
+          resolvedAt: true,
+          detectedAt: true,
+          createdAt: true,
+          updatedAt: true,
           device: {
             select: {
               id: true,
@@ -200,7 +228,16 @@ export const faultRouter = router({
             ? null
             : input.resolvedAt,
         },
-        include: {
+        select: {
+          id: true,
+          deviceId: true,
+          faultType: true,
+          description: true,
+          resolved: true,
+          resolvedAt: true,
+          detectedAt: true,
+          createdAt: true,
+          updatedAt: true,
           device: {
             select: {
               id: true,
