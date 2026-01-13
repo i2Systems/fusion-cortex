@@ -17,6 +17,7 @@
 import { z } from 'zod'
 import { router, publicProcedure } from '../trpc'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 import { FirmwareUpdateStatus, FirmwareDeviceStatus, FirmwareStatus, DeviceType } from '@prisma/client'
 import { DisplayDeviceTypeSchema, fromDisplayType } from '@/lib/types'
 
@@ -47,14 +48,14 @@ export const firmwareRouter = router({
       const campaigns = await prisma.firmwareUpdate.findMany({
         where,
         include: {
-          site: {
+          Site: {
             select: {
               id: true,
               name: true,
               storeNumber: true,
             },
           },
-          deviceUpdates: {
+          FirmwareDeviceUpdate: {
             select: {
               status: true,
             },
@@ -67,7 +68,7 @@ export const firmwareRouter = router({
       
       // Calculate actual counts from device updates
       const campaignsWithCounts = campaigns.map(campaign => {
-        const deviceUpdates = campaign.deviceUpdates || []
+        const deviceUpdates = campaign.FirmwareDeviceUpdate || []
         const completed = deviceUpdates.filter(du => du.status === FirmwareDeviceStatus.COMPLETED).length
         const failed = deviceUpdates.filter(du => du.status === FirmwareDeviceStatus.FAILED).length
         const inProgress = deviceUpdates.filter(du => du.status === FirmwareDeviceStatus.IN_PROGRESS).length
@@ -103,6 +104,7 @@ export const firmwareRouter = router({
       
       const campaign = await prisma.firmwareUpdate.create({
         data: {
+          id: randomUUID(),
           name: input.name,
           description: input.description,
           version: input.version,
@@ -112,12 +114,13 @@ export const firmwareRouter = router({
           scheduledAt: input.scheduledAt,
           status: FirmwareUpdateStatus.PENDING,
           totalDevices: 0,
+          updatedAt: new Date(),
           completed: 0,
           failed: 0,
           inProgress: 0,
         },
         include: {
-          site: {
+          Site: {
             select: {
               id: true,
               name: true,
@@ -139,14 +142,14 @@ export const firmwareRouter = router({
       const campaign = await prisma.firmwareUpdate.findUnique({
         where: { id: input.id },
         include: {
-          site: {
+          Site: {
             select: {
               id: true,
               name: true,
               storeNumber: true,
             },
           },
-          deviceUpdates: {
+          FirmwareDeviceUpdate: {
             include: {
               device: {
                 select: {
@@ -195,7 +198,7 @@ export const firmwareRouter = router({
         where: { id: input.id },
         data: updateData,
         include: {
-          site: {
+          Site: {
             select: {
               id: true,
               name: true,
@@ -301,10 +304,12 @@ export const firmwareRouter = router({
               },
             },
             create: {
+              id: randomUUID(),
               firmwareUpdateId: input.campaignId,
               deviceId,
               status: FirmwareDeviceStatus.PENDING,
               retryCount: 0,
+              updatedAt: new Date(),
             },
             update: {
               status: FirmwareDeviceStatus.PENDING,
@@ -370,7 +375,7 @@ export const firmwareRouter = router({
           },
         },
         include: {
-          firmwareUpdate: {
+          FirmwareUpdate: {
             select: {
               id: true,
               name: true,
@@ -406,7 +411,7 @@ export const firmwareRouter = router({
           },
         },
         include: {
-          firmwareUpdate: {
+          FirmwareUpdate: {
             select: {
               version: true,
             },
@@ -445,7 +450,7 @@ export const firmwareRouter = router({
       const campaign = await prisma.firmwareUpdate.findUnique({
         where: { id: input.campaignId },
         include: {
-          deviceUpdates: {
+          FirmwareDeviceUpdate: {
             select: { status: true },
           },
         },
@@ -482,7 +487,7 @@ export const firmwareRouter = router({
           },
         },
         include: {
-          firmwareUpdate: {
+          FirmwareUpdate: {
             select: {
               version: true,
             },
@@ -528,17 +533,17 @@ export const firmwareRouter = router({
       const campaign = await prisma.firmwareUpdate.findUnique({
         where: { id: input.campaignId },
         include: {
-          deviceUpdates: {
+          FirmwareDeviceUpdate: {
             select: { status: true },
           },
         },
       })
       
       if (campaign) {
-        const completed = campaign.deviceUpdates.filter(
+        const completed = campaign.FirmwareDeviceUpdate.filter(
           du => du.status === FirmwareDeviceStatus.COMPLETED
         ).length
-        const failed = campaign.deviceUpdates.filter(
+        const failed = campaign.FirmwareDeviceUpdate.filter(
           du => du.status === FirmwareDeviceStatus.FAILED
         ).length
         const inProgress = campaign.deviceUpdates.filter(
@@ -546,7 +551,7 @@ export const firmwareRouter = router({
         ).length
         
         // Check if campaign is complete
-        const total = campaign.deviceUpdates.length
+        const total = campaign.FirmwareDeviceUpdate.length
         const finished = completed + failed
         const newStatus = finished === total
           ? FirmwareUpdateStatus.COMPLETED
