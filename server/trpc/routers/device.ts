@@ -455,7 +455,7 @@ export const deviceRouter = router({
                 y: deviceData.y,
                 warrantyStatus: deviceData.warrantyStatus,
                 warrantyExpiry: deviceData.warrantyExpiry,
-                components: components
+                other_Device: components
                   ? {
                     create: components.map(comp => ({
                       siteId: deviceData.siteId,
