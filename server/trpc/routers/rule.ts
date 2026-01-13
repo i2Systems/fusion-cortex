@@ -85,14 +85,14 @@ export const ruleRouter = router({
     .query(async ({ input }) => {
       const rule = await prisma.rule.findUnique({
         where: { id: input.id },
-        include: {
-          zone: {
-            select: {
-              id: true,
-              name: true,
+          include: {
+            Zone: {
+              select: {
+                id: true,
+                name: true,
+              },
             },
           },
-        },
       })
 
       if (!rule) {

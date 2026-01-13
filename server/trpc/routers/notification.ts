@@ -144,7 +144,7 @@ export const notificationRouter = router({
                     ...(siteId ? { siteId } : {}),
                 },
                 include: {
-                    deviceUpdates: {
+                    FirmwareDeviceUpdate: {
                         where: {
                             status: 'FAILED',
                         },
@@ -201,7 +201,7 @@ export const notificationRouter = router({
                 }
 
                 // Individual device failure notifications
-                for (const deviceUpdate of campaign.deviceUpdates || []) {
+                for (const deviceUpdate of campaign.FirmwareDeviceUpdate || []) {
                     notifications.push({
                         id: `firmware-device-${deviceUpdate.id}`,
                         type: 'firmware',
