@@ -199,7 +199,12 @@ Set in Vercel Dashboard → Settings → Environment Variables
 **Solution**:
 1. Verify `DATABASE_URL` is correct in Vercel
 2. Check database allows connections from Vercel IPs
-3. For Supabase: Check connection pooling settings
+3. **For Supabase: Use Connection Pooler (REQUIRED for Vercel)**
+   - Go to Supabase Dashboard → Settings → Database
+   - Under "Connection string", select **"Use connection pooling"**
+   - Copy the connection string (uses port 6543, not 5432)
+   - Format: `postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres`
+   - **DO NOT use the direct connection** (port 5432) for Vercel deployments
 
 ### Migration Errors in Production
 
