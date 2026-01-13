@@ -309,7 +309,7 @@ export const deviceRouter = router({
               : undefined,
           },
           include: {
-            components: true,
+            other_Device: true,
           },
         })
 
@@ -352,7 +352,7 @@ export const deviceRouter = router({
                 siteId: true,
                 createdAt: true,
                 updatedAt: true,
-                components: true,
+                other_Device: true,
               },
             })
 
@@ -407,7 +407,7 @@ export const deviceRouter = router({
                     } : {}),
                   },
                   include: {
-                    components: true,
+                    other_Device: true,
                   },
                 })
 
@@ -473,7 +473,7 @@ export const deviceRouter = router({
                   : undefined,
               },
               include: {
-                components: true,
+                other_Device: true,
               },
             })
             return transformDevice(device)
@@ -539,7 +539,7 @@ export const deviceRouter = router({
           where: { id },
           data: updateData,
           include: {
-            components: true,
+            other_Device: true,
           },
         })
 
@@ -594,7 +594,7 @@ export const deviceRouter = router({
               where: { id },
               data: updateData,
               include: {
-                components: true,
+                other_Device: true,
               },
             })
 
