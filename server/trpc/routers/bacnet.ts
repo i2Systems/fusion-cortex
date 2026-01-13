@@ -23,18 +23,18 @@ export const bacnetRouter = router({
       const zones = await prisma.zone.findMany({
         where: { siteId: input.siteId },
         include: {
-          bacnetMapping: true,
+          BACnetMapping: true,
         },
       })
 
       return zones
-        .filter(zone => zone.bacnetMapping)
+        .filter(zone => zone.BACnetMapping)
         .map(zone => ({
           zoneId: zone.id,
           zoneName: zone.name,
-          bacnetObjectId: zone.bacnetMapping?.bacnetObjectId || null,
-          status: zone.bacnetMapping?.status || 'NOT_ASSIGNED',
-          lastConnected: zone.bacnetMapping?.lastConnected || null,
+          bacnetObjectId: zone.BACnetMapping?.bacnetObjectId || null,
+          status: zone.BACnetMapping?.status || 'NOT_ASSIGNED',
+          lastConnected: zone.BACnetMapping?.lastConnected || null,
         }))
     }),
 
