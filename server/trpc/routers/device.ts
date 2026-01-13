@@ -85,39 +85,13 @@ export const deviceRouter = router({
       try {
         // Always include components relation to avoid prepared statement parameter mismatch
         // We'll filter them out in transformDevice if needed
-        // Use select to exclude firmware fields until migration is run
         const devices = await prisma.device.findMany({
           where: {
             siteId: input.siteId,
             parentId: null, // Only get top-level devices (not components)
           },
-          select: {
-            id: true,
-            serialNumber: true,
-            deviceId: true,
-            type: true,
-            status: true,
-            x: true,
-            y: true,
-            orientation: true,
-            signal: true,
-            battery: true,
-            buildDate: true,
-            cct: true,
-            warrantyStatus: true,
-            warrantyExpiry: true,
-            partsList: true,
-            parentId: true,
-            componentType: true,
-            componentSerialNumber: true,
-            siteId: true,
-            createdAt: true,
-            updatedAt: true,
-            firmwareVersion: true,
-            firmwareTarget: true,
-            firmwareStatus: true,
-            lastFirmwareUpdate: true,
-            components: input.includeComponents ? {
+          include: {
+            other_Device: input.includeComponents ? {
               orderBy: {
                 createdAt: 'asc',
               },
@@ -154,37 +128,12 @@ export const deviceRouter = router({
                 siteId: input.siteId,
                 parentId: null,
               },
-              select: {
-                id: true,
-                serialNumber: true,
-                deviceId: true,
-                type: true,
-                status: true,
-                x: true,
-                y: true,
-                orientation: true,
-                signal: true,
-                battery: true,
-                buildDate: true,
-                cct: true,
-                warrantyStatus: true,
-                warrantyExpiry: true,
-                partsList: true,
-                parentId: true,
-                componentType: true,
-                componentSerialNumber: true,
-                siteId: true,
-                createdAt: true,
-                updatedAt: true,
-                firmwareVersion: true,
-                firmwareTarget: true,
-                firmwareStatus: true,
-                lastFirmwareUpdate: true,
-                components: {
+              include: {
+                other_Device: input.includeComponents ? {
                   orderBy: {
                     createdAt: 'asc',
                   },
-                },
+                } : false,
               },
               orderBy: {
                 createdAt: 'asc',
@@ -334,7 +283,7 @@ export const deviceRouter = router({
         const device = await prisma.device.create({
           data: {
             ...deviceDataForPrisma,
-            components: components
+            other_Device: components
               ? {
                 create: components.map((comp, index) => {
                   // Generate unique serial number for component to avoid conflicts
