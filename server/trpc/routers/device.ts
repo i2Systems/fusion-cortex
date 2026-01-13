@@ -37,7 +37,7 @@ const toPrismaDeviceStatus = fromDisplayStatus
 
 // Helper to transform database device to frontend format
 function transformDevice(dbDevice: any) {
-  const components = dbDevice.other_Device?.map((comp: any) => ({
+  const components = dbDevice.components?.map((comp: any) => ({
     id: comp.id,
     componentType: comp.componentType || '',
     componentSerialNumber: comp.componentSerialNumber || '',
@@ -91,7 +91,7 @@ export const deviceRouter = router({
             parentId: null, // Only get top-level devices (not components)
           },
           include: {
-            other_Device: input.includeComponents ? {
+            components: input.includeComponents ? {
               orderBy: {
                 createdAt: 'asc',
               },
@@ -129,7 +129,7 @@ export const deviceRouter = router({
                 parentId: null,
               },
               include: {
-                other_Device: input.includeComponents ? {
+                components: input.includeComponents ? {
                   orderBy: {
                     createdAt: 'asc',
                   },
@@ -179,7 +179,7 @@ export const deviceRouter = router({
           ],
         },
         include: {
-          other_Device: {
+          components: {
             orderBy: {
               createdAt: 'asc',
             },
@@ -203,7 +203,7 @@ export const deviceRouter = router({
         where: { id: input.id },
         include: input.includeComponents
           ? {
-              other_Device: {
+              components: {
                 orderBy: {
                   createdAt: 'asc',
                 },
@@ -309,7 +309,7 @@ export const deviceRouter = router({
               : undefined,
           },
           include: {
-            other_Device: true,
+            components: true,
           },
         })
 
@@ -352,7 +352,7 @@ export const deviceRouter = router({
                 siteId: true,
                 createdAt: true,
                 updatedAt: true,
-                other_Device: true,
+                components: true,
               },
             })
 
@@ -407,7 +407,7 @@ export const deviceRouter = router({
                     } : {}),
                   },
                   include: {
-                    other_Device: true,
+                    components: true,
                   },
                 })
 
@@ -473,7 +473,7 @@ export const deviceRouter = router({
                   : undefined,
               },
               include: {
-                other_Device: true,
+                components: true,
               },
             })
             return transformDevice(device)
@@ -539,7 +539,7 @@ export const deviceRouter = router({
           where: { id },
           data: updateData,
           include: {
-            other_Device: true,
+            components: true,
           },
         })
 
@@ -594,7 +594,7 @@ export const deviceRouter = router({
               where: { id },
               data: updateData,
               include: {
-                other_Device: true,
+                components: true,
               },
             })
 
