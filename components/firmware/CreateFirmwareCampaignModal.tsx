@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { trpc } from '@/lib/trpc/client'
 import { useSite } from '@/lib/SiteContext'
-import { ALL_DISPLAY_DEVICE_TYPES, getDeviceTypeLabel } from '@/lib/types'
+import { ALL_DISPLAY_DEVICE_TYPES, getDisplayTypeLabel } from '@/lib/types'
 
 interface CreateFirmwareCampaignModalProps {
   isOpen: boolean
@@ -180,7 +180,7 @@ export function CreateFirmwareCampaignModal({
                     className="rounded border-[var(--color-border)]"
                   />
                   <span className="text-sm text-[var(--color-text)]">
-                    {getDeviceTypeLabel(deviceType)}
+                    {getDisplayTypeLabel(deviceType)}
                   </span>
                 </label>
               ))}
