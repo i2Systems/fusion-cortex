@@ -85,12 +85,34 @@ export const deviceRouter = router({
       try {
         // Always include components relation to avoid prepared statement parameter mismatch
         // We'll filter them out in transformDevice if needed
+        // Use select to exclude firmware fields until migration is run
         const devices = await prisma.device.findMany({
           where: {
             siteId: input.siteId,
             parentId: null, // Only get top-level devices (not components)
           },
-          include: {
+          select: {
+            id: true,
+            serialNumber: true,
+            deviceId: true,
+            type: true,
+            status: true,
+            x: true,
+            y: true,
+            orientation: true,
+            signal: true,
+            battery: true,
+            buildDate: true,
+            cct: true,
+            warrantyStatus: true,
+            warrantyExpiry: true,
+            partsList: true,
+            parentId: true,
+            componentType: true,
+            componentSerialNumber: true,
+            siteId: true,
+            createdAt: true,
+            updatedAt: true,
             components: {
               orderBy: {
                 createdAt: 'asc',
@@ -128,7 +150,28 @@ export const deviceRouter = router({
                 siteId: input.siteId,
                 parentId: null,
               },
-              include: {
+              select: {
+                id: true,
+                serialNumber: true,
+                deviceId: true,
+                type: true,
+                status: true,
+                x: true,
+                y: true,
+                orientation: true,
+                signal: true,
+                battery: true,
+                buildDate: true,
+                cct: true,
+                warrantyStatus: true,
+                warrantyExpiry: true,
+                partsList: true,
+                parentId: true,
+                componentType: true,
+                componentSerialNumber: true,
+                siteId: true,
+                createdAt: true,
+                updatedAt: true,
                 components: {
                   orderBy: {
                     createdAt: 'asc',
@@ -178,7 +221,28 @@ export const deviceRouter = router({
             { serialNumber: { contains: searchTerm, mode: 'insensitive' } },
           ],
         },
-        include: {
+        select: {
+          id: true,
+          serialNumber: true,
+          deviceId: true,
+          type: true,
+          status: true,
+          x: true,
+          y: true,
+          orientation: true,
+          signal: true,
+          battery: true,
+          buildDate: true,
+          cct: true,
+          warrantyStatus: true,
+          warrantyExpiry: true,
+          partsList: true,
+          parentId: true,
+          componentType: true,
+          componentSerialNumber: true,
+          siteId: true,
+          createdAt: true,
+          updatedAt: true,
           components: {
             orderBy: {
               createdAt: 'asc',
@@ -201,15 +265,38 @@ export const deviceRouter = router({
     .query(async ({ input }) => {
       const device = await prisma.device.findUnique({
         where: { id: input.id },
-        include: input.includeComponents
-          ? {
-            components: {
-              orderBy: {
-                createdAt: 'asc',
-              },
-            },
-          }
-          : undefined,
+        select: {
+          id: true,
+          serialNumber: true,
+          deviceId: true,
+          type: true,
+          status: true,
+          x: true,
+          y: true,
+          orientation: true,
+          signal: true,
+          battery: true,
+          buildDate: true,
+          cct: true,
+          warrantyStatus: true,
+          warrantyExpiry: true,
+          partsList: true,
+          parentId: true,
+          componentType: true,
+          componentSerialNumber: true,
+          siteId: true,
+          createdAt: true,
+          updatedAt: true,
+          ...(input.includeComponents
+            ? {
+                components: {
+                  orderBy: {
+                    createdAt: 'asc',
+                  },
+                },
+              }
+            : {}),
+        },
       })
 
       if (!device) {
@@ -330,7 +417,30 @@ export const deviceRouter = router({
             // Check if device exists with this serial number
             const existingDevice = await prisma.device.findUnique({
               where: { serialNumber: input.serialNumber },
-              include: { components: true },
+              select: {
+                id: true,
+                serialNumber: true,
+                deviceId: true,
+                type: true,
+                status: true,
+                x: true,
+                y: true,
+                orientation: true,
+                signal: true,
+                battery: true,
+                buildDate: true,
+                cct: true,
+                warrantyStatus: true,
+                warrantyExpiry: true,
+                partsList: true,
+                parentId: true,
+                componentType: true,
+                componentSerialNumber: true,
+                siteId: true,
+                createdAt: true,
+                updatedAt: true,
+                components: true,
+              },
             })
 
             if (existingDevice) {

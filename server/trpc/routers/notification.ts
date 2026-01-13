@@ -211,24 +211,10 @@ export const notificationRouter = router({
             }
 
             // 5. Get devices with firmware update available
-            const devicesWithUpdates = await prisma.device.findMany({
-                where: {
-                    siteId: siteId,
-                    firmwareStatus: 'UPDATE_AVAILABLE',
-                },
-                select: {
-                    id: true,
-                    deviceId: true,
-                    siteId: true,
-                    firmwareVersion: true,
-                    firmwareTarget: true,
-                    updatedAt: true,
-                },
-                orderBy: {
-                    updatedAt: 'desc',
-                },
-                take: 20,
-            });
+            // Skip if firmware columns don't exist in database yet
+            const devicesWithUpdates: any[] = [];
+            // Note: This will be enabled after migration adds firmware columns
+            // For now, return empty array to avoid errors
 
             for (const device of devicesWithUpdates) {
                 notifications.push({
