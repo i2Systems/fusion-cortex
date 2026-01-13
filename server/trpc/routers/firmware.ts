@@ -522,9 +522,9 @@ export const firmwareRouter = router({
       await prisma.device.update({
         where: { id: input.deviceId },
         data: {
-          firmwareVersion: input.success ? deviceUpdate.firmwareUpdate.version : undefined,
+          firmwareVersion: input.success ? deviceUpdate.FirmwareUpdate.version : undefined,
           firmwareStatus: input.success ? FirmwareStatus.UP_TO_DATE : FirmwareStatus.UPDATE_FAILED,
-          firmwareTarget: input.success ? null : deviceUpdate.firmwareUpdate.version,
+          firmwareTarget: input.success ? null : deviceUpdate.FirmwareUpdate.version,
           lastFirmwareUpdate: input.success ? new Date() : undefined,
         },
       })

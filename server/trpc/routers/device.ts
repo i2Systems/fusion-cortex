@@ -468,6 +468,7 @@ export const deviceRouter = router({
                 other_Device: components
                   ? {
                     create: components.map(comp => ({
+                      id: randomUUID(),
                       siteId: deviceData.siteId,
                       deviceId: `${deviceData.deviceId}-${comp.componentType}`,
                       serialNumber: comp.componentSerialNumber,
@@ -478,6 +479,10 @@ export const deviceRouter = router({
                       warrantyStatus: comp.warrantyStatus,
                       warrantyExpiry: comp.warrantyExpiry,
                       buildDate: comp.buildDate,
+                      updatedAt: new Date(),
+                      Site: {
+                        connect: { id: deviceData.siteId },
+                      },
                     })),
                   }
                   : undefined,
