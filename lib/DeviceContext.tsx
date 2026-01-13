@@ -134,7 +134,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
       return
     }
     mutations.addDevice(device)
-  }, [mutations, undoableDevices.current])
+  }, [mutations, undoableDevices])
 
   const updateDevice = useCallback((deviceId: string, updates: Partial<Device>) => {
     // Commit current state to history before update

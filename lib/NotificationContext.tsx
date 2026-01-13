@@ -45,7 +45,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   // Fetch notifications from server
   const { data: serverNotifications } = trpc.notification.list.useQuery(
-    { siteId: undefined },
+    {},
     {
       refetchInterval: 30000, // Poll every 30s
       refetchOnWindowFocus: true,

@@ -6,7 +6,7 @@ import { DeviceStatus } from '@prisma/client';
 export const notificationRouter = router({
     list: publicProcedure
         .input(z.object({
-            siteId: z.string().optional(),
+            siteId: z.string().nullable().optional(),
         }))
         .query(async ({ input }) => {
             const { siteId } = input;

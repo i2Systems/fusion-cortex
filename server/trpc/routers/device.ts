@@ -297,7 +297,6 @@ export const deviceRouter = router({
 
                   return {
                     id: randomUUID(),
-                    siteId: deviceData.siteId,
                     deviceId: `${deviceData.deviceId}-${comp.componentType}`,
                     serialNumber: uniqueSerialNumber,
                     type: DeviceType.FIXTURE_16FT_POWER_ENTRY, // Components are typically fixtures

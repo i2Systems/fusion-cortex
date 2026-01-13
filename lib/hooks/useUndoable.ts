@@ -39,7 +39,8 @@ export function useUndoable<T>(
     const [historyIndex, setHistoryIndex] = useState(0)
 
     // Current value is derived from history
-    const current = history[historyIndex]
+    // Always defined since history is initialized with initialValue and index starts at 0
+    const current: T = history[historyIndex] ?? initialValue
 
     const set = useCallback((value: T) => {
         setHistory(prev => {
