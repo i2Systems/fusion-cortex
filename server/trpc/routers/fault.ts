@@ -9,6 +9,7 @@
 import { z } from 'zod'
 import { router, publicProcedure } from '../trpc'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 import { FaultCategory } from '@/lib/faultDefinitions'
 
 export const faultRouter = router({
@@ -178,11 +179,13 @@ export const faultRouter = router({
       
       const fault = await prisma.fault.create({
         data: {
+          id: randomUUID(),
           deviceId: input.deviceId,
           faultType: input.faultType,
           description: input.description,
           detectedAt: input.detectedAt || new Date(),
           resolved: false,
+          updatedAt: new Date(),
         },
         select: {
           id: true,

@@ -7,6 +7,7 @@
 import { z } from 'zod'
 import { router, publicProcedure } from '../trpc'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 const polygonPointSchema = z.object({
   x: z.number(),
@@ -29,9 +30,9 @@ export const zoneRouter = router({
             siteId: input.siteId,
           },
           include: {
-            devices: {
+            ZoneDevice: {
               include: {
-                device: true,
+                Device: true,
               },
             },
           },
@@ -46,7 +47,7 @@ export const zoneRouter = router({
           color: zone.color,
           description: zone.description,
           polygon: zone.polygon as Array<{ x: number; y: number }> | null,
-          deviceIds: zone.devices.map(zd => zd.deviceId),
+          deviceIds: zone.ZoneDevice.map(zd => zd.deviceId),
           daylightEnabled: zone.daylightEnabled,
           minDaylight: zone.minDaylight,
           createdAt: zone.createdAt,
@@ -97,7 +98,7 @@ export const zoneRouter = router({
               color: zone.color,
               description: zone.description,
               polygon: zone.polygon as Array<{ x: number; y: number }> | null,
-              deviceIds: zone.devices.map(zd => zd.deviceId),
+              deviceIds: zone.ZoneDevice.map(zd => zd.deviceId),
               daylightEnabled: zone.daylightEnabled,
               minDaylight: zone.minDaylight,
               createdAt: zone.createdAt,
@@ -148,21 +149,24 @@ export const zoneRouter = router({
 
         const zone = await prisma.zone.create({
           data: {
+            id: randomUUID(),
             name: input.name,
             siteId: input.siteId,
             color: input.color || '#4c7dff',
             description: input.description,
             polygon: input.polygon ? (input.polygon as any) : null,
-            devices: validDeviceIds.length > 0 ? {
+            updatedAt: new Date(),
+            ZoneDevice: validDeviceIds.length > 0 ? {
               create: validDeviceIds.map(deviceId => ({
+                id: randomUUID(),
                 deviceId,
               })),
             } : undefined,
           },
           include: {
-            devices: {
+            ZoneDevice: {
               include: {
-                device: true,
+                Device: true,
               },
             },
           },
@@ -174,7 +178,7 @@ export const zoneRouter = router({
           color: zone.color,
           description: zone.description,
           polygon: zone.polygon as Array<{ x: number; y: number }> | null,
-          deviceIds: zone.devices.map(zd => zd.deviceId),
+          deviceIds: zone.ZoneDevice.map(zd => zd.deviceId),
           createdAt: zone.createdAt,
           updatedAt: zone.updatedAt,
         }
@@ -224,13 +228,16 @@ export const zoneRouter = router({
 
             const zone = await prisma.zone.create({
               data: {
+                id: randomUUID(),
                 name: input.name,
                 siteId: input.siteId,
                 color: input.color || '#4c7dff',
                 description: input.description,
                 polygon: input.polygon ? (input.polygon as any) : null,
-                devices: retryValidDeviceIds.length > 0 ? {
+                updatedAt: new Date(),
+                ZoneDevice: retryValidDeviceIds.length > 0 ? {
                   create: retryValidDeviceIds.map(deviceId => ({
+                    id: randomUUID(),
                     deviceId,
                   })),
                 } : undefined,
@@ -250,7 +257,7 @@ export const zoneRouter = router({
               color: zone.color,
               description: zone.description,
               polygon: zone.polygon as Array<{ x: number; y: number }> | null,
-              deviceIds: zone.devices.map(zd => zd.deviceId),
+              deviceIds: zone.ZoneDevice.map(zd => zd.deviceId),
               createdAt: zone.createdAt,
               updatedAt: zone.updatedAt,
             }
@@ -330,9 +337,9 @@ export const zoneRouter = router({
             polygon: input.polygon ? (input.polygon as any) : undefined,
           },
           include: {
-            devices: {
+            ZoneDevice: {
               include: {
-                device: true,
+                Device: true,
               },
             },
           },
