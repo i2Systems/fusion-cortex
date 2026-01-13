@@ -24,18 +24,18 @@ export const bacnetRouter = router({
       const zones = await prisma.zone.findMany({
         where: { siteId: input.siteId },
         include: {
-          bacnetMapping: true,
+          BACnetMapping: true,
         },
       })
 
       return zones
-        .filter(zone => zone.bacnetMapping)
+        .filter(zone => zone.BACnetMapping)
         .map(zone => ({
           zoneId: zone.id,
           zoneName: zone.name,
-          bacnetObjectId: zone.bacnetMapping?.bacnetObjectId || null,
-          status: zone.bacnetMapping?.status || 'NOT_ASSIGNED',
-          lastConnected: zone.bacnetMapping?.lastConnected || null,
+          bacnetObjectId: zone.BACnetMapping?.bacnetObjectId || null,
+          status: zone.BACnetMapping?.status || 'NOT_ASSIGNED',
+          lastConnected: zone.BACnetMapping?.lastConnected || null,
         }))
     }),
 
@@ -47,7 +47,7 @@ export const bacnetRouter = router({
       const mapping = await prisma.bACnetMapping.findUnique({
         where: { zoneId: input.zoneId },
         include: {
-          zone: true,
+          Zone: true,
         },
       })
 
@@ -58,7 +58,7 @@ export const bacnetRouter = router({
       return {
         id: mapping.id,
         zoneId: mapping.zoneId,
-        zoneName: mapping.zone.name,
+        zoneName: mapping.Zone.name,
         bacnetObjectId: mapping.bacnetObjectId,
         status: mapping.status,
         lastConnected: mapping.lastConnected,
@@ -81,14 +81,14 @@ export const bacnetRouter = router({
           updatedAt: new Date(),
         },
         include: {
-          zone: true,
+          Zone: true,
         },
       })
 
       return {
         id: mapping.id,
         zoneId: mapping.zoneId,
-        zoneName: mapping.zone.name,
+        zoneName: mapping.Zone.name,
         bacnetObjectId: mapping.bacnetObjectId,
         status: mapping.status,
         lastConnected: mapping.lastConnected,
@@ -123,14 +123,14 @@ export const bacnetRouter = router({
           updatedAt: new Date(),
         },
         include: {
-          zone: true,
+          Zone: true,
         },
       })
 
       return {
         id: mapping.id,
         zoneId: mapping.zoneId,
-        zoneName: mapping.zone.name,
+        zoneName: mapping.Zone.name,
         bacnetObjectId: mapping.bacnetObjectId,
         status: mapping.status,
         lastConnected: mapping.lastConnected,

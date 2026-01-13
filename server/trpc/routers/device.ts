@@ -37,7 +37,7 @@ const toPrismaDeviceStatus = fromDisplayStatus
 
 // Helper to transform database device to frontend format
 function transformDevice(dbDevice: any) {
-  const components = dbDevice.components?.map((comp: any) => ({
+  const components = dbDevice.other_Device?.map((comp: any) => ({
     id: comp.id,
     componentType: comp.componentType || '',
     componentSerialNumber: comp.componentSerialNumber || '',
@@ -91,7 +91,7 @@ export const deviceRouter = router({
             parentId: null, // Only get top-level devices (not components)
           },
           include: {
-            components: input.includeComponents ? {
+            other_Device: input.includeComponents ? {
               orderBy: {
                 createdAt: 'asc',
               },
@@ -129,7 +129,7 @@ export const deviceRouter = router({
                 parentId: null,
               },
               include: {
-                components: input.includeComponents ? {
+                other_Device: input.includeComponents ? {
                   orderBy: {
                     createdAt: 'asc',
                   },
@@ -179,7 +179,7 @@ export const deviceRouter = router({
           ],
         },
         include: {
-          components: {
+          other_Device: {
             orderBy: {
               createdAt: 'asc',
             },
@@ -203,7 +203,7 @@ export const deviceRouter = router({
         where: { id: input.id },
         include: input.includeComponents
           ? {
-              components: {
+              other_Device: {
                 orderBy: {
                   createdAt: 'asc',
                 },
@@ -283,7 +283,7 @@ export const deviceRouter = router({
         const device = await prisma.device.create({
           data: {
             ...deviceDataForPrisma,
-            components: components
+            other_Device: components
               ? {
                 create: components.map((comp, index) => {
                   // Generate unique serial number for component to avoid conflicts
@@ -309,7 +309,7 @@ export const deviceRouter = router({
               : undefined,
           },
           include: {
-            components: true,
+            other_Device: true,
           },
         })
 
@@ -352,7 +352,7 @@ export const deviceRouter = router({
                 siteId: true,
                 createdAt: true,
                 updatedAt: true,
-                components: true,
+                other_Device: true,
               },
             })
 
@@ -381,7 +381,7 @@ export const deviceRouter = router({
                     warrantyExpiry: input.warrantyExpiry,
                     // Update components if provided
                     ...(input.components && input.components.length > 0 ? {
-                      components: {
+                      other_Device: {
                         deleteMany: {}, // Remove old components
                         create: input.components.map((comp, index) => {
                           // Generate unique serial number for component to avoid conflicts
@@ -407,7 +407,7 @@ export const deviceRouter = router({
                     } : {}),
                   },
                   include: {
-                    components: true,
+                    other_Device: true,
                   },
                 })
 
@@ -455,7 +455,7 @@ export const deviceRouter = router({
                 y: deviceData.y,
                 warrantyStatus: deviceData.warrantyStatus,
                 warrantyExpiry: deviceData.warrantyExpiry,
-                components: components
+                other_Device: components
                   ? {
                     create: components.map(comp => ({
                       siteId: deviceData.siteId,
@@ -473,7 +473,7 @@ export const deviceRouter = router({
                   : undefined,
               },
               include: {
-                components: true,
+                other_Device: true,
               },
             })
             return transformDevice(device)
@@ -539,7 +539,7 @@ export const deviceRouter = router({
           where: { id },
           data: updateData,
           include: {
-            components: true,
+            other_Device: true,
           },
         })
 
@@ -594,7 +594,7 @@ export const deviceRouter = router({
               where: { id },
               data: updateData,
               include: {
-                components: true,
+                other_Device: true,
               },
             })
 
