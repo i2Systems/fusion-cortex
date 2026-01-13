@@ -45,6 +45,10 @@ export interface Device {
   components?: Component[] // Child components (for fixtures)
   warrantyStatus?: string
   warrantyExpiry?: Date
+  firmwareVersion?: string // Current firmware version
+  firmwareTarget?: string // Target firmware version for update
+  firmwareStatus?: string // Firmware status (UP_TO_DATE, UPDATE_AVAILABLE, etc.)
+  lastFirmwareUpdate?: Date // When firmware was last updated
 }
 
 // Generate 120 devices with realistic data and organized positioning

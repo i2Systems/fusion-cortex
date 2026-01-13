@@ -64,6 +64,10 @@ function transformDevice(dbDevice: any) {
     components: components.length > 0 ? components : undefined,
     warrantyStatus: dbDevice.warrantyStatus || undefined,
     warrantyExpiry: dbDevice.warrantyExpiry ? new Date(dbDevice.warrantyExpiry) : undefined,
+    firmwareVersion: dbDevice.firmwareVersion || undefined,
+    firmwareTarget: dbDevice.firmwareTarget || undefined,
+    firmwareStatus: dbDevice.firmwareStatus || undefined,
+    lastFirmwareUpdate: dbDevice.lastFirmwareUpdate ? new Date(dbDevice.lastFirmwareUpdate) : undefined,
   }
 }
 

@@ -16,9 +16,12 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react'
-import { AlertCircle, Droplets, Zap, Thermometer, Plug, Settings, Package, Wrench, Lightbulb } from 'lucide-react'
-import { Device } from '@/lib/mockData'
+import { AlertCircle, Droplets, Zap, Thermometer, Plug, Settings, Package, Wrench, Lightbulb, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react'
+import { Device, DeviceStatus } from '@/lib/mockData'
 import { FaultCategory, faultCategories } from '@/lib/faultDefinitions'
+import { useDevices } from '@/lib/DeviceContext'
+import { useToast } from '@/lib/ToastContext'
+import { Button } from '@/components/ui/Button'
 
 interface Fault {
   id?: string // Database fault ID (if from database)
@@ -166,6 +169,63 @@ const FaultListItem = memo(function FaultListItem({ fault, isSelected, onSelect 
 export function FaultList({ faults, selectedFaultId, onFaultSelect, searchQuery = '' }: FaultListProps) {
   const [sortBy, setSortBy] = useState<'deviceId' | 'faultType' | 'detectedAt'>('detectedAt')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const { devices, updateMultipleDevices } = useDevices()
+  const { addToast } = useToast()
+  const [isDiscovering, setIsDiscovering] = useState(false)
+
+  // Simulate fault discovery
+  const handleSimulateFaults = async () => {
+    setIsDiscovering(true)
+
+    setTimeout(() => {
+      // Filter for healthy devices (online and not already in faults list)
+      const healthyDevices = devices.filter(d =>
+        d.status === 'online' &&
+        !faults.some(f => f.device.id === d.id)
+      )
+
+      if (healthyDevices.length === 0) {
+        setIsDiscovering(false)
+        addToast({
+          title: 'No Healthy Devices',
+          message: 'All devices already have active faults.',
+          type: 'warning'
+        })
+        return
+      }
+
+      // Pick up to 5 random devices
+      const count = Math.min(5, healthyDevices.length)
+      const shuffled = [...healthyDevices].sort(() => 0.5 - Math.random())
+      const selectedDevices = shuffled.slice(0, count)
+
+      const updates = selectedDevices.map(device => {
+        // Randomly decide fault type and effect
+        const faultType = Math.random() > 0.5 ? 'offline' : 'online'
+        const battery = Math.random() > 0.8 ? 15 : device.battery // 20% chance of low battery
+        const signal = Math.random() > 0.8 ? 10 : device.signal // 20% chance of low signal
+
+        return {
+          deviceId: device.id,
+          updates: {
+            status: faultType as DeviceStatus,
+            battery,
+            signal
+          }
+        }
+      })
+
+      updateMultipleDevices(updates)
+
+      setIsDiscovering(false)
+      addToast({
+        title: 'Faults Discovered',
+        message: `Detected ${count} new faults in the system.`,
+        type: 'error',
+        duration: 5000
+      })
+    }, 2000)
+  }
 
   // Memoized filter - only recalculate when faults or searchQuery changes
   const filteredFaults = useMemo(() => {
@@ -276,8 +336,35 @@ export function FaultList({ faults, selectedFaultId, onFaultSelect, searchQuery 
         onClick={handleContainerClick}
       >
         {sortedFaults.length === 0 ? (
-          <div className="p-8 text-center text-sm text-[var(--color-text-muted)]">
-            {searchQuery ? 'No faults match your search' : 'No faults detected. All devices are healthy.'}
+          <div className="flex flex-col items-center justify-center h-full p-8 text-center text-[var(--color-text-muted)] animate-in fade-in duration-500">
+            {searchQuery ? (
+              <p>No faults match your search</p>
+            ) : (
+              <div className="flex flex-col items-center gap-4 max-w-md">
+                <div className="w-16 h-16 rounded-full bg-[var(--color-success)]/10 flex items-center justify-center mb-2">
+                  <CheckCircle2 size={32} className="text-[var(--color-success)]" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-[var(--color-text)] mb-1">System Healthy</h3>
+                  <p className="text-sm">No faults detected. All devices are operating within normal parameters.</p>
+                </div>
+
+                <div className="pt-4 flex flex-col items-center gap-2">
+                  <p className="text-xs text-[var(--color-text-soft)]">
+                    Use the simulator to test fault detection scenarios
+                  </p>
+                  <Button
+                    variant="secondary"
+                    onClick={handleSimulateFaults}
+                    disabled={isDiscovering}
+                    className="gap-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10"
+                  >
+                    {isDiscovering ? <Loader2 size={16} className="animate-spin" /> : <AlertTriangle size={16} />}
+                    {isDiscovering ? 'Simulating Failures...' : 'Discover Faults'}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div

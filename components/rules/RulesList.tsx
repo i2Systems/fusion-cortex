@@ -16,7 +16,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback, memo } from 'react'
-import { Clock, Zap, Sun, Radio, Calendar, CheckCircle2, XCircle } from 'lucide-react'
+import { Clock, Zap, Sun, Radio, Calendar, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
 import { Rule } from '@/lib/mockRules'
 
 interface RulesListProps {
@@ -131,10 +131,10 @@ const RuleListItem = memo(function RuleListItem({ rule, isSelected, onSelect }: 
                 {rule.name}
               </h4>
               <span className={`token ${rule.ruleType === 'override'
-                  ? 'token-type-override'
-                  : rule.ruleType === 'schedule'
-                    ? 'token-type-schedule'
-                    : 'token-type-rule'
+                ? 'token-type-override'
+                : rule.ruleType === 'schedule'
+                  ? 'token-type-schedule'
+                  : 'token-type-rule'
                 }`}>
                 {rule.ruleType === 'schedule' ? 'Schedule' : rule.ruleType === 'override' ? 'Override' : 'Rule'}
               </span>
@@ -148,7 +148,12 @@ const RuleListItem = memo(function RuleListItem({ rule, isSelected, onSelect }: 
           </div>
         </div>
         <div className="flex flex-col items-end gap-2 flex-shrink-0 ml-3">
-          {rule.enabled ? (
+          {!rule.targetId ? (
+            <span className="token token-status-warning" title="Target missing - please edit">
+              <AlertTriangle size={12} />
+              Invalid
+            </span>
+          ) : rule.enabled ? (
             <span className="token token-status-active">
               <CheckCircle2 size={12} />
               Active

@@ -12,6 +12,8 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNotifications, NotificationType } from '@/lib/NotificationContext'
 import { useSite } from '@/lib/SiteContext'
+import { useDevices } from '@/lib/DeviceContext'
+import { useZones } from '@/lib/ZoneContext'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { AlertTriangle, Layers, Network, Workflow, Search, Home, X, CheckCheck, Mail, ArrowUpDown, Clock, Filter, Sparkles, List, Grid3x3, LayoutGrid, Columns, Rss, Building2 } from 'lucide-react'
@@ -20,6 +22,8 @@ import { Button } from '@/components/ui/Button'
 import { Toggle } from '@/components/ui/Toggle'
 import { Select } from '@/components/ui/Select'
 import { Badge } from '@/components/ui/Badge'
+import { trpc } from '@/lib/trpc/client'
+import { FaultCategory } from '@/lib/faultDefinitions'
 
 const typeIcons: Record<string, any> = {
   fault: AlertTriangle,
@@ -45,8 +49,13 @@ type LayoutOption = 'singular' | 'grid' | 'double-list' | 'mortar'
 export default function NotificationsPage() {
   const { notifications, unreadCount, markAsRead, markAsUnread, markAllAsRead, dismissNotification, addNotification } = useNotifications()
   const { sites, activeSiteId } = useSite()
+  const { devices } = useDevices()
+  const { zones } = useZones()
   const router = useRouter()
   const searchParams = useSearchParams()
+
+  // Fault creation mutation for demo purposes
+  const createFaultMutation = trpc.fault.create.useMutation()
 
   // Initialize filters from URL params
   const [filter, setFilter] = useState<'all' | 'unread' | 'faults'>(
@@ -56,7 +65,7 @@ export default function NotificationsPage() {
     searchParams.get('siteFilter') || 'all'
   )
   const [sortBy, setSortBy] = useState<SortOption>('newest')
-  const [layout, setLayout] = useState<LayoutOption>('singular')
+  const [layout, setLayout] = useState<LayoutOption>('grid')
   const [searchQuery, setSearchQuery] = useState('')
 
   // Update filters when URL params change
@@ -71,83 +80,255 @@ export default function NotificationsPage() {
     }
   }, [searchParams])
 
-  // Import generateRandomNotification from context (we'll need to export it)
+  // Generate realistic notifications using actual site/device/zone data
   const handleGenerateRandom = () => {
     const now = new Date()
-    const types: NotificationType[] = ['fault', 'zone', 'bacnet', 'rule', 'device', 'system', 'warranty']
-    const type = types[Math.floor(Math.random() * types.length)]
 
-    const notifications: Record<NotificationType, { titles: string[], messages: string[], links: string[] }> = {
-      fault: {
-        titles: [
-          'Environmental Ingress Detected',
-          'Electrical Driver Failure',
-          'Thermal Overheat Warning',
-          'Installation Wiring Error',
-          'Control System Integration Issue',
-          'Manufacturing Defect Found',
-          'Mechanical Hardware Problem',
-          'Optical Output Abnormality',
-        ],
-        messages: [
-          'Water intrusion detected in fixture housing. Device shows signs of moisture damage. Inspect seals and gaskets.',
-          'Legacy 6043 driver burnout - no power output. Device requires driver replacement. Check warranty status.',
-          'Input cable melting detected due to excessive current. Device shows thermal stress. Review power distribution.',
-          'Power landed on dim line instead of power line. Device miswired during installation. Verify wiring diagram.',
-          'GRX-TVI trim level issues causing incorrect dimming. Device not responding to control signals. Check control module.',
-          'Loose internal parts causing intermittent connection. Device shows manufacturing defect. Document and contact manufacturer.',
-          'Bezel detaching from fixture housing. Device has structural mounting issue. Inspect bracket geometry.',
-          'Single LED out in fixture array. Device shows optical output abnormality. Check LED module connections.',
-        ],
-        links: ['/faults', '/lookup'],
-      },
-      zone: {
-        titles: ['Zone Configuration Updated', 'Zone Devices Changed', 'Zone Mapping Modified'],
-        messages: ['Zone has been modified. Review zone settings.', 'Devices in zone have changed. Update zone configuration.', 'Zone boundaries updated. Verify device assignments.'],
-        links: ['/zones', '/map'],
-      },
-      bacnet: {
-        titles: ['BACnet Connection Error', 'BACnet Sync Completed', 'BMS Integration Update'],
-        messages: ['Zone BACnet connection failed. Check BMS integration settings.', 'BACnet synchronization completed successfully.', 'Building Management System integration updated.'],
-        links: ['/bacnet'],
-      },
-      rule: {
-        titles: ['Rule Triggered', 'Rule Condition Met', 'Automation Activated'],
-        messages: ['Motion Activation rule activated. View rule details.', 'Rule condition satisfied. Automation executed.', 'Scheduled rule triggered. Check zone status.'],
-        links: ['/rules'],
-      },
-      device: {
-        titles: ['Device Signal Weak', 'Device Status Changed', 'Device Configuration Updated'],
-        messages: ['Device has low signal strength. Consider repositioning.', 'Device status has changed. Review device details.', 'Device configuration modified. Verify settings.'],
-        links: ['/lookup', '/map'],
-      },
-      system: {
-        titles: ['System Health Check', 'System Update Available', 'Maintenance Reminder'],
-        messages: ['System health check completed. Some devices require attention.', 'System update available. Review changelog.', 'Scheduled maintenance window approaching.'],
-        links: ['/dashboard'],
-      },
-      warranty: {
-        titles: ['Warranty Expired', 'Warranty Expiring Soon', 'Component Warranty Expired'],
-        messages: ['Device warranty has expired. Consider replacement or extended warranty options.', 'Device warranty expires soon. Review replacement options before expiry.', 'Component warranty expired. Component replacement may be needed.'],
-        links: ['/lookup'],
-      },
+    // Helper to pick random item from array
+    const pickRandom = <T,>(arr: T[]): T | undefined => arr[Math.floor(Math.random() * arr.length)]
+
+    // Helper to derive manufacturer from device type
+    const getManufacturer = (type: string | undefined): string => {
+      if (!type) return 'Unknown'
+      if (type.includes('fixture')) return 'Lutron'
+      if (type.includes('motion')) return 'Philips'
+      if (type.includes('sensor') || type.includes('light-sensor')) return 'Acuity'
+      return 'Generic'
     }
 
-    const templates = notifications[type]
-    const titleIndex = Math.floor(Math.random() * templates.titles.length)
-    const linkIndex = Math.floor(Math.random() * templates.links.length)
+    // Helper to get friendly model name from device type
+    const getModelName = (type: string | undefined): string => {
+      if (!type) return 'Device'
+      if (type === 'fixture-16ft-power-entry') return 'LPSM-16FT'
+      if (type === 'fixture-12ft-power-entry') return 'LPSM-12FT'
+      if (type === 'fixture-8ft-power-entry') return 'LPSM-8FT'
+      if (type === 'fixture-16ft-follower') return 'LPFL-16FT'
+      if (type === 'fixture-12ft-follower') return 'LPFL-12FT'
+      if (type === 'fixture-8ft-follower') return 'LPFL-8FT'
+      if (type === 'motion') return 'MSN-100'
+      if (type === 'light-sensor') return 'LSN-200'
+      return type.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')
+    }
+
+    // Get a random site (prefer active site if set, otherwise pick random)
+    const targetSite = activeSiteId
+      ? sites.find(s => s.id === activeSiteId) || pickRandom(sites)
+      : pickRandom(sites)
+    const siteId = targetSite?.id
+    const siteName = targetSite?.name || 'Unknown Site'
+
+    // Devices come from the active site context, so use them directly
+    const randomDevice = pickRandom(devices)
+
+    // Get zones and find which zone the device is in
+    const randomZone = pickRandom(zones)
+    const deviceZone = randomDevice?.zone
+      ? zones.find(z => z.name === randomDevice.zone)
+      : randomDevice
+        ? zones.find(z => z.deviceIds?.includes(randomDevice.id))
+        : undefined
+
+    // Notification types with realistic templates using real data
+    const types: NotificationType[] = ['fault', 'zone', 'bacnet', 'rule', 'device', 'system', 'warranty']
+    const type = pickRandom(types) || 'device'
+
+    type NotificationTemplate = { title: string; message: string; link: string }
+
+    const generateNotification = (): NotificationTemplate => {
+      const deviceIdStr = randomDevice?.deviceId || randomDevice?.serialNumber || 'DEV-XXXX'
+      const manufacturer = getManufacturer(randomDevice?.type)
+      const model = getModelName(randomDevice?.type)
+      const signal = randomDevice?.signal ?? Math.floor(Math.random() * 100)
+      const zoneName = deviceZone?.name || randomDevice?.zone || randomZone?.name || 'Unassigned'
+      const zoneDeviceCount = randomZone?.deviceIds?.length || 0
+
+
+      switch (type) {
+        case 'fault': {
+          const faultScenarios = [
+            {
+              title: 'Environmental Ingress Detected',
+              message: `Water intrusion detected in ${manufacturer} ${model} (${deviceIdStr})${deviceZone ? ` in zone '${deviceZone.name}'` : ''}. Inspect seals and gaskets immediately.`,
+              faultCategory: 'environmental-ingress' as FaultCategory,
+            },
+            {
+              title: 'Driver Failure Alert',
+              message: `${manufacturer} ${model} driver burnout detected on device ${deviceIdStr}. No power output - requires immediate replacement.`,
+              faultCategory: 'electrical-driver' as FaultCategory,
+            },
+            {
+              title: 'Thermal Overheat Warning',
+              message: `Device ${deviceIdStr} (${manufacturer}) reporting thermal stress${deviceZone ? ` in '${deviceZone.name}'` : ''}. Current temp exceeds safe threshold.`,
+              faultCategory: 'thermal-overheat' as FaultCategory,
+            },
+            {
+              title: 'Wiring Configuration Error',
+              message: `Installation issue detected on ${deviceIdStr}: power landed on dim line. Device ${model} requires rewiring.`,
+              faultCategory: 'installation-wiring' as FaultCategory,
+            },
+            {
+              title: 'LED Module Failure',
+              message: `Single LED out in ${manufacturer} ${model} array (${deviceIdStr}). Visual inspection recommended.`,
+              faultCategory: 'optical-output' as FaultCategory,
+            },
+          ]
+          const scenario = pickRandom(faultScenarios)!
+          return { ...scenario, link: `/faults?siteId=${siteId}` }
+        }
+
+        case 'zone': {
+          const zoneScenarios = [
+            {
+              title: `Zone '${zoneName}' Updated`,
+              message: `Zone configuration modified. ${zoneDeviceCount} device${zoneDeviceCount !== 1 ? 's' : ''} assigned. Review zone boundaries on the map.`,
+            },
+            {
+              title: `Device Added to '${zoneName}'`,
+              message: `${manufacturer} ${model} (${deviceIdStr}) has been assigned to zone '${zoneName}'. Total devices: ${zoneDeviceCount}.`,
+            },
+            {
+              title: `Zone Boundary Changed`,
+              message: `'${zoneName}' polygon updated. ${zoneDeviceCount} device${zoneDeviceCount !== 1 ? 's' : ''} now within zone boundaries.`,
+            },
+          ]
+          const scenario = pickRandom(zoneScenarios)!
+          return { ...scenario, link: `/map?siteId=${siteId}` }
+        }
+
+        case 'bacnet': {
+          const bacnetScenarios = [
+            {
+              title: 'BACnet Connection Lost',
+              message: `Zone '${zoneName}' lost BACnet connection to BMS. ${zoneDeviceCount} device${zoneDeviceCount !== 1 ? 's' : ''} affected. Check network configuration.`,
+            },
+            {
+              title: 'BACnet Sync Complete',
+              message: `Successfully synchronized ${zoneDeviceCount} device${zoneDeviceCount !== 1 ? 's' : ''} in '${zoneName}' with Building Management System.`,
+            },
+            {
+              title: 'BMS Integration Alert',
+              message: `Device ${deviceIdStr} (${manufacturer}) BACnet object mismatch detected. Verify point mapping configuration.`,
+            },
+          ]
+          const scenario = pickRandom(bacnetScenarios)!
+          return { ...scenario, link: '/bacnet' }
+        }
+
+        case 'rule': {
+          const ruleNames = ['Motion Activation', 'Daylight Harvesting', 'Occupancy Timeout', 'Schedule Override', 'Emergency Mode']
+          const ruleName = pickRandom(ruleNames)!
+          const ruleScenarios = [
+            {
+              title: `Rule '${ruleName}' Triggered`,
+              message: `Automation rule activated for zone '${zoneName}'. ${zoneDeviceCount} device${zoneDeviceCount !== 1 ? 's' : ''} affected.`,
+            },
+            {
+              title: `Scheduled Rule Executed`,
+              message: `'${ruleName}' rule ran successfully at ${new Date().toLocaleTimeString()}. Zone '${zoneName}' updated.`,
+            },
+            {
+              title: `Rule Condition Met`,
+              message: `${ruleName} threshold reached in '${zoneName}'. Automatic adjustment applied to ${zoneDeviceCount} device${zoneDeviceCount !== 1 ? 's' : ''}.`,
+            },
+          ]
+          const scenario = pickRandom(ruleScenarios)!
+          return { ...scenario, link: '/rules' }
+        }
+
+        case 'device': {
+          const deviceScenarios = [
+            {
+              title: `Weak Signal: ${deviceIdStr}`,
+              message: `${manufacturer} ${model}${deviceZone ? ` in '${deviceZone.name}'` : ''} has poor signal strength (${signal}%). Consider repositioning or adding repeater.`,
+            },
+            {
+              title: `Device ${deviceIdStr} Offline`,
+              message: `${model} by ${manufacturer} not responding${deviceZone ? ` in zone '${deviceZone.name}'` : ''}. Last seen ${Math.floor(Math.random() * 24) + 1} hours ago.`,
+            },
+            {
+              title: `Configuration Changed`,
+              message: `Device ${deviceIdStr} settings modified. ${manufacturer} ${model} now operating at ${Math.floor(Math.random() * 100)}% brightness.`,
+            },
+            {
+              title: `Device Recovered`,
+              message: `${manufacturer} ${model} (${deviceIdStr}) back online${deviceZone ? ` in '${deviceZone.name}'` : ''}. Signal strength: ${signal}%.`,
+            },
+          ]
+          const scenario = pickRandom(deviceScenarios)!
+          return { ...scenario, link: `/lookup?id=${randomDevice?.id || ''}&siteId=${siteId}` }
+        }
+
+        case 'system': {
+          const deviceCount = devices.length || Math.floor(Math.random() * 50) + 10
+          const onlineCount = Math.floor(deviceCount * (0.85 + Math.random() * 0.15))
+          const systemScenarios = [
+            {
+              title: `Health Check: ${siteName}`,
+              message: `System scan complete. ${onlineCount}/${deviceCount} devices online. ${deviceCount - onlineCount} require attention.`,
+            },
+            {
+              title: 'Firmware Update Available',
+              message: `New firmware v${Math.floor(Math.random() * 3) + 2}.${Math.floor(Math.random() * 10)}.${Math.floor(Math.random() * 20)} available for ${Math.floor(Math.random() * 10) + 1} devices at ${siteName}.`,
+            },
+            {
+              title: 'Maintenance Reminder',
+              message: `Scheduled maintenance window approaching for ${siteName}. ${deviceCount} devices will be affected.`,
+            },
+          ]
+          const scenario = pickRandom(systemScenarios)!
+          return { ...scenario, link: `/dashboard?siteId=${siteId}` }
+        }
+
+        case 'warranty': {
+          const daysUntilExpiry = Math.floor(Math.random() * 60) - 30 // -30 to +30 days
+          const isExpired = daysUntilExpiry < 0
+          const warrantyScenarios = [
+            {
+              title: isExpired ? 'Warranty Expired' : 'Warranty Expiring Soon',
+              message: `${manufacturer} ${model} (${deviceIdStr}) warranty ${isExpired ? `expired ${Math.abs(daysUntilExpiry)} days ago` : `expires in ${daysUntilExpiry} days`}. ${isExpired ? 'Out-of-pocket replacement required.' : 'Schedule replacement before expiry.'}`,
+            },
+            {
+              title: 'Component Warranty Alert',
+              message: `Driver component in ${deviceIdStr} (${manufacturer})${deviceZone ? ` - zone '${deviceZone.name}'` : ''} ${isExpired ? 'no longer covered' : 'coverage ending soon'}. Review replacement options.`,
+            },
+          ]
+          const scenario = pickRandom(warrantyScenarios)!
+          return { ...scenario, link: `/lookup?id=${randomDevice?.id || ''}&siteId=${siteId}` }
+        }
+
+        default:
+          return {
+            title: 'System Notification',
+            message: `Update for ${siteName}. Review system status.`,
+            link: '/dashboard',
+          }
+      }
+    }
+
+    const template = generateNotification()
 
     const newNotification = {
       id: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type,
-      title: templates.titles[titleIndex],
-      message: templates.messages[titleIndex],
+      title: template.title,
+      message: template.message,
       timestamp: now,
       read: false,
-      link: templates.links[linkIndex],
+      link: template.link,
+      siteId,
     }
 
     addNotification(newNotification)
+
+    // If this is a fault notification and we have a valid device, create an actual fault in the database
+    if (type === 'fault' && randomDevice && 'faultCategory' in template) {
+      createFaultMutation.mutate({
+        deviceId: randomDevice.id,
+        faultType: template.faultCategory as FaultCategory,
+        description: template.message,
+        detectedAt: now,
+      })
+    }
   }
 
   const filteredNotifications = useMemo(() => {
@@ -560,14 +741,16 @@ export default function NotificationsPage() {
                         fusion-card p-5 cursor-pointer transition-all duration-300 group h-full flex flex-col
                         ${notification.read
                             ? 'opacity-75 hover:opacity-100 border-[var(--color-border-subtle)]'
-                            : 'border-[var(--color-primary)]/40 shadow-[var(--shadow-glow-primary)]'
+                            : 'shadow-[var(--shadow-glow-primary)] border-2'
                           }
                         hover:shadow-[var(--shadow-soft)] hover:scale-[1.02] hover:-translate-y-1
                         ${cardSize} ${cardHeight}
                       `}
                         onClick={() => handleNotificationClick(notification)}
                         style={{
-                          animation: `fadeInUp 0.3s ease-out ${index * 0.05}s both`
+                          animation: `fadeInUp 0.3s ease-out ${index * 0.05}s both`,
+                          borderColor: notification.read ? undefined : color,
+                          backgroundColor: notification.read ? undefined : `color-mix(in srgb, ${color}, transparent 95%)`
                         }}
                       >
                         <div className="flex items-start gap-4 flex-1">
@@ -575,7 +758,7 @@ export default function NotificationsPage() {
                           <div
                             className="p-3 rounded-xl flex-shrink-0 transition-all duration-200 group-hover:scale-110"
                             style={{
-                              backgroundColor: notification.read ? 'var(--color-surface-subtle)' : `${color}20`,
+                              backgroundColor: notification.read ? 'var(--color-surface-subtle)' : `color-mix(in srgb, ${color}, transparent 80%)`,
                             }}
                           >
                             <Icon
@@ -595,7 +778,13 @@ export default function NotificationsPage() {
                                     {notification.title}
                                   </h3>
                                   {!notification.read && (
-                                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] font-medium animate-pulse flex-shrink-0">
+                                    <span
+                                      className="text-xs px-2 py-0.5 rounded-full font-medium animate-pulse flex-shrink-0"
+                                      style={{
+                                        backgroundColor: `color-mix(in srgb, ${color}, transparent 80%)`,
+                                        color: color
+                                      }}
+                                    >
                                       New
                                     </span>
                                   )}

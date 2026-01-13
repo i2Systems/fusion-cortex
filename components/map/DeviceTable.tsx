@@ -24,6 +24,7 @@ import { ComponentTree } from '@/components/shared/ComponentTree'
 import { getDeviceLibraryUrl, getDeviceImage, getDeviceImageAsync } from '@/lib/libraryUtils'
 import { isFixtureType } from '@/lib/deviceUtils'
 import { getStatusTokenClass, getSignalTokenClass, getBatteryTokenClass } from '@/lib/styleUtils'
+import { ConfirmationModal } from '@/components/shared/ConfirmationModal'
 
 // Helper functions moved outside component to prevent recreation
 const getTypeLabel = (type: string) => {
@@ -277,17 +278,32 @@ const DeviceRow = memo(function DeviceRow({
 interface DeviceTableProps {
   devices: Device[]
   selectedDeviceId?: string | null
+  selectedDeviceIds?: string[]
   onDeviceSelect?: (deviceId: string | null) => void
+  onDevicesSelect?: (deviceIds: string[]) => void
   onComponentClick?: (component: Component, parentDevice: Device) => void
   onDevicesDelete?: (deviceIds: string[]) => void
   onEdit?: (device: Device) => void
 }
 
-export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onComponentClick, onDevicesDelete, onEdit }: DeviceTableProps) {
+export function DeviceTable({
+  devices,
+  selectedDeviceId,
+  selectedDeviceIds = [],
+  onDeviceSelect,
+  onDevicesSelect,
+  onComponentClick,
+  onDevicesDelete,
+  onEdit
+}: DeviceTableProps) {
   const [sortField, setSortField] = useState<keyof Device>('deviceId')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [expandedDevices, setExpandedDevices] = useState<Set<string>>(new Set())
-  const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<string>>(new Set())
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+
+  // Create Set from prop for efficient lookups
+  const selectedIdsSet = useMemo(() => new Set(selectedDeviceIds), [selectedDeviceIds])
+
   const tableRef = useRef<HTMLDivElement>(null)
   const selectedRowRef = useRef<HTMLTableRowElement>(null)
 
@@ -376,38 +392,36 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
   }, [])
 
   const handleToggleSelect = useCallback((deviceId: string) => {
-    setSelectedDeviceIds(prev => {
-      const next = new Set(prev)
-      if (next.has(deviceId)) {
-        next.delete(deviceId)
-      } else {
-        next.add(deviceId)
-      }
-      return next
-    })
-  }, [])
+    const next = new Set(selectedIdsSet)
+    if (next.has(deviceId)) {
+      next.delete(deviceId)
+    } else {
+      next.add(deviceId)
+    }
+    onDevicesSelect?.(Array.from(next))
+  }, [selectedIdsSet, onDevicesSelect])
 
   const handleSelectAll = useCallback(() => {
-    setSelectedDeviceIds(prev => {
-      if (prev.size === sortedDevices.length) {
-        return new Set()
-      }
-      return new Set(sortedDevices.map(d => d.id))
-    })
-  }, [sortedDevices])
+    if (selectedIdsSet.size === sortedDevices.length) {
+      onDevicesSelect?.([])
+    } else {
+      onDevicesSelect?.(sortedDevices.map(d => d.id))
+    }
+  }, [sortedDevices, selectedIdsSet, onDevicesSelect])
 
   const handleDeleteSelected = useCallback(() => {
-    if (selectedDeviceIds.size === 0) return
+    if (selectedIdsSet.size === 0) return
+    setIsDeleteModalOpen(true)
+  }, [selectedIdsSet])
 
-    const confirmMessage = `Delete ${selectedDeviceIds.size} device${selectedDeviceIds.size > 1 ? 's' : ''}?`
-    if (confirm(confirmMessage)) {
-      onDevicesDelete?.(Array.from(selectedDeviceIds))
-      setSelectedDeviceIds(new Set())
-    }
-  }, [selectedDeviceIds, onDevicesDelete])
+  const handleConfirmDelete = useCallback(() => {
+    onDevicesDelete?.(Array.from(selectedIdsSet))
+    onDevicesSelect?.([]) // Clear selection after delete trigger
+    setIsDeleteModalOpen(false)
+  }, [selectedIdsSet, onDevicesDelete, onDevicesSelect])
 
-  const allSelected = sortedDevices.length > 0 && selectedDeviceIds.size === sortedDevices.length
-  const someSelected = selectedDeviceIds.size > 0 && selectedDeviceIds.size < sortedDevices.length
+  const allSelected = sortedDevices.length > 0 && selectedIdsSet.size === sortedDevices.length
+  const someSelected = selectedIdsSet.size > 0 && selectedIdsSet.size < sortedDevices.length
 
   return (
     <div className="h-full flex flex-col">
@@ -430,11 +444,11 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
                   <Square size={16} className="text-[var(--color-text-muted)]" />
                 )}
               </button>
-              {selectedDeviceIds.size > 0 && (
+              {selectedIdsSet.size > 0 && (
                 <button
                   onClick={handleDeleteSelected}
                   className="p-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors text-[var(--color-danger)]"
-                  title={`Delete ${selectedDeviceIds.size} selected device(s)`}
+                  title={`Delete ${selectedIdsSet.size} selected device(s)`}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -442,9 +456,9 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
             </div>
           )}
         </div>
-        {selectedDeviceIds.size > 0 && (
+        {selectedIdsSet.size > 0 && (
           <div className="text-xs text-[var(--color-text-muted)] mt-1">
-            {selectedDeviceIds.size} device{selectedDeviceIds.size !== 1 ? 's' : ''} selected
+            {selectedIdsSet.size} device{selectedIdsSet.size !== 1 ? 's' : ''} selected
           </div>
         )}
       </div>
@@ -621,7 +635,7 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
                   key={device.id}
                   device={device}
                   isSelected={selectedDeviceId === device.id}
-                  isChecked={selectedDeviceIds.has(device.id)}
+                  isChecked={selectedIdsSet.has(device.id)}
                   isExpanded={expandedDevices.has(device.id)}
                   onSelect={() => onDeviceSelect?.(device.id)}
                   onToggleCheck={() => handleToggleSelect(device.id)}
@@ -634,6 +648,20 @@ export function DeviceTable({ devices, selectedDeviceId, onDeviceSelect, onCompo
           </table>
         )}
       </div>
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Devices"
+        message={
+          selectedIdsSet.size === 1
+            ? "Are you sure you want to delete this device? This action cannot be undone."
+            : `Are you sure you want to delete these ${selectedIdsSet.size} devices? This action cannot be undone.`
+        }
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </div>
   )
 }

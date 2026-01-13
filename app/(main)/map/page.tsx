@@ -13,7 +13,7 @@
 
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Button } from '@/components/ui/Button'
 import dynamic from 'next/dynamic'
 import { X, Lightbulb, Loader2 } from 'lucide-react'
@@ -97,7 +97,8 @@ export default function MapPage() {
     undo,
     redo,
     canUndo,
-    canRedo
+    canRedo,
+    removeMultipleDevices,
   } = useDevices()
   const { refreshMapData } = useMap()
   const { role } = useRole()
@@ -168,16 +169,17 @@ export default function MapPage() {
     }
   }
 
-  const handleDevicesDelete = (deviceIds: string[]) => {
-    deviceIds.forEach(id => {
-      removeDevice(id)
-    })
+  const handleDevicesDelete = useCallback((deviceIds: string[]) => {
+    // Use the bulk delete function to efficiently remove all selected devices
+    // This avoids race conditions and multiple optimistic updates
+    removeMultipleDevices(deviceIds)
+
     // Clear selections
     setSelectedDeviceIds([])
     if (selectedDevice && deviceIds.includes(selectedDevice)) {
       setSelectedDevice(null)
     }
-  }
+  }, [removeMultipleDevices, selectedDevice])
 
   // Handle zone click - set selected zone and auto-arrange selected devices into it
   const handleZoneClick = (zoneId: string) => {
@@ -1101,7 +1103,9 @@ export default function MapPage() {
             <DeviceTable
               devices={filteredDevices}
               selectedDeviceId={selectedDevice}
+              selectedDeviceIds={selectedDeviceIds}
               onDeviceSelect={handleDeviceSelect}
+              onDevicesSelect={handleDevicesSelect}
               onComponentClick={handleComponentClick}
               onDevicesDelete={handleDevicesDelete}
               onEdit={setEditingDevice}

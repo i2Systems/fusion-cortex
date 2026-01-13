@@ -512,6 +512,38 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
         ) : (mode === 'create' && creationStep === 'configure') || mode === 'edit' ? (
           /* Step 3: Visual Rule Flow Editor */
           <div className="space-y-4">
+            {/* Target Selection */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+                Target {selectedTargetType === 'device' ? 'Device' : 'Zone'}
+              </label>
+              <select
+                value={selectedTargetId || ''}
+                onChange={(e) => {
+                  const targetId = e.target.value
+                  if (targetId) {
+                    const target = availableTargets.find(t => t.id === targetId)
+                    if (target) {
+                      handleTargetSelect(target.id, target.name)
+                    }
+                  } else {
+                    setSelectedTargetId(null)
+                    setFormData({ ...formData, targetId: undefined, targetName: undefined })
+                  }
+                }}
+                className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all appearance-none"
+              >
+                <option value="">Select a {selectedTargetType || 'target'}...</option>
+                {availableTargets.map(target => (
+                  <option key={target.id} value={target.id}>
+                    {selectedTargetType === 'device'
+                      ? (target as any).label
+                      : `${target.name} (${(target as any).deviceCount} devices)`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Name and Description */}
             <div>
               <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">

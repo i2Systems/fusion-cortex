@@ -25,7 +25,8 @@ import {
   Workflow,
   HelpCircle,
   Menu,
-  X
+  X,
+  Download
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useRole } from '@/lib/role'
@@ -48,6 +49,7 @@ const navGroups = [
   [
     { href: '/bacnet', label: 'BACnet Mapping', icon: Network },
     { href: '/rules', label: 'Rules & Overrides', icon: Workflow },
+    { href: '/firmware', label: 'Firmware Updates', icon: Download },
     { href: '/faults', label: 'Faults / Health', icon: AlertTriangle },
   ],
 ]
@@ -64,9 +66,9 @@ export function MainNav() {
   // Filter nav items based on role
   const filterNavItems = (items: typeof navGroups[0]) => {
     return items.filter(item => {
-      // Technician cannot see BACnet Mapping and Rules & Overrides
+      // Technician cannot see BACnet Mapping, Rules & Overrides, and Firmware Updates
       if (role === 'Technician') {
-        return item.href !== '/bacnet' && item.href !== '/rules'
+        return item.href !== '/bacnet' && item.href !== '/rules' && item.href !== '/firmware'
       }
       return true
     })

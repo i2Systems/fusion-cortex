@@ -11,11 +11,11 @@ const icons = {
     warning: <AlertTriangle size={20} className="text-[var(--color-warning)]" />,
 }
 
-const bgColors = {
-    success: 'bg-[var(--color-surface)] border-[var(--color-success)]',
-    error: 'bg-[var(--color-surface)] border-[var(--color-danger)]',
-    info: 'bg-[var(--color-surface)] border-[var(--color-primary)]',
-    warning: 'bg-[var(--color-surface)] border-[var(--color-warning)]',
+const borderColors = {
+    success: 'border-[var(--color-success)]',
+    error: 'border-[var(--color-danger)]',
+    info: 'border-[var(--color-primary)]',
+    warning: 'border-[var(--color-warning)]',
 }
 
 interface ToastItemProps {
@@ -26,7 +26,7 @@ interface ToastItemProps {
 function ToastItem({ toast, onDismiss }: ToastItemProps) {
     return (
         <div
-            className={`relative w-80 p-4 rounded-lg shadow-[var(--shadow-strong)] border-l-4 flex gap-3 animate-in slide-in-from-right-full fade-in duration-300 ${bgColors[toast.type]} bg-[var(--color-surface)]`}
+            className={`relative w-80 p-4 rounded-lg shadow-[var(--shadow-strong)] border-l-4 flex gap-3 animate-in slide-in-from-right-full fade-in duration-300 ${borderColors[toast.type]} bg-[var(--color-surface)]/95 backdrop-blur-md`}
             role="alert"
         >
             <div className="flex-shrink-0 pt-0.5">

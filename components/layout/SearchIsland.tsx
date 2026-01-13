@@ -43,7 +43,7 @@ interface SearchIslandProps {
   metrics?: Metric[]
 }
 
-export function SearchIsland({ 
+export function SearchIsland({
   position = 'bottom',
   fullWidth = true,
   showActions = false,
@@ -68,7 +68,7 @@ export function SearchIsland({
   const devicesContext = useDevices()
   const devices = devicesContext?.devices || []
   const pathname = usePathname()
-  
+
   // Use controlled value if provided, otherwise use internal state
   const searchQuery = searchValue !== undefined ? searchValue : internalSearchQuery
   const setSearchQuery = onSearchChange || setInternalSearchQuery
@@ -89,10 +89,10 @@ export function SearchIsland({
   // Get recent searches and fuzzy-matched devices
   const suggestions = useMemo(() => {
     const query = searchQuery.trim()
-    
+
     // Get recent searches
     const recentSearches = (!focused && !showSuggestions) ? [] : getSearchSuggestions(query, 3)
-    
+
     // Get fuzzy-matched devices (only if query exists)
     let deviceResults: SearchResult<any>[] = []
     if (query && devices.length > 0 && (focused || showSuggestions)) {
@@ -103,7 +103,7 @@ export function SearchIsland({
         20 // min score
       ).slice(0, 5) // Limit to top 5
     }
-    
+
     return {
       recent: recentSearches,
       devices: deviceResults,
@@ -133,7 +133,7 @@ export function SearchIsland({
           ...suggestions.recent.map(s => s.query),
           ...suggestions.devices.map(d => d.item.deviceId || d.item.serialNumber || ''),
         ].filter(Boolean)
-        
+
         if (allSuggestions[selectedSuggestionIndex]) {
           handleSuggestionSelect(allSuggestions[selectedSuggestionIndex])
         }
@@ -150,7 +150,7 @@ export function SearchIsland({
     } else if (e.key === 'ArrowDown') {
       e.preventDefault()
       const totalSuggestions = suggestions.recent.length + suggestions.devices.length
-      setSelectedSuggestionIndex(prev => 
+      setSelectedSuggestionIndex(prev =>
         prev < totalSuggestions - 1 ? prev + 1 : prev
       )
     } else if (e.key === 'ArrowUp') {
@@ -176,14 +176,14 @@ export function SearchIsland({
         setFocused(false)
       }
     }
-    
+
     if (showSuggestions) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [showSuggestions])
 
-  const containerClass = position === 'top' 
+  const containerClass = position === 'top'
     ? fullWidth
       ? 'w-full px-4 md:pl-5'
       : 'max-w-3xl mx-auto px-4'
@@ -197,7 +197,7 @@ export function SearchIsland({
     : ''
 
   return (
-    <div className={`${containerClass} ${positionClass}`} style={{ position: 'relative', zIndex: 'var(--z-dropdown)' }}>
+    <div className={`${containerClass} ${positionClass}`} style={{ position: 'relative' }}>
       <div className="fusion-card backdrop-blur-xl border border-[var(--color-primary)]/20 search-island py-3 md:py-4 px-3 md:px-5">
         {/* Layout: Title + Metrics (stacked on mobile) + Search + Actions */}
         <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3 lg:gap-4">
@@ -220,12 +220,11 @@ export function SearchIsland({
             <div className="w-full md:w-auto md:flex-shrink md:min-w-0">
               <div className="grid grid-cols-3 sm:grid-cols-3 md:flex md:flex-row gap-1.5 sm:gap-2 md:gap-2 lg:gap-3 md:flex-shrink-0 md:overflow-x-auto md:scrollbar-hide md:-mx-1 md:px-1">
                 {metrics.map((metric, index) => (
-                  <div 
+                  <div
                     key={index}
                     onClick={metric.onClick}
-                    className={`flex items-center gap-1 sm:gap-1.5 md:gap-1.5 lg:gap-2 px-2 sm:px-2.5 md:px-2 lg:px-3 py-1.5 sm:py-2 md:py-1.5 lg:py-2 rounded-md sm:rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] ${
-                      metric.onClick ? 'cursor-pointer hover:bg-[var(--color-surface)] hover:border-[var(--color-primary)]/30 transition-all duration-200' : ''
-                    }`}
+                    className={`flex items-center gap-1 sm:gap-1.5 md:gap-1.5 lg:gap-2 px-2 sm:px-2.5 md:px-2 lg:px-3 py-1.5 sm:py-2 md:py-1.5 lg:py-2 rounded-md sm:rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] ${metric.onClick ? 'cursor-pointer hover:bg-[var(--color-surface)] hover:border-[var(--color-primary)]/30 transition-all duration-200' : ''
+                      }`}
                   >
                     {metric.icon && (
                       <div className="flex-shrink-0 hidden sm:block md:w-3 md:h-3 lg:w-4 lg:h-4">
@@ -237,20 +236,19 @@ export function SearchIsland({
                         {metric.label}
                       </div>
                       <div className="flex items-baseline gap-0.5 sm:gap-1 md:gap-0.5 lg:gap-1.5">
-                        <span 
+                        <span
                           className="text-sm sm:text-base md:text-sm lg:text-base xl:text-lg font-bold leading-tight truncate"
                           style={{ color: metric.color || 'var(--color-text)' }}
                         >
                           {metric.value}
                         </span>
                         {metric.trend && metric.delta !== undefined && metric.delta !== 0 && (
-                          <div className={`flex items-center gap-0.5 text-[9px] sm:text-[10px] md:text-[9px] lg:text-xs font-semibold flex-shrink-0 ${
-                            metric.trend === 'up' 
-                              ? 'text-[var(--color-success)]' 
+                          <div className={`flex items-center gap-0.5 text-[9px] sm:text-[10px] md:text-[9px] lg:text-xs font-semibold flex-shrink-0 ${metric.trend === 'up'
+                              ? 'text-[var(--color-success)]'
                               : metric.trend === 'down'
-                              ? 'text-[var(--color-danger)]'
-                              : 'text-[var(--color-text-muted)]'
-                          }`}>
+                                ? 'text-[var(--color-danger)]'
+                                : 'text-[var(--color-text-muted)]'
+                            }`}>
                             {metric.trend === 'up' ? (
                               <ArrowUp size={8} className="md:w-2.5 md:h-2.5 lg:w-3 lg:h-3" />
                             ) : metric.trend === 'down' ? (
@@ -273,9 +271,9 @@ export function SearchIsland({
           {/* Search - Shrinks when space is constrained, min-width 120px, grows on larger screens */}
           <div className="relative min-w-0 w-full md:w-auto md:flex-shrink md:min-w-[120px] md:flex-[2] lg:flex-[3] xl:flex-[4] xl:max-w-none 2xl:max-w-none" style={{ zIndex: 'var(--z-dropdown)' }}>
             <div className="w-full min-w-0 relative">
-              <Search 
-                size={16} 
-                className="absolute left-2.5 md:left-3 lg:left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] flex-shrink-0 z-10" 
+              <Search
+                size={16}
+                className="absolute left-2.5 md:left-3 lg:left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] flex-shrink-0 z-10"
               />
               {detectedAction && (
                 <div className="absolute right-2 md:right-3 lg:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 md:gap-1.5 lg:gap-2 z-10">
@@ -303,19 +301,18 @@ export function SearchIsland({
                   // Delay to allow click on suggestions
                   setTimeout(() => setFocused(false), 200)
                 }}
-                className={`w-full pl-9 md:pl-10 lg:pl-12 pr-2 md:pr-3 lg:pr-4 py-2 md:py-2.5 lg:py-3 h-[40px] md:h-[44px] lg:h-[52px] bg-[var(--color-bg-elevated)] border-2 rounded-xl text-xs md:text-sm lg:text-base xl:text-lg font-medium text-[var(--color-text)] placeholder:text-[var(--color-text-soft)] placeholder:font-normal focus:outline-none focus:shadow-[var(--shadow-glow-primary)] transition-all ${
-                  detectedAction 
-                    ? 'border-[var(--color-primary)] pr-20 md:pr-24 lg:pr-32 focus:ring-2 focus:ring-[var(--color-primary)]' 
+                className={`w-full pl-9 md:pl-10 lg:pl-12 pr-2 md:pr-3 lg:pr-4 py-2 md:py-2.5 lg:py-3 h-[40px] md:h-[44px] lg:h-[52px] bg-[var(--color-bg-elevated)] border-2 rounded-xl text-xs md:text-sm lg:text-base xl:text-lg font-medium text-[var(--color-text)] placeholder:text-[var(--color-text-soft)] placeholder:font-normal focus:outline-none focus:shadow-[var(--shadow-glow-primary)] transition-all ${detectedAction
+                    ? 'border-[var(--color-primary)] pr-20 md:pr-24 lg:pr-32 focus:ring-2 focus:ring-[var(--color-primary)]'
                     : 'border-[var(--color-border-subtle)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]'
-                }`}
+                  }`}
               />
-              
+
               {/* Typeahead Suggestions Dropdown */}
               {showSuggestions && (suggestions.recent.length > 0 || suggestions.devices.length > 0) && (
                 <div
                   ref={suggestionsRef}
                   className="absolute top-full left-0 right-0 mt-2 rounded-xl max-h-96 overflow-auto border border-[var(--color-border-subtle)]/50 shadow-[var(--shadow-strong)]"
-                  style={{ 
+                  style={{
                     zIndex: 9999,
                     background: 'rgba(17, 24, 39, 0.75)',
                     backdropFilter: 'blur(40px) saturate(200%)',
@@ -347,11 +344,10 @@ export function SearchIsland({
                           <button
                             key={`recent-${idx}`}
                             onClick={() => handleSuggestionSelect(recent.query)}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                              isSelected
+                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${isSelected
                                 ? 'bg-[var(--color-primary-soft)] text-[var(--color-text)]'
                                 : 'hover:bg-[var(--color-surface-subtle)] text-[var(--color-text)]'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center gap-2">
                               <Clock size={14} className="text-[var(--color-text-muted)] flex-shrink-0" />
@@ -362,7 +358,7 @@ export function SearchIsland({
                       })}
                     </div>
                   )}
-                  
+
                   {/* Device Matches */}
                   {suggestions.devices.length > 0 && (
                     <div className="p-2 border-t border-[var(--color-border-subtle)]">
@@ -374,16 +370,15 @@ export function SearchIsland({
                         const suggestionIdx = suggestions.recent.length + idx
                         const isSelected = selectedSuggestionIndex === suggestionIdx
                         const matchField = result.matchedFields[0] || 'deviceId'
-                        
+
                         return (
                           <button
                             key={`device-${device.id}`}
                             onClick={() => handleSuggestionSelect(device.deviceId || device.serialNumber || '')}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                              isSelected
+                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${isSelected
                                 ? 'bg-[var(--color-primary-soft)] text-[var(--color-text)]'
                                 : 'hover:bg-[var(--color-surface-subtle)] text-[var(--color-text)]'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center gap-2">
                               <Search size={14} className="text-[var(--color-primary)] flex-shrink-0" />
@@ -422,7 +417,7 @@ export function SearchIsland({
           {/* Actions */}
           {showActions && (
             <div className="flex-shrink-0">
-              <button 
+              <button
                 onClick={onLayersClick}
                 className="px-3 md:px-4 py-1.5 md:py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-xs md:text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center gap-1.5 md:gap-2 relative h-[36px] md:h-[38px]"
               >

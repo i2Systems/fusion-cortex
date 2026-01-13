@@ -22,6 +22,8 @@ export interface DeviceMutations {
     updateMultipleDevices: (updates: Array<{ deviceId: string; updates: Partial<Device> }>) => Promise<void>
     /** Remove a device */
     removeDevice: (deviceId: string) => Promise<void>
+    /** Remove multiple devices */
+    removeMultipleDevices: (deviceIds: string[]) => Promise<void>
     /** Whether any mutation is in progress */
     isLoading: boolean
 }
@@ -50,6 +52,12 @@ export function useDeviceMutations(
     })
 
     const deleteDeviceMutation = trpc.device.delete.useMutation({
+        onSuccess: () => {
+            utils.device.list.invalidate({ siteId: activeSiteId || '' })
+        },
+    })
+
+    const deleteManyDeviceMutation = trpc.device.deleteMany.useMutation({
         onSuccess: () => {
             utils.device.list.invalidate({ siteId: activeSiteId || '' })
         },
@@ -202,12 +210,27 @@ export function useDeviceMutations(
         }
     }, [deleteDeviceMutation, utils, activeSiteId, onOptimisticUpdate])
 
+    const removeMultipleDevices = useCallback(async (deviceIds: string[]) => {
+        if (!deviceIds.length) return
+
+        // Optimistic update
+        onOptimisticUpdate?.(devices => devices.filter(device => !deviceIds.includes(device.id)))
+
+        try {
+            await deleteManyDeviceMutation.mutateAsync({ ids: deviceIds })
+        } catch (error) {
+            console.error('Failed to delete multiple devices:', error)
+            utils.device.list.invalidate({ siteId: activeSiteId || '' })
+        }
+    }, [deleteManyDeviceMutation, utils, activeSiteId, onOptimisticUpdate])
+
     return {
         addDevice,
         updateDevice,
         updateDevicePosition,
         updateMultipleDevices,
         removeDevice,
-        isLoading: createDeviceMutation.isPending || updateDeviceMutation.isPending || deleteDeviceMutation.isPending,
+        removeMultipleDevices,
+        isLoading: createDeviceMutation.isPending || updateDeviceMutation.isPending || deleteDeviceMutation.isPending || deleteManyDeviceMutation.isPending,
     }
 }

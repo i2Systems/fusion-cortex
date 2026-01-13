@@ -31,6 +31,7 @@ interface DeviceContextType {
   updateDevicePosition: (deviceId: string, x: number, y: number) => void
   updateMultipleDevices: (updates: Array<{ deviceId: string; updates: Partial<Device> }>) => void
   removeDevice: (deviceId: string) => void
+  removeMultipleDevices: (deviceIds: string[]) => void
   setDevices: (devices: Device[]) => void
   refreshDevices: () => void
   saveDevices: () => void
@@ -167,6 +168,10 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
     mutations.removeDevice(deviceId)
   }, [mutations])
 
+  const removeMultipleDevices = useCallback((deviceIds: string[]) => {
+    mutations.removeMultipleDevices(deviceIds)
+  }, [mutations])
+
   const setDevices = useCallback((devices: Device[]) => {
     undoableDevices.set(devices)
   }, [undoableDevices])
@@ -189,6 +194,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
         updateDevicePosition,
         updateMultipleDevices,
         removeDevice,
+        removeMultipleDevices,
         setDevices,
         refreshDevices,
         saveDevices,

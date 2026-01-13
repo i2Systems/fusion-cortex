@@ -10,7 +10,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Image, Calendar, Thermometer, Shield, Package, MapPin, Radio, Battery, Wifi, WifiOff, CheckCircle2, AlertCircle, XCircle, QrCode, AlertTriangle, ExternalLink, Plus, Upload, Download, Info, Trash2 } from 'lucide-react'
+import { Image, Calendar, Thermometer, Shield, Package, MapPin, Radio, Battery, Wifi, WifiOff, CheckCircle2, AlertCircle, XCircle, QrCode, AlertTriangle, ExternalLink, Plus, Upload, Download, Info, Trash2, Loader2, Download as DownloadIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Device, Component, DeviceType } from '@/lib/mockData'
@@ -24,6 +24,7 @@ import { getDeviceLibraryUrl, getDeviceImage, getDeviceImageAsync } from '@/lib/
 import { SelectSwitcher } from '@/components/shared/SelectSwitcher'
 import { getStatusTokenClass, getSignalTokenClass, getBatteryTokenClass } from '@/lib/styleUtils'
 import { Button } from '@/components/ui/Button'
+import { useToast } from '@/lib/ToastContext'
 
 interface DeviceProfilePanelProps {
   device: Device | null
@@ -166,7 +167,57 @@ function DeviceIcon({ deviceType }: { deviceType: string }) {
 
 export function DeviceProfilePanel({ device, onDeviceSelect, onComponentClick, onManualEntry, onQRScan, onImport, onExport, onDelete }: DeviceProfilePanelProps) {
   const router = useRouter()
-  const { devices } = useDevices()
+  const { devices, addDevice } = useDevices()
+  const { addToast } = useToast()
+  const [isDiscovering, setIsDiscovering] = useState(false)
+
+  // Simulate device discovery
+  const handleSimulateDiscovery = async () => {
+    setIsDiscovering(true)
+
+    // Simulate network delay
+    setTimeout(() => {
+      const timestamp = Date.now()
+      let addedCount = 0
+
+      // Generate 10 random devices
+      for (let i = 0; i < 10; i++) {
+        const isMotion = Math.random() > 0.7
+        const type: DeviceType = isMotion ? 'motion' : 'fixture-16ft-power-entry'
+        const serial = `SN-${timestamp}-${i}`
+        const id = `discovered-${timestamp}-${i}`
+
+        const newDevice: Device = {
+          id,
+          deviceId: `DISC-${String(timestamp).slice(-4)}-${i}`,
+          serialNumber: serial,
+          type,
+          signal: Math.floor(Math.random() * 40) + 60,
+          status: 'online',
+          location: 'Discovered Area',
+          zone: 'New Zone',
+          x: 0.5 + (Math.random() - 0.5) * 0.2, // Clustered near center
+          y: 0.5 + (Math.random() - 0.5) * 0.2,
+          warrantyStatus: 'Active',
+          warrantyExpiry: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365), // 1 year
+        }
+
+        addDevice(newDevice)
+        addedCount++
+      }
+
+      setIsDiscovering(false)
+      addToast({
+        title: 'Discovery Complete',
+        message: `Successfully discovered ${addedCount} new devices.`,
+        type: 'success',
+        duration: 5000
+      })
+
+    }, 2000)
+  }
+
+
 
   if (!device) {
     return (
@@ -182,13 +233,26 @@ export function DeviceProfilePanel({ device, onDeviceSelect, onComponentClick, o
           {/* Action Buttons Bar */}
           <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)]">
             <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                onClick={handleSimulateDiscovery}
+                disabled={isDiscovering}
+                className="px-2 md:px-4 py-2 bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary)]/90 border-none rounded-lg text-sm transition-all flex items-center justify-center gap-2 shadow-[var(--shadow-glow-primary)]"
+                title="Discover Devices"
+              >
+                {isDiscovering ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Wifi size={16} />
+                )}
+                <span className="hidden md:inline">{isDiscovering ? 'Discovering...' : 'Discover Devices'}</span>
+              </Button>
               <button
                 onClick={onManualEntry}
                 className="px-2 md:px-4 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)] transition-all flex items-center justify-center gap-2"
                 title="Add Device Manually"
               >
                 <Plus size={16} />
-                <span className="hidden md:inline">Add Device Manually</span>
+                <span className="hidden md:inline">Add Manual</span>
               </button>
               <button
                 onClick={onQRScan}
@@ -196,7 +260,7 @@ export function DeviceProfilePanel({ device, onDeviceSelect, onComponentClick, o
                 title="Scan QR Code"
               >
                 <QrCode size={16} />
-                <span className="hidden md:inline">Scan QR Code</span>
+                <span className="hidden md:inline">Scan QR</span>
               </button>
               <div className="flex-1" />
               <button
@@ -205,7 +269,7 @@ export function DeviceProfilePanel({ device, onDeviceSelect, onComponentClick, o
                 title="Import List"
               >
                 <Upload size={16} />
-                <span className="hidden md:inline">Import List</span>
+                <span className="hidden md:inline">Import</span>
               </button>
               <button
                 onClick={onExport}
@@ -551,6 +615,67 @@ export function DeviceProfilePanel({ device, onDeviceSelect, onComponentClick, o
             )}
           </div>
         </div>
+
+        {/* Firmware Information */}
+        {(device.firmwareVersion || device.firmwareStatus || device.firmwareTarget) && (
+          <div>
+            <h4 className="text-xs md:text-sm font-semibold text-[var(--color-text)] mb-2 md:mb-3 flex items-center gap-1.5 md:gap-2">
+              <DownloadIcon size={14} className="md:w-4 md:h-4" />
+              Firmware Information
+            </h4>
+            <div className="space-y-1.5 md:space-y-2">
+              {device.firmwareVersion && (
+                <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+                  <span className="text-sm text-[var(--color-text-muted)]">Current Version</span>
+                  <span className="text-sm font-medium text-[var(--color-text)]">
+                    {device.firmwareVersion}
+                  </span>
+                </div>
+              )}
+              {device.firmwareTarget && (
+                <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+                  <span className="text-sm text-[var(--color-text-muted)]">Target Version</span>
+                  <span className="text-sm font-medium text-yellow-400">
+                    {device.firmwareTarget}
+                  </span>
+                </div>
+              )}
+              {device.firmwareStatus && (
+                <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+                  <span className="text-sm text-[var(--color-text-muted)]">Status</span>
+                  <span className={`text-sm font-medium ${
+                    device.firmwareStatus === 'UP_TO_DATE' ? 'text-green-400' :
+                    device.firmwareStatus === 'UPDATE_AVAILABLE' ? 'text-yellow-400' :
+                    device.firmwareStatus === 'UPDATE_IN_PROGRESS' ? 'text-blue-400' :
+                    device.firmwareStatus === 'UPDATE_FAILED' ? 'text-red-400' :
+                    'text-[var(--color-text-muted)]'
+                  }`}>
+                    {device.firmwareStatus.replace(/_/g, ' ')}
+                  </span>
+                </div>
+              )}
+              {device.lastFirmwareUpdate && (
+                <div className="flex justify-between items-center p-2 rounded-lg bg-[var(--color-surface-subtle)]">
+                  <span className="text-sm text-[var(--color-text-muted)]">Last Updated</span>
+                  <span className="text-sm text-[var(--color-text-muted)]">
+                    {new Date(device.lastFirmwareUpdate).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+              {device.firmwareStatus === 'UPDATE_AVAILABLE' && (
+                <div className="pt-2 border-t border-[var(--color-border-subtle)]">
+                  <Link
+                    href={`/firmware?deviceId=${device.id}`}
+                    className="text-xs text-[var(--color-primary)] hover:underline flex items-center gap-1 justify-center p-2 rounded-lg bg-[var(--color-surface-subtle)] hover:bg-[var(--color-surface)] transition-colors"
+                  >
+                    View firmware updates
+                    <ExternalLink size={12} />
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Device Faults */}
         {deviceFaults.length > 0 && (

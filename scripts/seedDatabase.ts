@@ -861,6 +861,7 @@ export async function seedDatabase() {
             action: rule.action as any,
             overrideBMS: rule.overrideBMS,
             enabled: rule.enabled,
+            siteId: site.id,
             zoneId: zone?.id,
             targetZones: targetZoneIds,
           },

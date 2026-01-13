@@ -227,11 +227,12 @@ export default function FaultsPage() {
     return faultList.sort((a, b) => b.detectedAt.getTime() - a.detectedAt.getTime())
   }, [devices])
 
-  // Only use database faults (which have resolve/delete capabilities)
+  // Combine device-generated faults and database faults
   const faults = useMemo<Fault[]>(() => {
-    const allFaults: Fault[] = []
+    // Start with device-generated faults
+    const allFaults: Fault[] = [...deviceGeneratedFaults]
 
-    // Add database faults only
+    // Add database faults
     if (dbFaults) {
       dbFaults.forEach(dbFault => {
         // Find the device
@@ -251,7 +252,7 @@ export default function FaultsPage() {
 
     // Sort by detected time (most recent first)
     return allFaults.sort((a, b) => b.detectedAt.getTime() - a.detectedAt.getTime())
-  }, [dbFaults, devices])
+  }, [dbFaults, devices, deviceGeneratedFaults])
 
   // Sync database faults to notifications
   // Use a ref to track which faults we've already created notifications for

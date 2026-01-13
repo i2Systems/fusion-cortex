@@ -34,9 +34,11 @@ model Site {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  devices   Device[]
-  zones     Zone[]
-  locations Location[]
+  devices         Device[]
+  zones           Zone[]
+  locations       Location[]
+  firmwareUpdates FirmwareUpdate[]
+  rules           Rule[]
 }
 
 model Device {
@@ -71,11 +73,18 @@ model Device {
   componentType         String? // e.g., "LCM", "Driver Board", "Power Supply", "LED Board", "Metal Bracket", "Cable Harness", "Lower LED Housing with Optic", "Sensor"
   componentSerialNumber String? // Serial number for the component itself
 
+  // Firmware information
+  firmwareVersion    String?  // Current firmware version (e.g., "v2.1.3")
+  firmwareTarget     String?  // Target firmware version for update
+  firmwareStatus     FirmwareStatus @default(UP_TO_DATE)
+  lastFirmwareUpdate DateTime?  // When firmware was last updated
+
   // Relationships
   siteId          String
   site            Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
   zoneMemberships ZoneDevice[]
   faults          Fault[]
+  firmwareUpdates FirmwareDeviceUpdate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -102,6 +111,14 @@ enum DeviceStatus {
   OFFLINE
   MISSING
   DUPLICATE
+}
+
+enum FirmwareStatus {
+  UP_TO_DATE
+  UPDATE_AVAILABLE
+  UPDATE_IN_PROGRESS
+  UPDATE_FAILED
+  UPDATE_REQUIRED
 }
 
 model Zone {
@@ -165,25 +182,37 @@ model Rule {
   name        String
   description String?
 
+  // Rule classification
+  ruleType    String  @default("rule")  // 'rule', 'override', 'schedule'
+  targetType  String  @default("zone")  // 'zone' or 'device'
+  targetId    String?                    // Zone ID or Device ID (display reference)
+  targetName  String?                    // Display name for target
+
   // Rule definition (Alexa-style)
-  trigger   String // e.g., "motion", "no_motion", "daylight", "bms"
-  condition Json // Condition parameters as JSON
-  action    Json // Action parameters as JSON
+  trigger   String // e.g., "motion", "no_motion", "daylight", "bms", "schedule"
+  condition Json   // Condition parameters as JSON
+  action    Json   // Action parameters as JSON
 
   // Override settings
   overrideBMS Boolean @default(false)
-  duration    Int? // Duration in minutes (if applicable)
+  duration    Int?    // Duration in minutes (if applicable)
 
-  // Relationships
+  // Site relationship (rules are site-scoped)
+  siteId      String
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  // Zone relationship (optional, for zone-targeted rules)
   zoneId      String?
   zone        Zone?    @relation(fields: [zoneId], references: [id], onDelete: SetNull)
   targetZones String[] // Array of zone IDs this rule affects
 
-  enabled Boolean @default(true)
+  enabled       Boolean   @default(true)
+  lastTriggered DateTime? // When rule was last triggered
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([siteId])
   @@index([zoneId])
 }
 
@@ -266,4 +295,76 @@ model Location {
 
   @@index([siteId])
   @@index([parentId])
+}
+
+// Firmware Update Models
+model FirmwareUpdate {
+  id          String   @id @default(cuid())
+  name        String   // Campaign name (e.g., "Q1 2024 Security Patch")
+  description String?
+  version     String   // Target firmware version
+  fileUrl     String?  // URL to firmware binary (if stored)
+  
+  // Targeting
+  siteId      String?
+  site        Site?    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  deviceTypes DeviceType[] // Which device types this applies to
+  
+  // Status tracking
+  status      FirmwareUpdateStatus @default(PENDING)
+  totalDevices Int     @default(0)
+  completed   Int     @default(0)
+  failed      Int     @default(0)
+  inProgress  Int     @default(0)
+  
+  // Scheduling
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  
+  // Relationships
+  deviceUpdates FirmwareDeviceUpdate[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([siteId])
+  @@index([status])
+}
+
+model FirmwareDeviceUpdate {
+  id              String   @id @default(cuid())
+  firmwareUpdateId String
+  firmwareUpdate  FirmwareUpdate @relation(fields: [firmwareUpdateId], references: [id], onDelete: Cascade)
+  deviceId        String
+  device          Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  
+  status          FirmwareDeviceStatus @default(PENDING)
+  errorMessage    String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  retryCount      Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([firmwareUpdateId, deviceId])
+  @@index([deviceId])
+  @@index([status])
+}
+
+enum FirmwareUpdateStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum FirmwareDeviceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  SKIPPED
 }

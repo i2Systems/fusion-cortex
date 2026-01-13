@@ -595,6 +595,7 @@ export default function BACnetPage() {
         {/* Table/Map - Left Side */}
         <div
           ref={listContainerRef}
+          className="flex-1 min-h-0 flex flex-col"
         >
           {/* View Toggle */}
           <div className="mb-3 flex items-center justify-between">
@@ -803,6 +804,6 @@ export default function BACnetPage() {
           </ResizablePanel>
         </div>
       </div>
-    </div>
+    </div >
   )
 }

@@ -130,6 +130,119 @@ export const notificationRouter = router({
                 });
             }
 
+            // 4. Get Firmware Update Notifications
+            const firmwareCampaigns = await prisma.firmwareUpdate.findMany({
+                where: {
+                    status: {
+                        in: ['IN_PROGRESS', 'COMPLETED', 'FAILED'],
+                    },
+                    ...(siteId ? { siteId } : {}),
+                },
+                include: {
+                    deviceUpdates: {
+                        where: {
+                            status: 'FAILED',
+                        },
+                        take: 10,
+                        include: {
+                            device: {
+                                select: {
+                                    deviceId: true,
+                                    siteId: true,
+                                },
+                            },
+                        },
+                    },
+                },
+                orderBy: { updatedAt: 'desc' },
+                take: 10,
+            });
+
+            for (const campaign of firmwareCampaigns) {
+                // Campaign status notifications
+                if (campaign.status === 'COMPLETED' && campaign.completedAt) {
+                    notifications.push({
+                        id: `firmware-campaign-${campaign.id}`,
+                        type: 'firmware',
+                        title: 'Firmware Update Completed',
+                        message: `Campaign "${campaign.name}" completed successfully. ${campaign.completed} devices updated.`,
+                        timestamp: campaign.completedAt,
+                        read: false,
+                        link: `/firmware?id=${campaign.id}${campaign.siteId ? `&siteId=${campaign.siteId}` : ''}`,
+                        siteId: campaign.siteId || undefined,
+                    });
+                } else if (campaign.status === 'FAILED') {
+                    notifications.push({
+                        id: `firmware-campaign-${campaign.id}`,
+                        type: 'firmware',
+                        title: 'Firmware Update Failed',
+                        message: `Campaign "${campaign.name}" failed. ${campaign.failed} devices failed to update.`,
+                        timestamp: campaign.updatedAt,
+                        read: false,
+                        link: `/firmware?id=${campaign.id}${campaign.siteId ? `&siteId=${campaign.siteId}` : ''}`,
+                        siteId: campaign.siteId || undefined,
+                    });
+                } else if (campaign.status === 'IN_PROGRESS') {
+                    notifications.push({
+                        id: `firmware-campaign-${campaign.id}`,
+                        type: 'firmware',
+                        title: 'Firmware Update In Progress',
+                        message: `Campaign "${campaign.name}" is updating ${campaign.inProgress} devices.`,
+                        timestamp: campaign.startedAt || campaign.updatedAt,
+                        read: false,
+                        link: `/firmware?id=${campaign.id}${campaign.siteId ? `&siteId=${campaign.siteId}` : ''}`,
+                        siteId: campaign.siteId || undefined,
+                    });
+                }
+
+                // Individual device failure notifications
+                for (const deviceUpdate of campaign.deviceUpdates || []) {
+                    notifications.push({
+                        id: `firmware-device-${deviceUpdate.id}`,
+                        type: 'firmware',
+                        title: 'Device Firmware Update Failed',
+                        message: `Device ${deviceUpdate.device.deviceId} failed to update firmware: ${deviceUpdate.errorMessage || 'Unknown error'}`,
+                        timestamp: deviceUpdate.completedAt || deviceUpdate.updatedAt,
+                        read: false,
+                        link: `/firmware?id=${campaign.id}&deviceId=${deviceUpdate.deviceId}${deviceUpdate.device.siteId ? `&siteId=${deviceUpdate.device.siteId}` : ''}`,
+                        siteId: deviceUpdate.device.siteId || undefined,
+                    });
+                }
+            }
+
+            // 5. Get devices with firmware update available
+            const devicesWithUpdates = await prisma.device.findMany({
+                where: {
+                    siteId: siteId,
+                    firmwareStatus: 'UPDATE_AVAILABLE',
+                },
+                select: {
+                    id: true,
+                    deviceId: true,
+                    siteId: true,
+                    firmwareVersion: true,
+                    firmwareTarget: true,
+                    updatedAt: true,
+                },
+                orderBy: {
+                    updatedAt: 'desc',
+                },
+                take: 20,
+            });
+
+            for (const device of devicesWithUpdates) {
+                notifications.push({
+                    id: `firmware-available-${device.id}`,
+                    type: 'firmware',
+                    title: 'Firmware Update Available',
+                    message: `Device ${device.deviceId} has firmware update available (${device.firmwareVersion || 'unknown'} → ${device.firmwareTarget || 'unknown'}).`,
+                    timestamp: device.updatedAt,
+                    read: false,
+                    link: `/lookup?id=${device.id}&siteId=${device.siteId}`,
+                    siteId: device.siteId,
+                });
+            }
+
             // Sort by timestamp desc
             return notifications.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
         }),
