@@ -74,11 +74,12 @@ export const bacnetRouter = router({
       const mapping = await prisma.bACnetMapping.create({
         data: {
           zoneId: input.zoneId,
-          bacnetObjectId: input.bacnetObjectId,
+          bacnetObjectId: input.bacnetObjectId || null,
           status: input.status as BACnetStatus,
+          updatedAt: new Date(),
         },
         include: {
-          zone: true,
+          Zone: true,
         },
       })
 
