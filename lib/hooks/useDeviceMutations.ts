@@ -46,8 +46,17 @@ export function useDeviceMutations(
     })
 
     const updateDeviceMutation = trpc.device.update.useMutation({
-        onSuccess: () => {
-            utils.device.list.invalidate({ siteId: activeSiteId || '' })
+        onSuccess: (updatedDevice) => {
+            // Update cache in-place instead of invalidating to prevent flash
+            utils.device.list.setData(
+                { siteId: activeSiteId || '', includeComponents: true },
+                (oldData) => {
+                    if (!oldData) return oldData
+                    return oldData.map(d =>
+                        d.id === updatedDevice.id ? { ...d, ...updatedDevice } : d
+                    )
+                }
+            )
         },
     })
 

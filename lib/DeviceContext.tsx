@@ -108,6 +108,8 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
   // Track site changes for clearing devices
   const previousSiteIdRef = useRef<string | null>(null)
 
+
+
   // Clear devices when site changes
   useEffect(() => {
     if (activeSiteId !== previousSiteIdRef.current && previousSiteIdRef.current !== null) {
@@ -125,30 +127,34 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
 
   // Wrapper functions to maintain API compatibility
   const addDevice = useCallback((device: Device) => {
-    // Check if already exists
-    const exists = undoableDevices.current.some(
-      d => d.id === device.id || d.serialNumber === device.serialNumber
-    )
-    if (exists) {
-      console.warn('Device already exists:', device.id)
-      return
-    }
+    // Functional update to avoid stale closure
     mutations.addDevice(device)
+    undoableDevices.set(currentDevices => {
+      // Check if already exists
+      const exists = currentDevices.some(
+        d => d.id === device.id || d.serialNumber === device.serialNumber
+      )
+      if (exists) {
+        console.warn('Device already exists:', device.id)
+        return currentDevices
+      }
+      return [...currentDevices, device]
+    })
   }, [mutations, undoableDevices])
 
   const updateDevice = useCallback((deviceId: string, updates: Partial<Device>) => {
-    // Commit current state to history before update
-    const newDevices = undoableDevices.current.map(device =>
-      device.id === deviceId ? { ...device, ...updates } : device
+    undoableDevices.set(currentDevices =>
+      currentDevices.map(device =>
+        device.id === deviceId ? { ...device, ...updates } : device
+      )
     )
-    undoableDevices.set(newDevices)
     mutations.updateDevice(deviceId, updates)
   }, [mutations, undoableDevices])
 
   const updateDevicePosition = useCallback((deviceId: string, x: number, y: number) => {
     // Use setWithoutHistory for position during drag, commit on dragEnd
-    undoableDevices.setWithoutHistory(
-      undoableDevices.current.map(device =>
+    undoableDevices.setWithoutHistory(currentDevices =>
+      currentDevices.map(device =>
         device.id === deviceId ? { ...device, x, y } : device
       )
     )
@@ -156,11 +162,12 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
   }, [mutations, undoableDevices])
 
   const updateMultipleDevices = useCallback((updates: Array<{ deviceId: string; updates: Partial<Device> }>) => {
-    const newDevices = undoableDevices.current.map(device => {
-      const update = updates.find(u => u.deviceId === device.id)
-      return update ? { ...device, ...update.updates } : device
-    })
-    undoableDevices.set(newDevices)
+    undoableDevices.set(currentDevices =>
+      currentDevices.map(device => {
+        const update = updates.find(u => u.deviceId === device.id)
+        return update ? { ...device, ...update.updates } : device
+      })
+    )
     mutations.updateMultipleDevices(updates)
   }, [mutations, undoableDevices])
 

@@ -14,9 +14,9 @@ export interface UndoableState<T> {
     /** Current state value */
     current: T
     /** Set a new state value (adds to history) */
-    set: (value: T) => void
+    set: (value: T | ((prev: T) => T)) => void
     /** Update state without adding to history (for intermediate states like drag) */
-    setWithoutHistory: (value: T) => void
+    setWithoutHistory: (value: T | ((prev: T) => T)) => void
     /** Commit the current state to history (call after setWithoutHistory) */
     commit: () => void
     /** Undo to previous state */
@@ -42,12 +42,18 @@ export function useUndoable<T>(
     // Always defined since history is initialized with initialValue and index starts at 0
     const current: T = history[historyIndex] ?? initialValue
 
-    const set = useCallback((value: T) => {
+    const set = useCallback((value: T | ((prev: T) => T)) => {
         setHistory(prev => {
+            // Calculate new value based on history head
+            const head = prev[historyIndex]
+            const newValue = typeof value === 'function'
+                ? (value as (prev: T) => T)(head)
+                : value
+
             // Remove any future states if we're not at the end
             const newHistory = prev.slice(0, historyIndex + 1)
             // Add new state
-            newHistory.push(value)
+            newHistory.push(newValue)
             // Limit history size
             if (newHistory.length > maxHistory) {
                 newHistory.shift()
@@ -62,11 +68,16 @@ export function useUndoable<T>(
         })
     }, [historyIndex, maxHistory])
 
-    const setWithoutHistory = useCallback((value: T) => {
+    const setWithoutHistory = useCallback((value: T | ((prev: T) => T)) => {
         // Update current position in history without creating new entry
         setHistory(prev => {
+            const head = prev[historyIndex]
+            const newValue = typeof value === 'function'
+                ? (value as (prev: T) => T)(head)
+                : value
+
             const newHistory = [...prev]
-            newHistory[historyIndex] = value
+            newHistory[historyIndex] = newValue
             return newHistory
         })
     }, [historyIndex])
