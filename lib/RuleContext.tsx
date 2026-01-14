@@ -103,6 +103,7 @@ export function RuleProvider({ children }: { children: ReactNode }) {
       duration: ruleData.action?.duration,
       siteId: activeSiteId,
       zoneId: ruleData.targetType === 'zone' ? ruleData.targetId : undefined,
+      deviceId: ruleData.targetType === 'device' ? ruleData.targetId : undefined,
       targetZones: ruleData.action?.zones || [],
       enabled: ruleData.enabled ?? true,
     })
@@ -130,6 +131,7 @@ export function RuleProvider({ children }: { children: ReactNode }) {
       overrideBMS: updates.overrideBMS,
       duration: updates.action?.duration,
       zoneId: updates.targetType === 'zone' ? updates.targetId : undefined,
+      deviceId: updates.targetType === 'device' ? updates.targetId : (updates.targetType ? null : undefined),
       targetZones: updates.action?.zones,
       enabled: updates.enabled,
     })

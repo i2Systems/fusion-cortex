@@ -49,6 +49,7 @@ model Device {
   Site                  Site                   @relation(fields: [siteId], references: [id], onDelete: Cascade)
   Fault                 Fault[]
   FirmwareDeviceUpdate  FirmwareDeviceUpdate[]
+  Rule                  Rule[]
   ZoneDevice            ZoneDevice[]
 
   @@index([deviceId])
@@ -165,6 +166,7 @@ model Rule {
   duration      Int?
   siteId        String
   zoneId        String?
+  deviceId      String?
   targetZones   String[]
   enabled       Boolean   @default(true)
   lastTriggered DateTime?
@@ -172,9 +174,11 @@ model Rule {
   updatedAt     DateTime
   Site          Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
   Zone          Zone?     @relation(fields: [zoneId], references: [id])
+  Device        Device?   @relation(fields: [deviceId], references: [id], onDelete: SetNull)
 
   @@index([siteId])
   @@index([zoneId])
+  @@index([deviceId])
 }
 
 model Site {

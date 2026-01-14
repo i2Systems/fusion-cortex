@@ -28,6 +28,8 @@ function transformRule(rule: any) {
     siteId: rule.siteId,
     zoneId: rule.zoneId,
     zoneName: rule.Zone?.name,
+    deviceId: rule.deviceId,
+    deviceName: rule.Device?.deviceId, // Use deviceId field as display name
     targetZones: rule.targetZones,
     enabled: rule.enabled,
     lastTriggered: rule.lastTriggered,
@@ -41,6 +43,7 @@ export const ruleRouter = router({
     .input(z.object({
       siteId: z.string().optional(),
       zoneId: z.string().optional(),
+      deviceId: z.string().optional(),
     }))
     .query(async ({ input }) => {
       const where: any = {}
@@ -55,6 +58,11 @@ export const ruleRouter = router({
         where.zoneId = input.zoneId
       }
 
+      // Optional additional filter: by deviceId
+      if (input.deviceId) {
+        where.deviceId = input.deviceId
+      }
+
       try {
         const rules = await prisma.rule.findMany({
           where,
@@ -63,6 +71,12 @@ export const ruleRouter = router({
               select: {
                 id: true,
                 name: true,
+              },
+            },
+            Device: {
+              select: {
+                id: true,
+                deviceId: true,
               },
             },
           },
@@ -85,14 +99,20 @@ export const ruleRouter = router({
     .query(async ({ input }) => {
       const rule = await prisma.rule.findUnique({
         where: { id: input.id },
-          include: {
-            Zone: {
-              select: {
-                id: true,
-                name: true,
-              },
+        include: {
+          Zone: {
+            select: {
+              id: true,
+              name: true,
             },
           },
+          Device: {
+            select: {
+              id: true,
+              deviceId: true,
+            },
+          },
+        },
       })
 
       if (!rule) {
@@ -117,6 +137,7 @@ export const ruleRouter = router({
       duration: z.number().optional(),
       siteId: z.string(),
       zoneId: z.string().optional(),
+      deviceId: z.string().optional(),
       targetZones: z.array(z.string()).default([]),
       enabled: z.boolean().default(true),
     }))
@@ -138,6 +159,7 @@ export const ruleRouter = router({
             duration: input.duration,
             siteId: input.siteId,
             zoneId: input.zoneId,
+            deviceId: input.deviceId,
             targetZones: input.targetZones,
             enabled: input.enabled,
             updatedAt: new Date(),
@@ -147,6 +169,12 @@ export const ruleRouter = router({
               select: {
                 id: true,
                 name: true,
+              },
+            },
+            Device: {
+              select: {
+                id: true,
+                deviceId: true,
               },
             },
           },
@@ -174,6 +202,7 @@ export const ruleRouter = router({
       overrideBMS: z.boolean().optional(),
       duration: z.number().optional(),
       zoneId: z.string().optional(),
+      deviceId: z.string().nullable().optional(),
       targetZones: z.array(z.string()).optional(),
       enabled: z.boolean().optional(),
       lastTriggered: z.date().optional(),
@@ -195,6 +224,7 @@ export const ruleRouter = router({
       if (updates.overrideBMS !== undefined) updateData.overrideBMS = updates.overrideBMS
       if (updates.duration !== undefined) updateData.duration = updates.duration
       if (updates.zoneId !== undefined) updateData.zoneId = updates.zoneId
+      if (updates.deviceId !== undefined) updateData.deviceId = updates.deviceId
       if (updates.targetZones !== undefined) updateData.targetZones = updates.targetZones
       if (updates.enabled !== undefined) updateData.enabled = updates.enabled
       if (updates.lastTriggered !== undefined) updateData.lastTriggered = updates.lastTriggered
@@ -208,6 +238,12 @@ export const ruleRouter = router({
               select: {
                 id: true,
                 name: true,
+              },
+            },
+            Device: {
+              select: {
+                id: true,
+                deviceId: true,
               },
             },
           },
