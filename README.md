@@ -60,6 +60,10 @@ Fusion/Cortex is **not**:
 │   ├── zones/             # Zone management components
 │   ├── rules/             # Rules & overrides components
 │   ├── dashboard/         # Dashboard components
+│   ├── firmware/          # Firmware management components
+│   ├── faults/            # Faults & Health components
+│   ├── bacnet/            # BACnet mapping components
+│   ├── stories/           # Storybook components
 │   └── shared/            # Shared components
 ├── server/
 │   └── trpc/              # tRPC setup & routers
@@ -73,7 +77,7 @@ Fusion/Cortex is **not**:
     ├── RuleContext.tsx    # Rule state management
     ├── SiteContext.tsx   # Multi-site management
     ├── mockData.ts        # Mock data generators
-    └── storeData.ts       # Site-specific data generation
+    └── siteData.ts       # Site-specific data generation
 ```
 
 ## 🎨 Design System
@@ -209,6 +213,12 @@ The app uses a **main + panel** system:
 - Click to see filtered device table
 - Detailed device info in right panel
 - Site-scoped fault data
+
+### 8. Firmware Management
+- Manage device firmware versions
+- Create firmware update campaigns
+- Monitor update status
+- Site-scoped firmware operations
 
 ## 🏪 Multi-Site Architecture
 
@@ -399,7 +409,7 @@ See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for complete deployment guide to Vercel
 - **[LOCAL_DB_SETUP.md](./LOCAL_DB_SETUP.md)** - Local PostgreSQL setup
 - **[SEEDING.md](./SEEDING.md)** - Database seeding guide
 - **[SUPABASE_STORAGE_SETUP.md](./SUPABASE_STORAGE_SETUP.md)** - Supabase image storage setup
-- **[SETUP_PYMUPDF.md](./SETUP_PYMUPDF.md)** - PDF vector extraction setup
+
 - **[EXPORT_DATA.md](./EXPORT_DATA.md)** - Exporting zones and device positions
 
 ## 🎯 Non-Goals

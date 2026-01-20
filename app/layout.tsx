@@ -23,6 +23,7 @@ import { ToastContainer } from '@/components/ui/Toast'
 import { FontProvider } from '@/lib/FontContext'
 import { I18nProvider } from '@/lib/i18n'
 import { AdvancedSettingsProvider } from '@/lib/AdvancedSettingsContext'
+import { ZoomProvider } from '@/lib/ZoomContext'
 // Import exportData to make exportFusionData() available in browser console
 import '@/lib/exportData'
 import { ComposeProviders } from '@/components/shared/ComposeProviders'
@@ -62,6 +63,7 @@ export default function RootLayout({
             AuthProvider,
             SiteProvider,
             MapProvider,
+            ZoomProvider,
             DomainProvider,
             NotificationProvider,
             ToastProvider,

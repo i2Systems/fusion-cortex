@@ -25,6 +25,7 @@ import { MapToolbar } from '@/components/map/MapToolbar'
 import type { MapToolMode, ArrangeLayout } from '@/components/map/MapToolbar'
 import { MapFiltersPanel, type MapFilters } from '@/components/map/MapFiltersPanel'
 import { ComponentModal } from '@/components/shared/ComponentModal'
+import { ConfirmationModal } from '@/components/shared/ConfirmationModal'
 import type { Component, Device } from '@/lib/mockData'
 import { fuzzySearch } from '@/lib/fuzzySearch'
 import { EditDeviceModal } from '@/components/lookup/EditDeviceModal'
@@ -145,6 +146,7 @@ export default function MapPage() {
   const [showManualEntry, setShowManualEntry] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [isUploadingMap, setIsUploadingMap] = useState(false)
+  const [showClearConfirmation, setShowClearConfirmation] = useState(false)
   const [imageBounds, setImageBounds] = useState<{ x: number; y: number; width: number; height: number; naturalWidth: number; naturalHeight: number } | null>(null)
 
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
@@ -337,10 +339,11 @@ export default function MapPage() {
   // Legacy migration effect removed.
   // We rely on TRPC 'locations' query now.
 
-  const handleMapUpload = async (imageUrl: string) => {
+  // We rely on TRPC 'locations' query now.
+  const handleMapUpload = async (imageUrl: string, locationName: string) => {
     if (!activeSiteId) return
-    const locationName = prompt('Enter a name for this location:', 'Main Floor Plan')
-    if (!locationName) return
+
+    // locationName is now passed directly from the component, no window.prompt needed
 
     setIsUploadingMap(true)
     let finalImageUrl = imageUrl
@@ -683,9 +686,10 @@ export default function MapPage() {
   }
 
   const handleClearMap = async () => {
-    if (!confirm('Are you sure you want to clear all locations? This cannot be undone.')) {
-      return
-    }
+    setShowClearConfirmation(true)
+  }
+
+  const executeClearMap = async () => {
 
     // Delete all locations
     // Note: iterating mutations might spam, but for now it's fine for a clear action
@@ -701,6 +705,8 @@ export default function MapPage() {
     if (uploadInputRef.current) {
       uploadInputRef.current.value = ''
     }
+
+    setShowClearConfirmation(false)
   }
 
   const handleDeviceMove = (deviceId: string, x: number, y: number) => {
@@ -1456,6 +1462,16 @@ export default function MapPage() {
         isOpen={showManualEntry}
         onClose={() => setShowManualEntry(false)}
         onAdd={handleAddDevice}
+      />
+
+      <ConfirmationModal
+        isOpen={showClearConfirmation}
+        onClose={() => setShowClearConfirmation(false)}
+        onConfirm={executeClearMap}
+        title="Clear All Locations"
+        message="Are you sure you want to clear all locations? This action cannot be undone."
+        variant="danger"
+        confirmLabel="Clear Map"
       />
     </div>
   )

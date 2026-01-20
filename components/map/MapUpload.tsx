@@ -20,8 +20,8 @@ import { useAdvancedSettings } from '@/lib/AdvancedSettingsContext'
 import { Button } from '@/components/ui/Button'
 
 interface MapUploadProps {
-  onMapUpload: (imageUrl: string) => void
-  onVectorDataUpload?: (vectorData: ExtractedVectorData) => void
+  onMapUpload: (imageUrl: string, locationName: string) => void
+  onVectorDataUpload?: (vectorData: ExtractedVectorData, locationName: string) => void
 }
 
 export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
@@ -31,6 +31,7 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
+  const [locationName, setLocationName] = useState('Main Floor Plan')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Helper to get site-scoped localStorage key
@@ -130,13 +131,13 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
           localStorage.setItem(storageKey, reference)
 
           // Return the data URL for immediate use (it's already in memory)
-          onMapUpload(base64String)
+          onMapUpload(base64String, locationName)
         } catch (error) {
           console.error('Failed to store image in IndexedDB:', error)
           // Fallback: try to store in localStorage anyway (might fail if too large)
           try {
             localStorage.setItem(storageKey, base64String)
-            onMapUpload(base64String)
+            onMapUpload(base64String, locationName)
           } catch (storageError) {
             throw new Error('Image is too large to store. Please use a smaller image or clear browser storage.')
           }
@@ -145,7 +146,7 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
         // Small image - can store in localStorage
         try {
           localStorage.setItem(storageKey, base64String)
-          onMapUpload(base64String)
+          onMapUpload(base64String, locationName)
         } catch (error) {
           // If localStorage fails, try IndexedDB as fallback
           if (activeSiteId && base64String.length > 0) {
@@ -160,7 +161,7 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
               )
               const reference = `indexeddb:${imageId}`
               localStorage.setItem(storageKey, reference)
-              onMapUpload(base64String)
+              onMapUpload(base64String, locationName)
             } catch (indexedDBError) {
               throw new Error('Failed to save image. Storage may be full. Please clear browser storage and try again.')
             }
@@ -321,6 +322,19 @@ export function MapUpload({ onMapUpload, onVectorDataUpload }: MapUploadProps) {
           <p className="text-[var(--color-text-muted)] mb-6">
             Upload a blueprint, floor plan, or drawing to visualize device locations
           </p>
+
+          <div className="mb-6 text-left">
+            <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-1">
+              Location Name
+            </label>
+            <input
+              type="text"
+              value={locationName}
+              onChange={(e) => setLocationName(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border-subtle)] text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+              placeholder="e.g. Main Floor Plan"
+            />
+          </div>
         </div>
 
         {/* Hidden file input */}

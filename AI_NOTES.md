@@ -1,6 +1,6 @@
 # AI Assistant Notes
 
-**Quick Context**: Fusion/Cortex - Commissioning & Configuration UI for retail lighting. Setup, mapping, and rules platform (NOT a dashboard or analytics tool). Next.js 14 App Router, React, tRPC, Prisma, PostgreSQL, Tailwind. Multi-store aware with store-scoped data isolation.
+**Quick Context**: Fusion/Cortex - Commissioning & Configuration UI for retail lighting. Setup, mapping, and rules platform (NOT a dashboard or analytics tool). Next.js 14 App Router, React, tRPC, Prisma, PostgreSQL, Tailwind. Multi-site aware with site-scoped data isolation.
 
 **See [README.md](./README.md) for project overview and [ARCHITECTURE.md](./ARCHITECTURE.md) for system architecture.**
 
@@ -10,14 +10,14 @@
 2. **Type safety** - tRPC for API calls, Zod for validation, TypeScript strict mode
 3. **Server Components default** - Only use `'use client'` when needed (interactivity, hooks, browser APIs)
 4. **Plain language** - No jargon, simple UX
-5. **Store-aware** - All data contexts use store-scoped localStorage keys: `fusion_[data]_store_{storeId}`
+5. **Site-aware** - All data contexts use site-scoped localStorage keys: `fusion_[data]_site_{siteId}`
 
-## Multi-Store Architecture
+## Multi-Site Architecture
 
-- **StoreContext**: Manages `activeStoreId`, `stores`, `setActiveStore`
-- **Store-Scoped Keys**: `fusion_[data]_store_{storeId}` (devices, zones, rules, maps, BACnet)
-- **Auto-Reload**: Contexts reload when `activeStoreId` changes
-- **Store Switching**: Dropdown in `PageTitle` component
+- **SiteContext**: Manages `activeSiteId`, `sites`, `setActiveSite`
+- **Site-Scoped Keys**: `fusion_[data]_site_{siteId}` (devices, zones, rules, maps, BACnet)
+- **Auto-Reload**: Contexts reload when `activeSiteId` changes
+- **Site Switching**: Dropdown in `PageTitle` component
 
 ## Common Patterns
 
@@ -51,21 +51,21 @@ export const appRouter = router({
 })
 ```
 
-### Making a Component Store-Aware
+### Making a Component Site-Aware
 
 ```typescript
-import { useStore } from '@/lib/StoreContext'
+import { useSite } from '@/lib/SiteContext'
 
 export function MyComponent() {
-  const { activeStoreId } = useStore()
+  const { activeSiteId } = useSite()
   
-  // Use store-scoped localStorage key
-  const storageKey = `fusion_myData_store_${activeStoreId}`
+  // Use site-scoped localStorage key
+  const storageKey = `fusion_myData_site_${activeSiteId}`
   
-  // Reload when store changes
+  // Reload when site changes
   useEffect(() => {
-    // Load data for activeStoreId
-  }, [activeStoreId])
+    // Load data for activeSiteId
+  }, [activeSiteId])
 }
 ```
 
@@ -145,10 +145,10 @@ See `app/globals.css` for full token list. Key tokens:
 - Check Tailwind classes are valid
 - Verify `globals.css` is imported in root layout
 
-**Store data not switching**
-- Ensure using `activeStoreId` from `StoreContext`
-- Check localStorage keys include store ID
-- Verify context reloads when `activeStoreId` changes
+**Site data not switching**
+- Ensure using `activeSiteId` from `SiteContext`
+- Check localStorage keys include site ID
+- Verify context reloads when `activeSiteId` changes
 
 **Database connection errors**
 - Verify `DATABASE_URL` in `.env`
@@ -174,5 +174,5 @@ When adding features:
 - ✅ tRPC router created and added to app router
 - ✅ Database schema updated if needed
 - ✅ Plain language, no jargon
-- ✅ Store-aware if dealing with data
-- ✅ Reloads when active store changes
+- ✅ Site-aware if dealing with data
+- ✅ Reloads when active site changes

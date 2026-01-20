@@ -137,7 +137,6 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
       )
 
       if (existingIndex >= 0) {
-        console.log('Device already exists, updating:', device.id)
         // Update existing device with new data (this moves it to palette if x/y become undefined)
         const updatedDevices = [...devices]
         updatedDevices[existingIndex] = { ...devices[existingIndex], ...device }
@@ -194,8 +193,8 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
   }, [refetchDevices])
 
   const saveDevices = useCallback(() => {
-    console.log(`✅ Devices are automatically saved to database for ${activeSiteId}`)
-  }, [activeSiteId])
+    // Devices are automatically saved to database via mutations
+  }, [])
 
   return (
     <DeviceContext.Provider

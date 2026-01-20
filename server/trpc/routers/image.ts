@@ -97,10 +97,8 @@ export const imageRouter = router({
 
           console.log(`✅ [SERVER] Site image saved for ${input.siteId}`)
           const isSupabaseUrl = imageUrl.startsWith('http')
-          console.log(`   imageUrl type: ${isSupabaseUrl ? '✅ Supabase URL (persistent)' : '⚠️ base64 (fallback - browser-specific)'}`)
-          console.log(`   imageUrl length: ${imageUrl.length}`)
           if (isSupabaseUrl) {
-            console.log(`   Supabase URL: ${imageUrl}`)
+            console.log(`✅ [SERVER] Uploaded site image to Supabase Storage: ${imageUrl}`)
           } else {
             console.log(`   imageUrl preview: ${imageUrl.substring(0, 100)}...`)
             console.warn(`   ⚠️ WARNING: Image saved as base64, not Supabase URL. This means:`)
@@ -117,8 +115,7 @@ export const imageRouter = router({
           if (verify?.imageUrl) {
             const verifyIsSupabase = verify.imageUrl.startsWith('http')
             console.log(`✅ [SERVER] Verified: Image URL saved to database for ${input.siteId}`)
-            console.log(`   Saved as: ${verifyIsSupabase ? '✅ Supabase URL' : '⚠️ base64'}`)
-            console.log(`   Length: ${verify.imageUrl.length}`)
+
             if (verifyIsSupabase) {
               console.log(`   URL: ${verify.imageUrl}`)
             }

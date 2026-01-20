@@ -18,6 +18,7 @@
 import { Stage, Layer, Circle, Image as KonvaImage, Group, Text, Rect, Line } from 'react-konva'
 import { useEffect, useState, useRef, useMemo, useCallback, useLayoutEffect } from 'react'
 import { Component, Device as DeviceType, DeviceType as DeviceTypeEnum } from '@/lib/mockData'
+import { useZoomContext } from '@/lib/ZoomContext'
 
 import { FloorPlanImage, type ImageBounds } from './FloorPlanImage'
 import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
@@ -93,7 +94,6 @@ interface MapCanvasProps {
   onStagePositionChange?: (position: { x: number; y: number }) => void
 }
 
-
 export function MapCanvas({
   onDeviceSelect,
   onDevicesSelect,
@@ -131,6 +131,7 @@ export function MapCanvas({
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const [stagePosition, setStagePositionInternal] = useState({ x: 0, y: 0 })
   const [scale, setScaleInternal] = useState(1)
+  const { setZoomLevel, triggerZoomIndicator, setInteractionHint } = useZoomContext()
 
   // Use external state if provided, otherwise use internal state
   const effectiveScale = externalScale ?? scale
@@ -140,7 +141,11 @@ export function MapCanvas({
   const setScale = useCallback((newScale: number) => {
     setScaleInternal(newScale)
     onScaleChange?.(newScale)
-  }, [onScaleChange])
+
+    // Update global zoom context
+    setZoomLevel(newScale)
+    triggerZoomIndicator()
+  }, [onScaleChange, setZoomLevel, triggerZoomIndicator])
 
   const setStagePosition = useCallback((newPosition: { x: number; y: number }) => {
     setStagePositionInternal(newPosition)
@@ -295,8 +300,7 @@ export function MapCanvas({
   const [isShiftHeld, setIsShiftHeld] = useState(false)
   const [hoveredZoneId, setHoveredZoneId] = useState<string | null>(null)
   const [isSpaceHeld, setIsSpaceHeld] = useState(false)
-  const [showZoomHint, setShowZoomHint] = useState(false)
-  const zoomHintTimeoutRef = useRef<number | null>(null)
+
   const stageRef = useRef<any>(null)
 
   // Track Shift key state - more robust detection
@@ -567,11 +571,20 @@ export function MapCanvas({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
-      if (zoomHintTimeoutRef.current) {
-        clearTimeout(zoomHintTimeoutRef.current)
-      }
+
     }
   }, [mode, onDeviceSelect, onDevicesSelect, effectiveScale, setScale, isSpaceHeld, isShiftHeld])
+
+  // Update interaction hint based on held keys
+  useEffect(() => {
+    if (isSpaceHeld && mode === 'select') {
+      setInteractionHint("Hold key + Drag to pan • Scroll or +/- to zoom")
+    } else if (isShiftHeld && mode === 'select' && !isSelecting) {
+      setInteractionHint("Drag to select multiple devices")
+    } else {
+      setInteractionHint(null)
+    }
+  }, [isSpaceHeld, isShiftHeld, mode, isSelecting, setInteractionHint])
 
   // Cleanup animation frame on unmount
   useEffect(() => {
@@ -864,16 +877,6 @@ export function MapCanvas({
 
           const pointerPos = stage.getPointerPosition()
           if (!pointerPos) return
-
-          // Show zoom hint briefly (debounced to prevent flickering)
-          if (zoomHintTimeoutRef.current) {
-            clearTimeout(zoomHintTimeoutRef.current)
-          }
-          setShowZoomHint(true)
-          zoomHintTimeoutRef.current = window.setTimeout(() => {
-            setShowZoomHint(false)
-            zoomHintTimeoutRef.current = null
-          }, 2000)
 
           // Get wheel delta (positive = zoom in, negative = zoom out)
           const deltaY = e.evt.deltaY
@@ -2101,86 +2104,7 @@ export function MapCanvas({
           </Layer>
         )}
 
-        {/* Keyboard shortcuts hint overlay */}
-        {(isShiftHeld || isSpaceHeld || showZoomHint) && mode === 'select' && !isSelecting && (
-          <Layer>
-            <Group>
-              {/* Pulsing background */}
-              <Rect
-                x={dimensions.width / 2 - 180}
-                y={20}
-                width={360}
-                height={isSpaceHeld ? 80 : 50}
-                fill="rgba(76, 125, 255, 0.15)"
-                cornerRadius={10}
-                listening={false}
-                shadowBlur={20}
-                shadowColor="rgba(76, 125, 255, 0.5)"
-              />
-              <Rect
-                x={dimensions.width / 2 - 180}
-                y={20}
-                width={360}
-                height={isSpaceHeld ? 80 : 50}
-                fill="rgba(17, 24, 39, 0.95)"
-                cornerRadius={10}
-                listening={false}
-                shadowBlur={20}
-                shadowColor="rgba(0, 0, 0, 0.6)"
-              />
-              <Rect
-                x={dimensions.width / 2 - 180}
-                y={20}
-                width={360}
-                height={isSpaceHeld ? 80 : 50}
-                fill="transparent"
-                stroke="rgba(76, 125, 255, 1)"
-                strokeWidth={3}
-                cornerRadius={10}
-                listening={false}
-                dash={[8, 4]}
-              />
-              {isSpaceHeld && (
-                <>
-                  <Text
-                    x={dimensions.width / 2}
-                    y={47}
-                    text="Hold Space + Drag to pan • Scroll to zoom • +/- to zoom"
-                    fontSize={13}
-                    fontFamily="system-ui, -apple-system, sans-serif"
-                    fontStyle="bold"
-                    fill="#ffffff"
-                    align="center"
-                    listening={false}
-                  />
-                  <Text
-                    x={dimensions.width / 2}
-                    y={67}
-                    text="Release Space to return to selection mode"
-                    fontSize={11}
-                    fontFamily="system-ui, -apple-system, sans-serif"
-                    fill="rgba(255, 255, 255, 0.7)"
-                    align="center"
-                    listening={false}
-                  />
-                </>
-              )}
-              {showZoomHint && !isShiftHeld && !isSpaceHeld && (
-                <Text
-                  x={dimensions.width / 2}
-                  y={47}
-                  text={`Zoom: ${Math.round(effectiveScale * 100)}% • Use +/- keys or scroll wheel`}
-                  fontSize={13}
-                  fontFamily="system-ui, -apple-system, sans-serif"
-                  fontStyle="bold"
-                  fill="#ffffff"
-                  align="center"
-                  listening={false}
-                />
-              )}
-            </Group>
-          </Layer>
-        )}
+
       </Stage>
     </div>
   )

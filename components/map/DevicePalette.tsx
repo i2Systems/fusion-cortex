@@ -1,16 +1,16 @@
-import { useState, useRef, useEffect } from 'react'
-import { Monitor, LayoutGrid, AlignJustify, Plus, Lightbulb, MousePointer2 } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
-import { Device } from '@/lib/mockData' // Adjust import based on your project structure
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import { Monitor, LayoutGrid, AlignJustify, Plus, Lightbulb, GripVertical } from 'lucide-react'
+import { Device } from '@/lib/mockData'
 
 interface DevicePaletteProps {
-    devices: Device[] // Unplaced devices
+    devices: Device[]
     selectedDeviceIds: string[]
     onSelectionChange: (ids: string[]) => void
     onDragStart: (e: React.DragEvent, deviceIds: string[]) => void
     placementLayout: 'grid' | 'line'
     onPlacementLayoutChange: (layout: 'grid' | 'line') => void
     onAdd: () => void
+    onReorder?: (reorderedDevices: Device[]) => void
 }
 
 export function DevicePalette({
@@ -20,27 +20,58 @@ export function DevicePalette({
     onDragStart,
     placementLayout,
     onPlacementLayoutChange,
-    onAdd
+    onAdd,
+    onReorder
 }: DevicePaletteProps) {
     const [lastSelectedId, setLastSelectedId] = useState<string | null>(null)
+
+    // Internal reorder state
+    const [draggedId, setDraggedId] = useState<string | null>(null)
+    const [dropTargetId, setDropTargetId] = useState<string | null>(null)
+    const [isReorderMode, setIsReorderMode] = useState(false)
+    const pendingReorderRef = useRef<boolean>(false)
+
+    // Track local order by device IDs (not full objects to avoid stale data)
+    const [localOrder, setLocalOrder] = useState<string[]>([])
+
+    // Sync local order when devices prop changes (new devices added/removed)
+    useEffect(() => {
+        const currentIds = devices.map(d => d.id)
+        const hasNewDevices = currentIds.some(id => !localOrder.includes(id))
+        const hasRemovedDevices = localOrder.some(id => !currentIds.includes(id))
+
+        if (localOrder.length === 0 || hasNewDevices || hasRemovedDevices) {
+            // Preserve existing order for devices that still exist, append new ones at end
+            const existingOrdered = localOrder.filter(id => currentIds.includes(id))
+            const newIds = currentIds.filter(id => !localOrder.includes(id))
+            setLocalOrder([...existingOrdered, ...newIds])
+        }
+    }, [devices])
+
+    // Build ordered device list from localOrder
+    const displayDevices = useMemo(() => {
+        if (localOrder.length === 0) return devices
+
+        const deviceMap = new Map(devices.map(d => [d.id, d]))
+        return localOrder
+            .map(id => deviceMap.get(id))
+            .filter((d): d is Device => d !== undefined)
+    }, [devices, localOrder])
 
     // Handle device click with Shift-select support
     const handleDeviceClick = (e: React.MouseEvent, deviceId: string) => {
         e.stopPropagation()
 
         if (e.shiftKey && lastSelectedId) {
-            // Find range
-            const lastIndex = devices.findIndex(d => d.id === lastSelectedId)
-            const currentIndex = devices.findIndex(d => d.id === deviceId)
-
+            const lastIndex = displayDevices.findIndex(d => d.id === lastSelectedId)
+            const currentIndex = displayDevices.findIndex(d => d.id === deviceId)
             if (lastIndex !== -1 && currentIndex !== -1) {
                 const start = Math.min(lastIndex, currentIndex)
                 const end = Math.max(lastIndex, currentIndex)
-                const range = devices.slice(start, end + 1).map(d => d.id)
+                const range = displayDevices.slice(start, end + 1).map(d => d.id)
                 onSelectionChange(range)
             }
         } else if (e.metaKey || e.ctrlKey) {
-            // Toggle
             if (selectedDeviceIds.includes(deviceId)) {
                 onSelectionChange(selectedDeviceIds.filter(id => id !== deviceId))
             } else {
@@ -48,40 +79,142 @@ export function DevicePalette({
             }
             setLastSelectedId(deviceId)
         } else {
-            // Single select
             onSelectionChange([deviceId])
             setLastSelectedId(deviceId)
         }
     }
 
-    // Handle drag start
-    const handleDragStartInternal = (e: React.DragEvent, deviceId: string) => {
-        // If dragging a device that is NOT selected, select it (and deselect others)
+    // Handle internal reorder drag start
+    const handleReorderDragStart = (e: React.DragEvent, deviceId: string) => {
+        e.stopPropagation()
+        setDraggedId(deviceId)
+        setIsReorderMode(true)
+
+        // Set drag image
+        e.dataTransfer.effectAllowed = 'move'
+        e.dataTransfer.setData('text/plain', deviceId)
+
+        // Apply visual effect after a frame
+        requestAnimationFrame(() => {
+            const el = e.currentTarget as HTMLElement
+            el.style.opacity = 'var(--drag-active-opacity)'
+        })
+    }
+
+    // Handle external drag start (to map)
+    const handleExternalDragStart = (e: React.DragEvent, deviceId: string) => {
+        if (isReorderMode) return
+
         let idsToDrag = selectedDeviceIds
         if (!selectedDeviceIds.includes(deviceId)) {
             idsToDrag = [deviceId]
             onSelectionChange([deviceId])
         }
 
-        // Set drag data
         e.dataTransfer.setData('application/json', JSON.stringify(idsToDrag))
         e.dataTransfer.effectAllowed = 'copyMove'
-
-        // Call parent handler
         onDragStart(e, idsToDrag)
 
-        // Visual feedback
         const element = e.currentTarget as HTMLElement
         element.style.opacity = '0.5'
     }
 
-    const handleDragEndInternal = (e: React.DragEvent) => {
-        const element = e.currentTarget as HTMLElement
-        element.style.opacity = '1'
+    // Handle drag over for reordering
+    const handleDragOver = (e: React.DragEvent, deviceId: string) => {
+        e.preventDefault()
+        if (!isReorderMode || !draggedId || draggedId === deviceId) return
+
+        e.dataTransfer.dropEffect = 'move'
+        setDropTargetId(deviceId)
     }
 
+    // Handle drop for reordering
+    const handleDrop = (e: React.DragEvent, targetId: string) => {
+        e.preventDefault()
+        if (!isReorderMode || !draggedId || draggedId === targetId) {
+            setDraggedId(null)
+            setDropTargetId(null)
+            setIsReorderMode(false)
+            return
+        }
+
+        // Reorder using localOrder (array of IDs)
+        const currentOrder = localOrder.length > 0 ? [...localOrder] : devices.map(d => d.id)
+        const draggedIndex = currentOrder.indexOf(draggedId)
+        const targetIndex = currentOrder.indexOf(targetId)
+
+        if (draggedIndex !== -1 && targetIndex !== -1) {
+            // Remove from old position and insert at new position
+            currentOrder.splice(draggedIndex, 1)
+            currentOrder.splice(targetIndex, 0, draggedId)
+            setLocalOrder(currentOrder)
+
+            // Notify parent of reorder with full device objects
+            if (onReorder) {
+                const deviceMap = new Map(devices.map(d => [d.id, d]))
+                const reorderedDevices = currentOrder
+                    .map(id => deviceMap.get(id))
+                    .filter((d): d is Device => d !== undefined)
+                onReorder(reorderedDevices)
+            }
+        }
+
+        setDraggedId(null)
+        setDropTargetId(null)
+        setIsReorderMode(false)
+    }
+
+    // Handle drag end
+    const handleDragEnd = (e: React.DragEvent) => {
+        const element = e.currentTarget as HTMLElement
+        element.style.opacity = '1'
+        element.style.transform = ''
+        setDraggedId(null)
+        setDropTargetId(null)
+        setIsReorderMode(false)
+    }
+
+    // Helper functions for device styling
+    const getDeviceRole = (device: Device) => {
+        if (device.type.includes('power-entry')) return 'entry'
+        if (device.type.includes('follower')) return 'follower'
+        if (device.type === 'motion' || device.type === 'light-sensor') return 'sensor'
+        return 'unknown'
+    }
+
+    const getRoleColor = (role: string) => {
+        switch (role) {
+            case 'entry': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+            case 'follower': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+            case 'sensor': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+            default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+        }
+    }
+
+    // Group devices by location
+    const devicesByGroup = new Map<string, Device[]>()
+    displayDevices.forEach(device => {
+        const groupKey = device.location || 'Ungrouped'
+        if (!devicesByGroup.has(groupKey)) {
+            devicesByGroup.set(groupKey, [])
+        }
+        devicesByGroup.get(groupKey)!.push(device)
+    })
+
     return (
-        <div className="absolute top-24 left-4 z-10 w-56 flex flex-col gap-2 bg-[var(--color-surface-glass)] backdrop-blur-xl border border-[var(--color-border-subtle)] rounded-xl shadow-2xl overflow-hidden max-h-[60vh] transition-all duration-200">
+        <div
+            className="absolute top-24 left-4 z-10 w-56 flex flex-col gap-2 bg-[var(--color-surface-glass)] backdrop-blur-xl border border-[var(--color-border-subtle)] rounded-xl shadow-2xl overflow-hidden max-h-[60vh] transition-all duration-200"
+            onDragOver={(e) => {
+                // Prevent map from receiving dragOver when hovering palette
+                e.preventDefault()
+                e.stopPropagation()
+            }}
+            onDrop={(e) => {
+                // Prevent map from receiving drop when dropping in palette
+                e.preventDefault()
+                e.stopPropagation()
+            }}
+        >
             {/* Header */}
             <div className="p-3 border-b border-[var(--color-border)] flex items-center justify-between bg-[var(--color-surface-hover)]">
                 <div className="flex items-center gap-2">
@@ -90,12 +223,11 @@ export function DevicePalette({
                     </div>
                     <div>
                         <h3 className="text-xs font-semibold text-[var(--color-text)] leading-tight">New Devices</h3>
-                        <p className="text-[10px] text-[var(--color-text-muted)]">{devices.length} waiting</p>
+                        <p className="text-[10px] text-[var(--color-text-muted)]">{displayDevices.length} waiting</p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-1">
-                    {/* Add Button */}
                     <button
                         onClick={onAdd}
                         className="p-1 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors"
@@ -104,8 +236,7 @@ export function DevicePalette({
                         <Plus size={14} />
                     </button>
 
-                    {/* Placement Layout Toggles - Only show if devices exist */}
-                    {devices.length > 0 && (
+                    {displayDevices.length > 0 && (
                         <div className="flex bg-[var(--color-surface)] rounded-lg p-0.5 border border-[var(--color-border-subtle)] ml-1">
                             <button
                                 onClick={() => onPlacementLayoutChange('line')}
@@ -127,111 +258,115 @@ export function DevicePalette({
             </div>
 
             {/* Scrollable Content */}
-            <div className={`overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-[var(--color-border)] scrollbar-track-transparent ${devices.length === 0 ? 'h-32 flex items-center justify-center' : ''}`}>
-                {devices.length === 0 ? (
+            <div className={`overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-[var(--color-border)] scrollbar-track-transparent ${displayDevices.length === 0 ? 'h-32 flex items-center justify-center' : ''}`}>
+                {displayDevices.length === 0 ? (
                     <div className="text-center p-4">
-                        <div className="w-10 h-10 rounded-full bg-[var(--color-surface-subtle)] flex items-center justify-center mx-auto mb-2 cursor-pointer hover:bg-[var(--color-primary)]/10 transition-colors" onClick={onAdd}>
+                        <div
+                            className="w-10 h-10 rounded-full bg-[var(--color-surface-subtle)] flex items-center justify-center mx-auto mb-2 cursor-pointer hover:bg-[var(--color-primary)]/10 transition-colors"
+                            onClick={onAdd}
+                        >
                             <Plus size={18} className="text-[var(--color-text-muted)]" />
                         </div>
                         <p className="text-[10px] text-[var(--color-text-muted)]">No new devices</p>
                     </div>
                 ) : (
                     <div className="flex flex-col gap-1">
-                        {(() => {
-                            // Group devices by their location (e.g., "Group 1", "Group 2")
-                            const devicesByGroup = new Map<string, typeof devices>()
-                            devices.forEach(device => {
-                                const groupKey = device.location || 'Ungrouped'
-                                if (!devicesByGroup.has(groupKey)) {
-                                    devicesByGroup.set(groupKey, [])
-                                }
-                                devicesByGroup.get(groupKey)!.push(device)
-                            })
-
-                            // Helper to determine device role for styling
-                            const getDeviceRole = (device: typeof devices[0]) => {
-                                if (device.type.includes('power-entry')) return 'entry'
-                                if (device.type.includes('follower')) return 'follower'
-                                if (device.type === 'motion' || device.type === 'light-sensor') return 'sensor'
-                                return 'unknown'
-                            }
-
-                            const getRoleColor = (role: string) => {
-                                switch (role) {
-                                    case 'entry': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                                    case 'follower': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                                    case 'sensor': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-                                    default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
-                                }
-                            }
-
-                            return Array.from(devicesByGroup.entries()).map(([groupName, groupDevices]) => (
-                                <div key={groupName} className="mb-2 last:mb-0">
-                                    {/* Group Header */}
-                                    <div className="flex items-center gap-2 px-1 py-1 mb-1">
-                                        <div className="w-4 h-4 rounded-full bg-[var(--color-primary)]/20 flex items-center justify-center">
-                                            <span className="text-[8px] font-bold text-[var(--color-primary)]">
-                                                {groupName.replace('Group ', '')}
-                                            </span>
-                                        </div>
-                                        <span className="text-[9px] font-medium text-[var(--color-text-muted)] uppercase tracking-wide">
-                                            {groupName} ({groupDevices.length})
+                        {Array.from(devicesByGroup.entries()).map(([groupName, groupDevices]) => (
+                            <div key={groupName} className="mb-2 last:mb-0">
+                                {/* Group Header */}
+                                <div className="flex items-center gap-2 px-1 py-1 mb-1">
+                                    <div className="w-4 h-4 rounded-full bg-[var(--color-primary)]/20 flex items-center justify-center">
+                                        <span className="text-[8px] font-bold text-[var(--color-primary)]">
+                                            {groupName.replace('Group ', '')}
                                         </span>
                                     </div>
+                                    <span className="text-[9px] font-medium text-[var(--color-text-muted)] uppercase tracking-wide">
+                                        {groupName} ({groupDevices.length})
+                                    </span>
+                                </div>
 
-                                    {/* Group Devices */}
-                                    {groupDevices.map((device, idx) => {
-                                        const isSelected = selectedDeviceIds.includes(device.id)
-                                        const role = getDeviceRole(device)
-                                        const roleColor = getRoleColor(role)
-                                        const positionNum = device.deviceId.split('-')[1] || (idx + 1)
+                                {/* Group Devices */}
+                                {groupDevices.map((device, idx) => {
+                                    const isSelected = selectedDeviceIds.includes(device.id)
+                                    const isDragging = draggedId === device.id
+                                    const isDropTarget = dropTargetId === device.id
+                                    const role = getDeviceRole(device)
+                                    const roleColor = getRoleColor(role)
+                                    const positionNum = idx + 1
 
-                                        return (
+                                    return (
+                                        <div
+                                            key={device.id}
+                                            draggable
+                                            onDragStart={(e) => {
+                                                // Use ref to determine if reorder was initiated
+                                                if (pendingReorderRef.current) {
+                                                    handleReorderDragStart(e, device.id)
+                                                    pendingReorderRef.current = false
+                                                } else {
+                                                    handleExternalDragStart(e, device.id)
+                                                }
+                                            }}
+                                            onDragEnd={handleDragEnd}
+                                            onDragOver={(e) => handleDragOver(e, device.id)}
+                                            onDrop={(e) => handleDrop(e, device.id)}
+                                            onClick={(e) => handleDeviceClick(e, device.id)}
+                                            className={`
+                                                relative group cursor-grab
+                                                border rounded-lg select-none
+                                                flex items-center gap-1.5 p-1.5 mb-0.5
+                                                transition-[transform,box-shadow,background-color,border-color,opacity]
+                                                ${isDragging
+                                                    ? 'opacity-50 scale-[0.97] shadow-[var(--drag-hold-shadow)] bg-[var(--drag-hold-bg)]'
+                                                    : isDropTarget
+                                                        ? 'bg-[var(--drop-target-bg)] border-[var(--color-primary)] shadow-[var(--drop-target-shadow)] scale-[1.02]'
+                                                        : isSelected
+                                                            ? 'bg-blue-500/20 border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]'
+                                                            : 'bg-[var(--color-surface)] border-[var(--color-border-subtle)] hover:border-[var(--drag-hover-border)] hover:bg-[var(--color-surface-hover)] hover:scale-[var(--drag-hover-scale)] hover:shadow-[var(--drag-hover-shadow)]'
+                                                }
+                                            `}
+                                            style={{
+                                                transitionDuration: 'var(--drag-hover-transition)',
+                                            }}
+                                        >
+                                            {/* Reorder Grip Handle - mouseDown sets ref to trigger reorder mode */}
                                             <div
-                                                key={device.id}
-                                                draggable
-                                                onDragStart={(e) => handleDragStartInternal(e, device.id)}
-                                                onDragEnd={handleDragEndInternal}
-                                                onClick={(e) => handleDeviceClick(e, device.id)}
-                                                className={`
-                                                    relative group cursor-grab active:cursor-grabbing
-                                                    border rounded-lg transition-all duration-200 select-none
-                                                    flex items-center gap-2 p-1.5 mb-0.5
-                                                    ${isSelected
-                                                        ? 'bg-blue-500/20 border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]'
-                                                        : 'bg-[var(--color-surface)] border-[var(--color-border-subtle)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)]'
-                                                    }
-                                                `}
+                                                className="reorder-grip p-0.5 rounded cursor-move text-[var(--color-text-soft)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors"
+                                                title="Drag to reorder"
+                                                onMouseDown={() => { pendingReorderRef.current = true }}
+                                                onMouseUp={() => { pendingReorderRef.current = false }}
                                             >
-                                                {/* Position Number Badge */}
-                                                <div className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold border ${roleColor}`}>
-                                                    {positionNum}
-                                                </div>
+                                                <GripVertical size={12} />
+                                            </div>
 
-                                                {/* Icon */}
-                                                <div className="text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)] transition-colors">
-                                                    {device.type === 'motion' || device.type === 'light-sensor'
-                                                        ? <Monitor size={14} />
-                                                        : <Lightbulb size={14} />}
-                                                </div>
+                                            {/* Position Number Badge */}
+                                            <div className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold border ${roleColor}`}>
+                                                {positionNum}
+                                            </div>
 
-                                                {/* Label */}
-                                                <div className="text-left overflow-hidden flex-1 min-w-0">
-                                                    <div className="text-[9px] font-medium text-[var(--color-text)] truncate">
-                                                        {device.type.replace('fixture-', '').replace('-power-entry', ' Entry').replace('-follower', ' Follow')}
-                                                    </div>
-                                                </div>
+                                            {/* Icon */}
+                                            <div className="text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)] transition-colors">
+                                                {device.type === 'motion' || device.type === 'light-sensor'
+                                                    ? <Monitor size={14} />
+                                                    : <Lightbulb size={14} />}
+                                            </div>
 
-                                                {/* Selection Check (visible on hover or selected) */}
-                                                <div className={`w-3 h-3 rounded-full border border-current flex items-center justify-center transition-opacity ${isSelected ? 'text-blue-500 opacity-100' : 'text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100'}`}>
-                                                    {isSelected && <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />}
+                                            {/* Label */}
+                                            <div className="text-left overflow-hidden flex-1 min-w-0">
+                                                <div className="text-[9px] font-medium text-[var(--color-text)] truncate">
+                                                    {device.type.replace('fixture-', '').replace('-power-entry', ' Entry').replace('-follower', ' Follow')}
                                                 </div>
                                             </div>
-                                        )
-                                    })}
-                                </div>
-                            ))
-                        })()}
+
+                                            {/* Selection Check */}
+                                            <div className={`w-3 h-3 rounded-full border border-current flex items-center justify-center transition-opacity ${isSelected ? 'text-blue-500 opacity-100' : 'text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100'}`}>
+                                                {isSelected && <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>

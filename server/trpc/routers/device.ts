@@ -253,10 +253,9 @@ export const deviceRouter = router({
           throw new Error(`Device type is required. Received: ${deviceData.type}`)
         }
 
-        console.log('Creating device with type:', deviceData.type, 'Full deviceData keys:', Object.keys(deviceData))
 
         const prismaType = toPrismaDeviceType(deviceData.type)
-        console.log('Converted to Prisma type:', prismaType)
+
 
         if (!prismaType) {
           console.error('Failed to convert device type:', deviceData.type)
@@ -280,8 +279,6 @@ export const deviceRouter = router({
           warrantyExpiry: deviceData.warrantyExpiry,
           updatedAt: new Date(),
         }
-
-        console.log('Device data for Prisma (with type):', JSON.stringify(deviceDataForPrisma, null, 2))
 
         const device = await prisma.device.create({
           data: {

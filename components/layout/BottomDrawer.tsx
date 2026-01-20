@@ -22,6 +22,7 @@ import { useZones } from '@/lib/ZoneContext'
 import { useRules } from '@/lib/RuleContext'
 import Link from 'next/link'
 import { FaultCategory, assignFaultCategory } from '@/lib/faultDefinitions'
+import { useZoomContext } from '@/lib/ZoomContext'
 
 interface BottomDrawerProps {
   children?: React.ReactNode
@@ -47,12 +48,13 @@ export function BottomDrawer({ children }: BottomDrawerProps) {
   const { zones } = useZones()
   const { rules } = useRules()
   const router = useRouter()
-  
+  const { zoomLevel, interactionHint, modeHint } = useZoomContext()
+
   // Track if component is mounted (client-side only)
   useEffect(() => {
     setIsMounted(true)
   }, [])
-  
+
   // Get recent notifications (show more for horizontal scroll)
   const recentNotifications = notifications.slice(0, 10)
 
@@ -65,7 +67,7 @@ export function BottomDrawer({ children }: BottomDrawerProps) {
       return `${devices.length.toLocaleString()} device${devices.length !== 1 ? 's' : ''} found`
     }
     if (pathname?.startsWith('/faults')) {
-      const faults = devices.filter(d => 
+      const faults = devices.filter(d =>
         d.status === 'missing' || d.status === 'offline' || (d.battery !== undefined && d.battery < 20)
       ).length
       return `${faults} fault${faults !== 1 ? 's' : ''} detected`
@@ -121,7 +123,7 @@ export function BottomDrawer({ children }: BottomDrawerProps) {
           const currentTime = Date.now()
           const timeDiff = currentTime - lastClickTime.current
           const yDiff = Math.abs(e.clientY - lastClickY.current)
-          
+
           // Check for double-click (within 300ms and within 50px vertical)
           if (timeDiff > 0 && timeDiff < 300 && yDiff < 50) {
             // Double-click detected - toggle
@@ -142,18 +144,35 @@ export function BottomDrawer({ children }: BottomDrawerProps) {
         className="w-full h-12 flex items-center justify-between px-4 md:px-6 hover:bg-[var(--color-surface-subtle)] transition-colors cursor-pointer"
         title={isExpanded ? "Click or double-click to collapse" : "Click or double-click to expand"}
       >
+
+
         <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
           <span className="text-sm font-medium text-[var(--color-text)] whitespace-nowrap">
             Status
           </span>
-          {/* Page-specific status */}
-          {pageStatus && (
-            <span className="text-xs text-[var(--color-text-muted)] truncate hidden sm:inline">
-              {pageStatus}
+
+          {/* Interaction/Mode Hints take priority over Page Status */}
+          {(interactionHint || modeHint) ? (
+            <span className="text-xs font-medium text-[var(--color-primary)] truncate transition-all duration-300">
+              {interactionHint || modeHint}
+            </span>
+          ) : (
+            pageStatus && (
+              <span className="text-xs text-[var(--color-text-muted)] truncate hidden sm:inline">
+                {pageStatus}
+              </span>
+            )
+          )}
+
+          {/* Zoom Level - Only on map page */}
+          {pathname?.startsWith('/map') && (
+            <span className="text-xs text-[var(--color-text-muted)] border-l border-[var(--color-border-subtle)] pl-2 ml-2 hidden sm:inline opacity-70">
+              {zoomLevel}%
             </span>
           )}
+
           {unreadCount > 0 && (
-            <span className="text-xs text-[var(--color-primary)] whitespace-nowrap">
+            <span className="text-xs text-[var(--color-primary)] whitespace-nowrap ml-auto md:ml-0">
               • {unreadCount} new{unreadCount !== 1 ? 's' : ''}
             </span>
           )}
@@ -178,14 +197,14 @@ export function BottomDrawer({ children }: BottomDrawerProps) {
                       const Icon = typeIcons[notification.type] || AlertTriangle
                       const timeAgo = Math.floor((Date.now() - notification.timestamp.getTime()) / (1000 * 60))
                       const timeText = timeAgo < 1 ? 'Just now' : timeAgo < 60 ? `${timeAgo}m` : `${Math.floor(timeAgo / 60)}h`
-                      
+
                       return (
                         <div
                           key={notification.id}
                           className={`
                             w-56 sm:w-64 flex-shrink-0 p-3 rounded-lg border transition-all cursor-pointer group
-                            ${notification.read 
-                              ? 'bg-[var(--color-surface-subtle)] border-[var(--color-border-subtle)]' 
+                            ${notification.read
+                              ? 'bg-[var(--color-surface-subtle)] border-[var(--color-border-subtle)]'
                               : 'bg-[var(--color-primary-soft)] border-[var(--color-primary)]/40'
                             }
                             hover:shadow-[var(--shadow-soft)] hover:border-[var(--color-primary)]/50
@@ -213,17 +232,17 @@ export function BottomDrawer({ children }: BottomDrawerProps) {
                                 <X size={12} className="text-[var(--color-text-muted)]" />
                               </button>
                             </div>
-                            
+
                             {/* Title */}
                             <h4 className={`text-xs font-semibold mb-1.5 line-clamp-2 leading-snug ${notification.read ? 'text-[var(--color-text)]' : 'text-[var(--color-text)]'}`}>
                               {notification.title}
                             </h4>
-                            
+
                             {/* Message */}
                             <p className="text-xs text-[var(--color-text-muted)] line-clamp-3 mb-2 flex-1 leading-relaxed">
                               {notification.message}
                             </p>
-                            
+
                             {/* Footer with time and unread indicator */}
                             <div className="flex items-center justify-between mt-auto pt-2 border-t border-[var(--color-border-subtle)]">
                               <span className="text-xs text-[var(--color-text-soft)]">
