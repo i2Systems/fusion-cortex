@@ -65,6 +65,10 @@ Fusion/Cortex is **not**:
 │   ├── bacnet/            # BACnet mapping components
 │   ├── stories/           # Storybook components
 │   └── shared/            # Shared components
+│       ├── FocusedObjectModal.tsx  # Reusable modal for detailed entity views
+│       ├── FocusedModalTabs.tsx   # Tab navigation for focused modals
+│       ├── ErrorBoundary.tsx      # Error recovery component
+│       └── PanelEmptyState.tsx    # Empty state component
 ├── server/
 │   └── trpc/              # tRPC setup & routers
 │       ├── routers/       # Feature-specific routers
@@ -76,8 +80,14 @@ Fusion/Cortex is **not**:
     ├── ZoneContext.tsx    # Zone state management
     ├── RuleContext.tsx    # Rule state management
     ├── SiteContext.tsx   # Multi-site management
+    ├── ZoomContext.tsx   # Zoom state and interaction hints
+    ├── ToastContext.tsx  # Toast notification system
     ├── mockData.ts        # Mock data generators
-    └── siteData.ts       # Site-specific data generation
+    ├── siteData.ts       # Site-specific data generation
+    └── hooks/
+        ├── useErrorHandler.ts  # Centralized error handling
+        ├── useDeviceMutations.ts  # Device mutation helpers
+        └── useUndoable.ts        # Undo/redo functionality
 ```
 
 ## 🎨 Design System
@@ -206,12 +216,14 @@ The app uses a **main + panel** system:
 - Map highlight of device location
 - I2QR details: build date, CCT, warranty, parts list
 - Empty state with actions: Add Device Manually, Scan QR Code, Import/Export List
+- Focused modal view with tabs (Overview, Metrics, History, Related)
 - Site-scoped device data
 
 ### 7. Faults / Health
 - Summary counts (missing, offline, duplicates)
 - Click to see filtered device table
 - Detailed device info in right panel
+- Focused modal view with comprehensive fault details
 - Site-scoped fault data
 
 ### 8. Firmware Management
@@ -408,6 +420,64 @@ See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for complete deployment guide to Vercel
 - **[SEEDING.md](./SEEDING.md)** - Database seeding guide
 - **[SUPABASE_SETUP.md](./SUPABASE_SETUP.md)** - Supabase storage and database setup
 - **[EXPORT_DATA.md](./EXPORT_DATA.md)** - Exporting zones and device positions
+
+## 🎨 UI Components & Patterns
+
+### Focused Object Modal System
+
+The app uses a **Focused Object Modal** pattern for detailed entity views. This provides a consistent, tabbed interface for viewing comprehensive information about devices, zones, faults, and sites.
+
+**Components:**
+- `FocusedObjectModal` - Reusable modal shell with tabs
+- `FocusedModalTabs` - Tab navigation component
+- Focused content components:
+  - `DeviceFocusedContent` - Device details with Overview, Metrics, History, Related tabs
+  - `ZoneFocusedContent` - Zone details with comprehensive information
+  - `FaultFocusedContent` - Fault details and resolution
+  - `SiteFocusedContent` - Site overview and statistics
+
+**Usage Pattern:**
+```typescript
+<FocusedObjectModal
+  isOpen={isOpen}
+  onClose={onClose}
+  title="Device ID"
+  subtitle="Device Type • Serial Number"
+  tabs={[
+    { id: 'overview', label: 'Overview' },
+    { id: 'metrics', label: 'Metrics' },
+    { id: 'history', label: 'History' },
+    { id: 'related', label: 'Related' },
+  ]}
+>
+  {(activeTab) => <TabContent activeTab={activeTab} />}
+</FocusedObjectModal>
+```
+
+### Error Handling
+
+The app includes centralized error handling via the `useErrorHandler` hook:
+
+```typescript
+const { handleError, handleWarning, handleSuccess } = useErrorHandler()
+
+try {
+  await saveSomething()
+  handleSuccess('Saved successfully')
+} catch (error) {
+  handleError(error, { title: 'Failed to save' })
+}
+```
+
+The hook automatically:
+- Parses errors into user-friendly messages
+- Categorizes errors (network, auth, validation, server)
+- Shows toast notifications
+- Logs to console for debugging
+
+### Error Boundary
+
+The `ErrorBoundary` component provides error recovery at the component tree level, preventing the entire app from crashing when errors occur.
 
 ## 🎯 Non-Goals
 

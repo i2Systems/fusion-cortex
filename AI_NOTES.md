@@ -83,6 +83,81 @@ export function MyComponent() {
 }
 ```
 
+### Error Handling Pattern
+
+Always use the `useErrorHandler` hook for consistent error handling:
+
+```typescript
+'use client'
+import { useErrorHandler } from '@/lib/hooks/useErrorHandler'
+
+export function MyComponent() {
+  const { handleError, handleSuccess, handleWarning } = useErrorHandler()
+  
+  const handleSave = async () => {
+    try {
+      await saveSomething()
+      handleSuccess('Saved successfully')
+    } catch (error) {
+      handleError(error, { title: 'Failed to save' })
+    }
+  }
+}
+```
+
+The hook automatically:
+- Parses errors into user-friendly messages
+- Categorizes errors (network, auth, validation, server)
+- Shows toast notifications
+- Logs to console for debugging
+
+### Focused Object Modal Pattern
+
+Use `FocusedObjectModal` for detailed entity views with tabs:
+
+```typescript
+'use client'
+import { FocusedObjectModal } from '@/components/shared/FocusedObjectModal'
+import { TabDefinition } from '@/components/shared/FocusedModalTabs'
+
+export function MyFocusedView({ isOpen, onClose, entity }) {
+  const tabs: TabDefinition[] = [
+    { id: 'overview', label: 'Overview', icon: Info },
+    { id: 'metrics', label: 'Metrics', icon: BarChart },
+    { id: 'history', label: 'History', icon: Clock },
+    { id: 'related', label: 'Related', icon: Link },
+  ]
+  
+  return (
+    <FocusedObjectModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={entity.name}
+      subtitle={entity.description}
+      tabs={tabs}
+    >
+      {(activeTab) => {
+        switch (activeTab) {
+          case 'overview':
+            return <OverviewTab entity={entity} />
+          case 'metrics':
+            return <MetricsTab entity={entity} />
+          // ... other tabs
+        }
+      }}
+    </FocusedObjectModal>
+  )
+}
+```
+
+**Focused Content Components:**
+- `DeviceFocusedContent` - Device details modal
+- `ZoneFocusedContent` - Zone details modal
+- `FaultFocusedContent` - Fault details modal
+- `SiteFocusedContent` - Site details modal
+
+These components follow a consistent pattern with Overview, Metrics, History, and Related tabs.
+
 ### Styling Components
 
 ```typescript
@@ -115,7 +190,10 @@ export function MyComponent() {
 - **Pages**: `app/(main)/[section]/page.tsx`
 - **Layout**: `components/layout/` (MainNav, TopBar, ContextPanel, etc.)
 - **Features**: `components/[feature]/` (map, zones, rules, lookup, etc.)
-- **Contexts**: `lib/[Feature]Context.tsx` (DeviceContext, ZoneContext, RuleContext, SiteContext)
+- **Shared Components**: `components/shared/` (FocusedObjectModal, ErrorBoundary, etc.)
+- **Focused Content**: `components/[feature]/[Feature]FocusedContent.tsx` (DeviceFocusedContent, ZoneFocusedContent, etc.)
+- **Contexts**: `lib/[Feature]Context.tsx` (DeviceContext, ZoneContext, RuleContext, SiteContext, ZoomContext, ToastContext)
+- **Hooks**: `lib/hooks/` (useErrorHandler, useDeviceMutations, useUndoable)
 - **tRPC**: `server/trpc/routers/[feature].ts` → `server/trpc/routers/_app.ts`
 - **Schema**: `prisma/schema.prisma`
 - **Tokens**: `app/globals.css` (`:root` section)
@@ -176,3 +254,6 @@ When adding features:
 - ✅ Plain language, no jargon
 - ✅ Site-aware if dealing with data
 - ✅ Reloads when active site changes
+- ✅ Uses `useErrorHandler` for error handling
+- ✅ Uses `FocusedObjectModal` for detailed entity views
+- ✅ Wrapped in `ErrorBoundary` for error recovery
