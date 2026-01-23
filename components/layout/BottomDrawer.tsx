@@ -17,12 +17,12 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { useNotifications } from '@/lib/NotificationContext'
 import { useRouter } from 'next/navigation'
-import { useDevices } from '@/lib/DeviceContext'
-import { useZones } from '@/lib/ZoneContext'
-import { useRules } from '@/lib/RuleContext'
+import { useDevices } from '@/lib/DomainContext'
+import { useZones } from '@/lib/DomainContext'
+import { useRules } from '@/lib/DomainContext'
 import Link from 'next/link'
 import { FaultCategory, assignFaultCategory } from '@/lib/faultDefinitions'
-import { useZoomContext } from '@/lib/ZoomContext'
+import { useZoomContext } from '@/lib/MapContext'
 
 interface BottomDrawerProps {
   children?: React.ReactNode

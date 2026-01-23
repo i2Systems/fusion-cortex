@@ -120,11 +120,12 @@ export function FaultDetailsPanel({ fault, devices = [], allFaults = [], onAddNe
               <div className="space-y-4">
                 {/* Device Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+                  <label htmlFor="fault-device-select" className="block text-sm font-medium text-[var(--color-text)] mb-2">
                     Device
                   </label>
                   <div className="relative">
                     <select
+                      id="fault-device-select"
                       value={selectedDeviceId}
                       onChange={(e) => setSelectedDeviceId(e.target.value)}
                       className="w-full px-3 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] appearance-none"
@@ -145,7 +146,7 @@ export function FaultDetailsPanel({ fault, devices = [], allFaults = [], onAddNe
                   <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                     Fault Category
                   </label>
-                  <div className="space-y-2">
+                  <div role="radiogroup" aria-label="Fault Category" className="space-y-2">
                     {(Object.keys(faultCategories) as FaultCategory[]).map((category) => {
                       const categoryInfo = faultCategories[category]
                       const isSelected = selectedCategory === category
@@ -194,37 +195,38 @@ export function FaultDetailsPanel({ fault, devices = [], allFaults = [], onAddNe
                     })}
                   </div>
                 </div>
+              </div>
 
-                {/* Custom Description (Optional) */}
-                <div>
-                  <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
-                    Description (Optional)
-                  </label>
-                  <textarea
-                    value={customDescription}
-                    onChange={(e) => setCustomDescription(e.target.value)}
-                    placeholder="Leave empty to use default description for this category..."
-                    rows={3}
-                    className="w-full px-3 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-soft)] focus:outline-none focus:border-[var(--color-primary)] resize-none"
-                  />
-                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                    If left empty, a default description will be generated based on the selected category.
-                  </p>
-                </div>
+              {/* Custom Description (Optional) */}
+              <div>
+                <label htmlFor="fault-description-textarea" className="block text-sm font-medium text-[var(--color-text)] mb-2">
+                  Description (Optional)
+                </label>
+                <textarea
+                  id="fault-description-textarea"
+                  value={customDescription}
+                  onChange={(e) => setCustomDescription(e.target.value)}
+                  placeholder="Leave empty to use default description for this category..."
+                  rows={3}
+                  className="w-full px-3 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-soft)] focus:outline-none focus:border-[var(--color-primary)] resize-none"
+                />
+                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                  If left empty, a default description will be generated based on the selected category.
+                </p>
+              </div>
 
-                <div className="pt-2">
-                  <Button
-                    onClick={handleSubmitNewFault}
-                    disabled={!selectedDeviceId || !selectedCategory}
-                    variant="primary"
-                    className="w-full flex items-center justify-center gap-2"
-                    title="Add Fault"
-                  >
-                    <Plus size={16} />
-                    <span className="hidden md:inline">Add Fault</span>
-                    <span className="md:hidden">Add</span>
-                  </Button>
-                </div>
+              <div className="pt-2">
+                <Button
+                  onClick={handleSubmitNewFault}
+                  disabled={!selectedDeviceId || !selectedCategory}
+                  variant="primary"
+                  className="w-full flex items-center justify-center gap-2"
+                  title="Add Fault"
+                >
+                  <Plus size={16} />
+                  <span className="hidden md:inline">Add Fault</span>
+                  <span className="md:hidden">Add</span>
+                </Button>
               </div>
             </div>
           )}
@@ -451,11 +453,12 @@ export function FaultDetailsPanel({ fault, devices = [], allFaults = [], onAddNe
           <div className="space-y-4">
             {/* Device Selection */}
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+              <label htmlFor="fault-edit-device-select" className="block text-sm font-medium text-[var(--color-text)] mb-2">
                 Device
               </label>
               <div className="relative">
                 <select
+                  id="fault-edit-device-select"
                   value={selectedDeviceId || fault.device.id}
                   onChange={(e) => setSelectedDeviceId(e.target.value)}
                   className="w-full px-3 py-2 bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] appearance-none"
@@ -530,10 +533,11 @@ export function FaultDetailsPanel({ fault, devices = [], allFaults = [], onAddNe
 
             {/* Custom Description (Optional) */}
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+              <label htmlFor="fault-edit-description-textarea" className="block text-sm font-medium text-[var(--color-text)] mb-2">
                 Description (Optional)
               </label>
               <textarea
+                id="fault-edit-description-textarea"
                 value={customDescription}
                 onChange={(e) => setCustomDescription(e.target.value)}
                 placeholder="Leave empty to use default description for this category..."

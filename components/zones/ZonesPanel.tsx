@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/Button'
 import { ZoneFocusedModal } from './ZoneFocusedContent'
 import { Device } from '@/lib/mockData'
 import { Rule } from '@/lib/mockRules'
+import { ConfirmationModal } from '@/components/shared/ConfirmationModal'
 
 interface Zone {
   id: string
@@ -143,6 +144,8 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
   const [colors, setColors] = useState<Record<string, string>>({})
   const [isEditing, setIsEditing] = useState(false)
   const [showFocusedModal, setShowFocusedModal] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false)
   const [editFormData, setEditFormData] = useState<{ name: string; description: string; color: string }>({
     name: '',
     description: '',
@@ -285,26 +288,25 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
 
   const handleBulkDelete = useCallback(() => {
     if (selectedZoneIds.size === 0) return
+    setIsBulkDeleteModalOpen(true)
+  }, [selectedZoneIds.size])
 
-    const zoneNames = zones
-      .filter(z => selectedZoneIds.has(z.id))
-      .map(z => z.name)
-      .join(', ')
+  const handleConfirmBulkDelete = useCallback(() => {
+    if (selectedZoneIds.size === 0) return
 
-    if (confirm(`Are you sure you want to delete ${selectedZoneIds.size} zone(s)?\n\n${zoneNames}`)) {
-      if (onDeleteZones) {
-        onDeleteZones(Array.from(selectedZoneIds))
-      } else if (onDeleteZone) {
-        // Fallback to individual delete if bulk delete not available
-        selectedZoneIds.forEach(zoneId => onDeleteZone(zoneId))
-      }
-      setSelectedZoneIds(new Set())
-      // Clear single selection if it was deleted
-      if (selectedZoneId && selectedZoneIds.has(selectedZoneId)) {
-        onZoneSelect?.(null)
-      }
+    if (onDeleteZones) {
+      onDeleteZones(Array.from(selectedZoneIds))
+    } else if (onDeleteZone) {
+      // Fallback to individual delete if bulk delete not available
+      selectedZoneIds.forEach(zoneId => onDeleteZone(zoneId))
     }
-  }, [selectedZoneIds, zones, onDeleteZones, onDeleteZone, selectedZoneId, onZoneSelect])
+    setSelectedZoneIds(new Set())
+    // Clear single selection if it was deleted
+    if (selectedZoneId && selectedZoneIds.has(selectedZoneId)) {
+      onZoneSelect?.(null)
+    }
+    setIsBulkDeleteModalOpen(false)
+  }, [selectedZoneIds, onDeleteZones, onDeleteZone, selectedZoneId, onZoneSelect])
 
   const handleCreateZone = useCallback(() => {
     if (onCreateZone) {
@@ -317,10 +319,14 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
 
   const handleDeleteSelectedZone = useCallback(() => {
     if (!selectedZone || !onDeleteZone) return
-    if (confirm(`Are you sure you want to delete "${selectedZone.name}"?`)) {
-      onDeleteZone(selectedZone.id)
-      onZoneSelect?.(null)
-    }
+    setIsDeleteModalOpen(true)
+  }, [selectedZone, onDeleteZone])
+
+  const handleConfirmDeleteZone = useCallback(() => {
+    if (!selectedZone || !onDeleteZone) return
+    onDeleteZone(selectedZone.id)
+    onZoneSelect?.(null)
+    setIsDeleteModalOpen(false)
   }, [selectedZone, onDeleteZone, onZoneSelect])
 
   const handleContainerClick = useCallback((e: React.MouseEvent) => {
@@ -637,6 +643,34 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
           allZones={zones}
         />
       )}
+
+      {/* Confirmation Modals */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDeleteZone}
+        title="Delete Zone"
+        message={selectedZone ? `Are you sure you want to delete "${selectedZone.name}"? This action cannot be undone.` : ''}
+        variant="danger"
+        confirmLabel="Delete Zone"
+      />
+
+      <ConfirmationModal
+        isOpen={isBulkDeleteModalOpen}
+        onClose={() => setIsBulkDeleteModalOpen(false)}
+        onConfirm={handleConfirmBulkDelete}
+        title="Delete Zones"
+        message={
+          selectedZoneIds.size > 0
+            ? `Are you sure you want to delete ${selectedZoneIds.size} zone(s)?\n\n${zones
+                .filter(z => selectedZoneIds.has(z.id))
+                .map(z => z.name)
+                .join(', ')}\n\nThis action cannot be undone.`
+            : ''
+        }
+        variant="danger"
+        confirmLabel={`Delete ${selectedZoneIds.size} Zone(s)`}
+      />
     </div>
   )
 }

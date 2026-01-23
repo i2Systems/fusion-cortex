@@ -12,6 +12,7 @@ import { FloorPlanImage, type ImageBounds } from '@/components/map/FloorPlanImag
 
 import { Rule } from '@/lib/mockRules'
 import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
+import { getCanvasColors, getRgbaVariable } from '@/lib/canvasColors'
 
 interface DevicePoint {
   id: string
@@ -73,13 +74,7 @@ export function RulesZoneCanvas({
       }
     }
   }, [imageBounds, dimensions])
-  const [colors, setColors] = useState({
-    primary: '#4c7dff',
-    accent: '#f97316',
-    success: '#22c55e',
-    muted: '#9ca3af',
-    text: '#ffffff',
-  })
+  const [colors, setColors] = useState<ReturnType<typeof getCanvasColors>>(getCanvasColors())
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -93,15 +88,7 @@ export function RulesZoneCanvas({
     }
 
     const updateColors = () => {
-      const root = document.documentElement
-      const computedStyle = getComputedStyle(root)
-      setColors({
-        primary: computedStyle.getPropertyValue('--color-primary').trim() || '#4c7dff',
-        accent: computedStyle.getPropertyValue('--color-accent').trim() || '#f97316',
-        success: computedStyle.getPropertyValue('--color-success').trim() || '#22c55e',
-        muted: computedStyle.getPropertyValue('--color-text-muted').trim() || '#9ca3af',
-        text: computedStyle.getPropertyValue('--color-text').trim() || '#ffffff',
-      })
+      setColors(getCanvasColors())
     }
 
     updateDimensions()
@@ -297,7 +284,7 @@ export function RulesZoneCanvas({
                   y={deviceCoords.y}
                   radius={3}
                   fill={getDeviceColor(device.type)}
-                  stroke="rgba(255,255,255,0.2)"
+                  stroke={getRgbaVariable('--color-text', 0.2)}
                   strokeWidth={1}
                   opacity={0.5}
                   listening={false}

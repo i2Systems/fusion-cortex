@@ -15,6 +15,7 @@
 import { useState } from 'react'
 import { Plus, MapPin, ZoomIn, ChevronDown, ChevronUp, X } from 'lucide-react'
 import type { Location } from '@/lib/locationStorage'
+import { ConfirmationModal } from '@/components/shared/ConfirmationModal'
 
 interface LocationsMenuProps {
   locations: Location[]
@@ -35,6 +36,8 @@ export function LocationsMenu({
 }: LocationsMenuProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [locationToDelete, setLocationToDelete] = useState<Location | null>(null)
 
   const baseLocations = locations.filter(loc => loc.type === 'base')
   const currentLocation = locations.find(loc => loc.id === currentLocationId)
@@ -99,9 +102,8 @@ export function LocationsMenu({
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
-                                if (confirm(`Delete location "${location.name}"?`)) {
-                                  onDeleteLocation(location.id)
-                                }
+                                setLocationToDelete(location)
+                                setIsDeleteModalOpen(true)
                               }}
                               className="ml-2 p-1 rounded hover:bg-[var(--color-danger-soft)] text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors"
                               title="Delete location"
@@ -181,6 +183,26 @@ export function LocationsMenu({
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false)
+          setLocationToDelete(null)
+        }}
+        onConfirm={() => {
+          if (locationToDelete && onDeleteLocation) {
+            onDeleteLocation(locationToDelete.id)
+            setIsDeleteModalOpen(false)
+            setLocationToDelete(null)
+          }
+        }}
+        title="Delete Location"
+        message={locationToDelete ? `Are you sure you want to delete location "${locationToDelete.name}"? This action cannot be undone.` : ''}
+        variant="danger"
+        confirmLabel="Delete Location"
+      />
     </div>
   )
 }

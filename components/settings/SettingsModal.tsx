@@ -11,15 +11,13 @@
 
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { X, Search, Settings, User, Bell, Shield, Palette, Database, Info, Type, Wrench, BookOpen } from 'lucide-react'
-import { useAuth } from '@/lib/auth'
-import { useTheme } from '@/lib/theme'
-import { useRole } from '@/lib/role'
-import { useFont, FontFamily, FontSize } from '@/lib/FontContext'
-import { useI18n, languageNames, Language } from '@/lib/i18n'
-import { useAdvancedSettings } from '@/lib/AdvancedSettingsContext'
+import { useAuth, useRole } from '@/lib/auth'
+import { useTheme, useFont, useI18n, useAdvancedSettings, languageNames, type FontFamily, type FontSize, type Language } from '@/lib/AppearanceContext'
 import { Button } from '@/components/ui/Button'
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
+
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -45,6 +43,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { enableSVGExtraction, setEnableSVGExtraction } = useAdvancedSettings()
   const [activeSection, setActiveSection] = useState(isAuthenticated ? 'profile' : 'appearance')
   const [searchQuery, setSearchQuery] = useState('')
+  const modalRef = useRef<HTMLDivElement>(null)
+  const titleId = `settings-modal-title-${Math.random().toString(36).substr(2, 9)}`
+
+  // Focus trap
+  useFocusTrap({
+    isOpen,
+    onClose,
+    containerRef: modalRef,
+    enabled: isOpen,
+  })
 
   // Filter sections based on authentication status
   const availableSections = useMemo(() => {
@@ -78,9 +86,15 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     <div
       className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-[var(--z-modal)]"
       onClick={onClose}
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
+      style={{ backgroundColor: 'var(--color-backdrop)' }}
+      aria-hidden="true"
     >
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className="bg-[var(--color-surface)] backdrop-blur-xl rounded-[var(--radius-2xl)] shadow-[var(--shadow-strong)] w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden border border-[var(--color-primary)]/30"
         style={{ boxShadow: 'var(--glow-modal)' }}
         onClick={(e) => e.stopPropagation()}
@@ -92,13 +106,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <span className="text-[var(--color-text-on-primary)] font-bold text-xl">F</span>
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-[var(--color-text)]">{t('settings')}</h2>
+              <h2 id={titleId} className="text-2xl font-bold text-[var(--color-text)]">{t('settings')}</h2>
               <p className="text-xs text-[var(--color-text-muted)]">Fusion</p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors text-[var(--color-text-muted)]"
+            aria-label="Close dialog"
           >
             <X size={20} />
           </button>
@@ -112,11 +127,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
             />
             <input
+              id="settings-search-input"
               type="text"
               placeholder={t('search') + '...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-soft)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
+              aria-label="Search settings"
             />
           </div>
         </div>
@@ -169,27 +186,29 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     {isAuthenticated ? (
                       <>
                         <div>
-                          <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+                          <label htmlFor="settings-profile-name" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
                             Name
                           </label>
                           <input
+                            id="settings-profile-name"
                             type="text"
                             defaultValue={user?.name || ''}
                             className="w-full px-4 py-2.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+                          <label htmlFor="settings-profile-email" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
                             Email
                           </label>
                           <input
+                            id="settings-profile-email"
                             type="email"
                             defaultValue={user?.email || ''}
                             className="w-full px-4 py-2.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+                          <label htmlFor="settings-profile-role" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
                             Role
                           </label>
                           <div className="px-4 py-2.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-[var(--color-text-muted)]">
@@ -210,18 +229,18 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 {activeSection === 'notifications' && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-4 bg-[var(--color-surface-subtle)] rounded-lg">
-                      <div>
+                      <label htmlFor="settings-notifications-email" className="flex-1 cursor-pointer">
                         <div className="text-sm font-medium text-[var(--color-text)]">Email Notifications</div>
                         <div className="text-xs text-[var(--color-text-muted)]">Receive email updates</div>
-                      </div>
-                      <input type="checkbox" defaultChecked className="rounded" />
+                      </label>
+                      <input id="settings-notifications-email" type="checkbox" defaultChecked className="rounded" />
                     </div>
                     <div className="flex items-center justify-between p-4 bg-[var(--color-surface-subtle)] rounded-lg">
-                      <div>
+                      <label htmlFor="settings-notifications-push" className="flex-1 cursor-pointer">
                         <div className="text-sm font-medium text-[var(--color-text)]">Push Notifications</div>
                         <div className="text-xs text-[var(--color-text-muted)]">Browser push notifications</div>
-                      </div>
-                      <input type="checkbox" className="rounded" />
+                      </label>
+                      <input id="settings-notifications-push" type="checkbox" className="rounded" />
                     </div>
                   </div>
                 )}
@@ -231,19 +250,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     {isAuthenticated ? (
                       <>
                         <div>
-                          <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+                          <label htmlFor="settings-security-current-password" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
                             Current Password
                           </label>
                           <input
+                            id="settings-security-current-password"
                             type="password"
                             className="w-full px-4 py-2.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+                          <label htmlFor="settings-security-new-password" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
                             New Password
                           </label>
                           <input
+                            id="settings-security-new-password"
                             type="password"
                             className="w-full px-4 py-2.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
                           />
@@ -268,9 +289,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-3">
                         {t('theme')}
                       </label>
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                      <div className="space-y-2" role="radiogroup" aria-labelledby="settings-theme-label">
+                        <label htmlFor="settings-theme-dark" className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
                           <input
+                            id="settings-theme-dark"
                             type="radio"
                             name="theme"
                             value="dark"
@@ -280,8 +302,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           />
                           <span className="text-sm text-[var(--color-text)]">Dark</span>
                         </label>
-                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                        <label htmlFor="settings-theme-light" className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
                           <input
+                            id="settings-theme-light"
                             type="radio"
                             name="theme"
                             value="light"
@@ -291,8 +314,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           />
                           <span className="text-sm text-[var(--color-text)]">Light</span>
                         </label>
-                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                        <label htmlFor="settings-theme-high-contrast" className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
                           <input
+                            id="settings-theme-high-contrast"
                             type="radio"
                             name="theme"
                             value="high-contrast"
@@ -302,8 +326,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           />
                           <span className="text-sm text-[var(--color-text)] font-semibold">High Contrast</span>
                         </label>
-                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                        <label htmlFor="settings-theme-warm-night" className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
                           <input
+                            id="settings-theme-warm-night"
                             type="radio"
                             name="theme"
                             value="warm-night"
@@ -313,8 +338,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           />
                           <span className="text-sm text-[var(--color-text)]">Warm Night</span>
                         </label>
-                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                        <label htmlFor="settings-theme-warm-day" className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
                           <input
+                            id="settings-theme-warm-day"
                             type="radio"
                             name="theme"
                             value="warm-day"
@@ -324,8 +350,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           />
                           <span className="text-sm text-[var(--color-text)]">Warm Day</span>
                         </label>
-                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                        <label htmlFor="settings-theme-glass-neumorphism" className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
                           <input
+                            id="settings-theme-glass-neumorphism"
                             type="radio"
                             name="theme"
                             value="glass-neumorphism"
@@ -335,8 +362,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           />
                           <span className="text-sm text-[var(--color-text)]">Glass Neumorphism</span>
                         </label>
-                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                        <label htmlFor="settings-theme-business-fluent" className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
                           <input
+                            id="settings-theme-business-fluent"
                             type="radio"
                             name="theme"
                             value="business-fluent"
@@ -346,8 +374,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           />
                           <span className="text-sm text-[var(--color-text)]">Business Fluent</span>
                         </label>
-                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                        <label htmlFor="settings-theme-on-brand" className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
                           <input
+                            id="settings-theme-on-brand"
                             type="radio"
                             name="theme"
                             value="on-brand"
@@ -357,8 +386,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           />
                           <span className="text-sm text-[var(--color-text)]">On Brand</span>
                         </label>
-                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                        <label htmlFor="settings-theme-on-brand-glass" className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
                           <input
+                            id="settings-theme-on-brand-glass"
                             type="radio"
                             name="theme"
                             value="on-brand-glass"
@@ -373,11 +403,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
                     {/* Font Family */}
                     <div>
-                      <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-3 flex items-center gap-2">
+                      <label htmlFor="settings-appearance-font-family" className="block text-sm font-medium text-[var(--color-text-muted)] mb-3 flex items-center gap-2">
                         <Type size={16} />
                         {t('fontFamily')}
                       </label>
                       <select
+                        id="settings-appearance-font-family"
                         value={fontFamily}
                         onChange={(e) => setFontFamily(e.target.value as FontFamily)}
                         className="w-full px-4 py-2.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
@@ -402,10 +433,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
                     {/* Font Size */}
                     <div>
-                      <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-3">
+                      <label htmlFor="settings-appearance-font-size" className="block text-sm font-medium text-[var(--color-text-muted)] mb-3">
                         {t('fontSize')}
                       </label>
                       <select
+                        id="settings-appearance-font-size"
                         value={fontSize}
                         onChange={(e) => setFontSize(e.target.value as FontSize)}
                         className="w-full px-4 py-2.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
@@ -421,10 +453,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
                     {/* Language */}
                     <div>
-                      <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-3">
+                      <label htmlFor="settings-appearance-language" className="block text-sm font-medium text-[var(--color-text-muted)] mb-3">
                         {t('language')}
                       </label>
                       <select
+                        id="settings-appearance-language"
                         value={language}
                         onChange={(e) => setLanguage(e.target.value as Language)}
                         className="w-full px-4 py-2.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)] transition-all"
@@ -442,9 +475,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-3">
                         {t('role')}
                       </label>
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                      <div className="space-y-2" role="radiogroup" aria-labelledby="settings-role-label">
+                        <label htmlFor="settings-role-admin" className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
                           <input
+                            id="settings-role-admin"
                             type="radio"
                             name="role"
                             value="Admin"
@@ -454,8 +488,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           />
                           <span className="text-sm text-[var(--color-text)]">Admin</span>
                         </label>
-                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                        <label htmlFor="settings-role-manager" className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
                           <input
+                            id="settings-role-manager"
                             type="radio"
                             name="role"
                             value="Manager"
@@ -465,8 +500,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           />
                           <span className="text-sm text-[var(--color-text)]">Manager</span>
                         </label>
-                        <label className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                        <label htmlFor="settings-role-technician" className="flex items-center gap-3 p-3 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
                           <input
+                            id="settings-role-technician"
                             type="radio"
                             name="role"
                             value="Technician"
@@ -488,8 +524,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       <div className="flex items-center justify-between mb-3">
                         <div className="text-sm font-medium text-[var(--color-text)]">Database Environment</div>
                         <div className={`px-2 py-1 rounded text-xs font-medium ${process.env.NEXT_PUBLIC_DB_ENV === 'cloud'
-                            ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
-                            : 'bg-[var(--color-success)]/20 text-[var(--color-success)]'
+                          ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+                          : 'bg-[var(--color-success)]/20 text-[var(--color-success)]'
                           }`}>
                           {process.env.NEXT_PUBLIC_DB_ENV === 'cloud' ? '☁️ Cloud (Supabase)' : '💻 Local (Docker)'}
                         </div>
@@ -539,8 +575,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     <div>
                       <h4 className="text-sm font-medium text-[var(--color-text)] mb-3">PDF Processing</h4>
                       <div className="space-y-3">
-                        <label className="flex items-start gap-3 p-4 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+                        <label htmlFor="settings-advanced-svg-extraction" className="flex items-start gap-3 p-4 bg-[var(--color-surface-subtle)] rounded-lg cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
                           <input
+                            id="settings-advanced-svg-extraction"
                             type="checkbox"
                             checked={enableSVGExtraction}
                             onChange={(e) => setEnableSVGExtraction(e.target.checked)}

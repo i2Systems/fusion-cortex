@@ -28,12 +28,17 @@
     /* Orange-500 */
     --color-danger: #ef4444;
     /* Red-500 */
+    --color-danger-soft: rgba(239, 68, 68, 0.1);
+    --color-danger-text: #dc2626;
     --color-success: #10b981;
     /* Emerald-500 */
     --color-warning: #f59e0b;
     /* Amber-500 */
     --color-info: #3b82f6;
     /* Blue-500 */
+    
+    /* Overlay & backdrop colors */
+    --color-backdrop: rgba(0, 0, 0, 0.5);
 
     /* Text colors - Sharp Contrast */
     --color-text: #0f172a;
@@ -49,6 +54,13 @@
     --color-tooltip-border: var(--color-border-strong);
     --color-tooltip-text: var(--color-text);
     --color-tooltip-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+    /* Canvas-specific colors for Konva/Canvas rendering */
+    --color-fixture: var(--color-primary-strong);
+    --color-canvas-border: rgba(0, 0, 0, 0.2);
+    --color-canvas-selection-fill: rgba(37, 99, 235, 0.25);
+    --color-canvas-selection-stroke: rgba(37, 99, 235, 1);
+    --color-canvas-selection-shadow: rgba(37, 99, 235, 0.6);
 
     /* Shadows - Subtle Diffuse */
     --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.05);

@@ -7,6 +7,7 @@
 
 import { generateComponentsForFixture, generateWarrantyExpiry, isFixtureType } from './deviceUtils'
 import { DisplayDeviceType } from '@/lib/types'
+import { logger } from './logger'
 
 /**
  * Analyzes PDF data to determine if it contains light symbols
@@ -399,7 +400,7 @@ export async function detectLightsFromImage(
           })
         })
 
-      console.log(`Image detection found ${uniqueLights.length} potential light fixtures (vertical lines: ${verticalLines.length})`)
+      logger.info(`Image detection found ${uniqueLights.length} potential light fixtures (vertical lines: ${verticalLines.length})`)
       resolve(uniqueLights)
     }
 
@@ -426,14 +427,14 @@ export async function detectAllLights(
   if (vectorData && vectorData.paths.length > 0) {
     const vectorLights = detectLightsFromVectorData(vectorData, imageWidth, imageHeight)
     allLights.push(...vectorLights)
-    console.log(`Detected ${vectorLights.length} lights from vector data`)
+    logger.info(`Detected ${vectorLights.length} lights from vector data`)
   }
 
   // Fall back to image detection
   if (imageUrl && allLights.length === 0) {
     const imageLights = await detectLightsFromImage(imageUrl, imageWidth, imageHeight)
     allLights.push(...imageLights)
-    console.log(`Detected ${imageLights.length} lights from image analysis`)
+    logger.info(`Detected ${imageLights.length} lights from image analysis`)
   }
 
   // Remove duplicates and sort by confidence
@@ -448,7 +449,7 @@ export async function detectAllLights(
       })
     })
 
-  console.log(`Total unique lights detected: ${uniqueLights.length}`)
+  logger.info(`Total unique lights detected: ${uniqueLights.length}`)
   return uniqueLights
 }
 

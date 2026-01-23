@@ -13,7 +13,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { usePathname, useRouter } from 'next/navigation'
-import { useRole } from '@/lib/role'
+import { useRole } from '@/lib/auth'
 import { useSite } from '@/lib/SiteContext'
 import { useNotifications } from '@/lib/NotificationContext'
 import { ChevronDown, Bell } from 'lucide-react'

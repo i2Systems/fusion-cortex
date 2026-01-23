@@ -6,13 +6,14 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { trpc } from '@/lib/trpc/client'
 import { useSite } from '@/lib/SiteContext'
 import { ALL_DISPLAY_DEVICE_TYPES, getDisplayTypeLabel } from '@/lib/types'
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 
 interface CreateFirmwareCampaignModalProps {
   isOpen: boolean
@@ -26,6 +27,8 @@ export function CreateFirmwareCampaignModal({
   onSuccess,
 }: CreateFirmwareCampaignModalProps) {
   const { activeSiteId } = useSite()
+  const modalRef = useRef<HTMLDivElement>(null)
+  const titleId = `firmware-campaign-modal-title-${Math.random().toString(36).substr(2, 9)}`
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -48,6 +51,14 @@ export function CreateFirmwareCampaignModal({
         scheduledAt: '',
       })
     },
+  })
+
+  // Focus trap
+  useFocusTrap({
+    isOpen,
+    onClose,
+    containerRef: modalRef,
+    enabled: isOpen,
   })
 
   if (!isOpen) return null
@@ -85,23 +96,33 @@ export function CreateFirmwareCampaignModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" aria-hidden="true">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 backdrop-blur-sm"
+        style={{ backgroundColor: 'var(--color-backdrop)' }}
         onClick={onClose}
+        aria-hidden="true"
       />
 
       {/* Modal */}
-      <div className="relative bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border)] shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="relative bg-[var(--color-bg-elevated)] rounded-lg border border-[var(--color-border)] shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4"
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[var(--color-border-subtle)]">
-          <h2 className="text-xl font-semibold text-[var(--color-text)]">
+          <h2 id={titleId} className="text-xl font-semibold text-[var(--color-text)]">
             Create Firmware Campaign
           </h2>
           <button
             onClick={onClose}
             className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+            aria-label="Close dialog"
           >
             <X size={24} />
           </button>
@@ -111,10 +132,11 @@ export function CreateFirmwareCampaignModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+            <label htmlFor="firmware-campaign-name" className="block text-sm font-medium text-[var(--color-text)] mb-2">
               Campaign Name *
             </label>
             <Input
+              id="firmware-campaign-name"
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               placeholder="e.g., Q1 2024 Security Patch"
@@ -124,10 +146,11 @@ export function CreateFirmwareCampaignModal({
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+            <label htmlFor="firmware-campaign-description" className="block text-sm font-medium text-[var(--color-text)] mb-2">
               Description
             </label>
             <textarea
+              id="firmware-campaign-description"
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Optional description of this firmware update..."
@@ -138,10 +161,11 @@ export function CreateFirmwareCampaignModal({
 
           {/* Version */}
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+            <label htmlFor="firmware-campaign-version" className="block text-sm font-medium text-[var(--color-text)] mb-2">
               Firmware Version *
             </label>
             <Input
+              id="firmware-campaign-version"
               value={formData.version}
               onChange={(e) => setFormData(prev => ({ ...prev, version: e.target.value }))}
               placeholder="e.g., v2.1.3"
@@ -151,10 +175,11 @@ export function CreateFirmwareCampaignModal({
 
           {/* File URL */}
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+            <label htmlFor="firmware-campaign-file-url" className="block text-sm font-medium text-[var(--color-text)] mb-2">
               Firmware File URL (Optional)
             </label>
             <Input
+              id="firmware-campaign-file-url"
               type="url"
               value={formData.fileUrl}
               onChange={(e) => setFormData(prev => ({ ...prev, fileUrl: e.target.value }))}
@@ -171,9 +196,11 @@ export function CreateFirmwareCampaignModal({
               {ALL_DISPLAY_DEVICE_TYPES.map((deviceType) => (
                 <label
                   key={deviceType}
+                  htmlFor={`firmware-device-type-${deviceType}`}
                   className="flex items-center gap-2 p-2 rounded hover:bg-[var(--color-surface-subtle)] cursor-pointer"
                 >
                   <input
+                    id={`firmware-device-type-${deviceType}`}
                     type="checkbox"
                     checked={formData.deviceTypes.includes(deviceType)}
                     onChange={() => toggleDeviceType(deviceType)}
@@ -194,10 +221,11 @@ export function CreateFirmwareCampaignModal({
 
           {/* Scheduled At */}
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+            <label htmlFor="firmware-campaign-scheduled-at" className="block text-sm font-medium text-[var(--color-text)] mb-2">
               Schedule Update (Optional)
             </label>
             <Input
+              id="firmware-campaign-scheduled-at"
               type="datetime-local"
               value={formData.scheduledAt}
               onChange={(e) => setFormData(prev => ({ ...prev, scheduledAt: e.target.value }))}

@@ -8,10 +8,11 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { X } from 'lucide-react'
 import { DisplayDeviceType as DeviceType, isDisplayFixtureType as isFixtureType } from '@/lib/types'
 import { Button } from '@/components/ui/Button'
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 
 interface ManualDeviceEntryProps {
   isOpen: boolean
@@ -27,6 +28,15 @@ export function ManualDeviceEntry({ isOpen, onClose, onAdd }: ManualDeviceEntryP
   const [deviceId, setDeviceId] = useState('')
   const [serialNumber, setSerialNumber] = useState('')
   const [type, setType] = useState<DeviceType>('fixture-16ft-power-entry')
+  const modalRef = useRef<HTMLDivElement>(null)
+
+  // Focus trap for accessibility
+  useFocusTrap({
+    isOpen,
+    onClose,
+    containerRef: modalRef,
+    enabled: isOpen,
+  })
 
   if (!isOpen) return null
 
@@ -47,11 +57,18 @@ export function ManualDeviceEntry({ isOpen, onClose, onAdd }: ManualDeviceEntryP
       <div
         className="absolute inset-0 backdrop-blur-sm"
         onClick={onClose}
-        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+        style={{ backgroundColor: 'var(--color-backdrop)' }}
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] shadow-[var(--shadow-strong)] p-6" style={{ boxShadow: 'var(--glow-modal)' }}>
+      <div 
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
+        className="relative w-full max-w-md bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] shadow-[var(--shadow-strong)] p-6" 
+        style={{ boxShadow: 'var(--glow-modal)' }}
+      >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-[var(--color-text)]">
             Add Device Manually
@@ -66,10 +83,11 @@ export function ManualDeviceEntry({ isOpen, onClose, onAdd }: ManualDeviceEntryP
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+            <label htmlFor="manual-device-id" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
               Device ID
             </label>
             <input
+              id="manual-device-id"
               type="text"
               value={deviceId}
               onChange={(e) => setDeviceId(e.target.value)}
@@ -80,10 +98,11 @@ export function ManualDeviceEntry({ isOpen, onClose, onAdd }: ManualDeviceEntryP
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+            <label htmlFor="manual-device-serial" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
               Serial Number
             </label>
             <input
+              id="manual-device-serial"
               type="text"
               value={serialNumber}
               onChange={(e) => setSerialNumber(e.target.value)}
@@ -94,10 +113,11 @@ export function ManualDeviceEntry({ isOpen, onClose, onAdd }: ManualDeviceEntryP
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+            <label htmlFor="manual-device-type" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
               Device Type
             </label>
             <select
+              id="manual-device-type"
               value={type}
               onChange={(e) => setType(e.target.value as DeviceType)}
               className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)]"

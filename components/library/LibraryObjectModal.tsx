@@ -11,6 +11,7 @@ import { useState, useRef, useEffect } from 'react'
 import { X, Image as ImageIcon, Info, Package, Zap, Settings, Upload, Trash2 } from 'lucide-react'
 import { LibraryObject } from '@/app/(main)/library/page'
 import { setCustomImage, removeCustomImage, getDeviceImage, getComponentImage, getComponentLibraryUrl, getDeviceImageAsync, getComponentImageAsync } from '@/lib/libraryUtils'
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 
 // Component type to library ID mapping (matches lib/libraryUtils.ts)
 const COMPONENT_TYPE_TO_LIBRARY_ID: Record<string, string> = {
@@ -44,6 +45,15 @@ export function LibraryObjectModal({ object, onClose }: LibraryObjectModalProps)
   const [isUploading, setIsUploading] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+  
+  // Focus trap for accessibility
+  useFocusTrap({
+    isOpen: true, // This modal is always "open" when rendered
+    onClose,
+    containerRef: modalRef,
+    enabled: true,
+  })
   
   // Track mount state to avoid hydration issues
   useEffect(() => {
@@ -285,10 +295,15 @@ export function LibraryObjectModal({ object, onClose }: LibraryObjectModalProps)
 
   return (
     <div
-      className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4 backdrop-blur-sm"
+      style={{ backgroundColor: 'var(--color-backdrop)' }}
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
     >
       <div
+        ref={modalRef}
+        tabIndex={-1}
         className="w-full max-w-4xl max-h-[90vh] bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] shadow-[var(--glow-modal)] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >

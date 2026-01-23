@@ -49,6 +49,7 @@ import { getStatusTokenClass, getSignalTokenClass, getBatteryTokenClass } from '
 import { FocusedObjectModal } from '@/components/shared/FocusedObjectModal'
 import { TabDefinition } from '@/components/shared/FocusedModalTabs'
 import { Button } from '@/components/ui/Button'
+import { useSite } from '@/lib/SiteContext'
 
 interface Fault {
   id?: string
@@ -661,6 +662,9 @@ export function FaultFocusedModal({
   allFaults?: Fault[]
   allDevices?: Device[]
 }) {
+  const { activeSite } = useSite()
+  const siteLabel = activeSite?.siteNumber ? `Site #${activeSite.siteNumber}` : activeSite?.name ?? 'Site'
+  const breadcrumb = [{ label: siteLabel }, { label: 'Fault' }]
   const categoryInfo = faultCategories[fault.faultType]
 
   return (
@@ -669,6 +673,7 @@ export function FaultFocusedModal({
       onClose={onClose}
       title={fault.device.deviceId}
       subtitle={`${categoryInfo?.shortLabel || fault.faultType} • ${fault.device.serialNumber}`}
+      breadcrumb={breadcrumb}
       icon={getFaultIcon(fault.faultType, 28)}
       iconBgClass={`bg-[var(--color-${getFaultSeverity(fault.faultType)})]/20`}
       tabs={faultTabs}

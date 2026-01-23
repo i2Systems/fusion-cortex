@@ -23,12 +23,17 @@
     /* Pink Neon */
     --color-danger: #f87171;
     /* Red Neon */
+    --color-danger-soft: rgba(248, 113, 113, 0.15);
+    --color-danger-text: #f87171;
     --color-success: #34d399;
     /* Green Neon */
     --color-warning: #fbbf24;
     /* Amber Neon */
     --color-info: #818cf8;
     /* Indigo Neon */
+    
+    /* Overlay & backdrop colors */
+    --color-backdrop: rgba(0, 0, 0, 0.6);
 
     /* Text colors - Ice White */
     --color-text: #ffffff;
@@ -41,6 +46,13 @@
     --color-tooltip-border: var(--color-primary);
     --color-tooltip-text: var(--color-text);
     --color-tooltip-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+
+    /* Canvas-specific colors for Konva/Canvas rendering */
+    --color-fixture: var(--color-primary-strong);
+    --color-canvas-border: rgba(139, 92, 246, 0.3);
+    --color-canvas-selection-fill: rgba(168, 85, 247, 0.25);
+    --color-canvas-selection-stroke: rgba(168, 85, 247, 1);
+    --color-canvas-selection-shadow: rgba(168, 85, 247, 0.9);
 
     /* Shadows - Violet Haze */
     --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.8);

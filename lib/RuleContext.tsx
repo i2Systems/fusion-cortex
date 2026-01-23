@@ -54,7 +54,7 @@ export function RuleProvider({ children }: { children: ReactNode }) {
   )
 
   // Transform database rules to frontend format
-  const rules: Rule[] = (rulesData || []).map((rule: any) => ({
+  const rules: Rule[] = (rulesData || []).map(rule => ({
     ...rule,
     createdAt: new Date(rule.createdAt),
     updatedAt: new Date(rule.updatedAt),

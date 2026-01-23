@@ -12,7 +12,7 @@
 import { Search, Layers, Sparkles, ArrowUp, ArrowDown, TrendingUp, TrendingDown, Activity, Clock, X } from 'lucide-react'
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useSearch } from '@/lib/SearchContext'
-import { useDevices } from '@/lib/DeviceContext'
+import { useDevices } from '@/lib/DomainContext'
 import { fuzzySearch, type SearchResult } from '@/lib/fuzzySearch'
 import { getRecentSearches, addRecentSearch, getSearchSuggestions, clearRecentSearches } from '@/lib/recentSearches'
 import { usePathname } from 'next/navigation'

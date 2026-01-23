@@ -15,6 +15,7 @@ import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { FloorPlanImage, type ImageBounds } from './FloorPlanImage'
 import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 import { DeviceType } from '@/lib/mockData'
+import { getCanvasColors, getRgbaVariable } from '@/lib/canvasColors'
 
 interface DevicePoint {
   id: string
@@ -119,19 +120,7 @@ export function ZoneCanvas({
   const [draggingHandleIndex, setDraggingHandleIndex] = useState<number | null>(null)
   const [editingZonePolygon, setEditingZonePolygon] = useState<Array<{ x: number; y: number }> | null>(null)
   const [selectedHandleIndex, setSelectedHandleIndex] = useState<number | null>(null)
-  const [colors, setColors] = useState({
-    primary: '#4c7dff',
-    fixture: '#3b5998', // Darker blue for fixtures
-    accent: '#f97316',
-    success: '#22c55e',
-    muted: '#9ca3af',
-    border: 'rgba(0,0,0,0.4)', // Dark border for contrast
-    text: '#ffffff',
-    tooltipBg: 'rgba(17, 24, 39, 0.95)',
-    tooltipBorder: '#4c7dff',
-    tooltipText: '#ffffff',
-    tooltipShadow: 'rgba(0, 0, 0, 0.5)',
-  })
+  const [colors, setColors] = useState<ReturnType<typeof getCanvasColors>>(getCanvasColors())
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -145,21 +134,7 @@ export function ZoneCanvas({
     }
 
     const updateColors = () => {
-      const root = document.documentElement
-      const computedStyle = getComputedStyle(root)
-      setColors({
-        primary: computedStyle.getPropertyValue('--color-primary').trim() || '#4c7dff',
-        fixture: computedStyle.getPropertyValue('--color-fixture').trim() || '#3b5998',
-        accent: computedStyle.getPropertyValue('--color-accent').trim() || '#f97316',
-        success: computedStyle.getPropertyValue('--color-success').trim() || '#22c55e',
-        muted: computedStyle.getPropertyValue('--color-text-muted').trim() || '#9ca3af',
-        border: 'rgba(0,0,0,0.4)',
-        text: computedStyle.getPropertyValue('--color-text').trim() || '#ffffff',
-        tooltipBg: computedStyle.getPropertyValue('--color-tooltip-bg').trim() || 'rgba(17, 24, 39, 0.95)',
-        tooltipBorder: computedStyle.getPropertyValue('--color-tooltip-border').trim() || computedStyle.getPropertyValue('--color-primary').trim() || '#4c7dff',
-        tooltipText: computedStyle.getPropertyValue('--color-tooltip-text').trim() || computedStyle.getPropertyValue('--color-text').trim() || '#ffffff',
-        tooltipShadow: computedStyle.getPropertyValue('--color-tooltip-shadow').trim() || 'rgba(0, 0, 0, 0.5)',
-      })
+      setColors(getCanvasColors())
     }
 
     updateDimensions()
@@ -582,8 +557,8 @@ export function ZoneCanvas({
                           x={canvasPoint.x}
                           y={canvasPoint.y}
                           radius={isDragging ? 10 : (isSelected ? 9 : 8)}
-                          fill={isSelected ? "rgba(255, 255, 255, 0.5)" : "rgba(255, 255, 255, 0.3)"}
-                          stroke={isSelected ? "#ffffff" : zone.color}
+                          fill={isSelected ? getRgbaVariable('--color-text', 0.5) : getRgbaVariable('--color-text', 0.3)}
+                          stroke={isSelected ? colors.text : zone.color}
                           strokeWidth={isSelected ? 3 : 2}
                           listening={false}
                         />
@@ -592,8 +567,8 @@ export function ZoneCanvas({
                           x={canvasPoint.x}
                           y={canvasPoint.y}
                           radius={isDragging ? 7 : (isSelected ? 6.5 : 6)}
-                          fill={isSelected ? "#ffffff" : zone.color}
-                          stroke={isSelected ? zone.color : "#ffffff"}
+                          fill={isSelected ? colors.text : zone.color}
+                          stroke={isSelected ? zone.color : colors.text}
                           strokeWidth={isSelected ? 2.5 : 2}
                           draggable
                           dragBoundFunc={(pos) => {
@@ -653,12 +628,12 @@ export function ZoneCanvas({
                             text="Press Delete to remove"
                             fontSize={11}
                             fontFamily="system-ui, -apple-system, sans-serif"
-                            fill="#ffffff"
+                            fill={colors.text}
                             padding={4}
                             align="center"
                             listening={false}
                             shadowBlur={5}
-                            shadowColor="rgba(0, 0, 0, 0.8)"
+                            shadowColor={getRgbaVariable('--color-tooltip-shadow', 0.8) || 'rgba(0, 0, 0, 0.8)'}
                           />
                         )}
                       </Group>

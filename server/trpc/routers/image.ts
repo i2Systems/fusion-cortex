@@ -11,6 +11,7 @@ import { router, publicProcedure } from '../trpc'
 import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
 import { supabaseAdmin, STORAGE_BUCKETS } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 export const imageRouter = router({
   // Save site image to database (with retry logic)
@@ -27,17 +28,17 @@ export const imageRouter = router({
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
           if (attempt > 0) {
-            console.log(`  Retry attempt ${attempt + 1}/${MAX_RETRIES}...`)
+            logger.debug(`Retry attempt ${attempt + 1}/${MAX_RETRIES}...`)
             await new Promise(resolve => setTimeout(resolve, 200 * attempt))
           }
 
-          console.log(`💾 [SERVER] Saving site image for ${input.siteId}, size: ${input.imageData.length} chars (${(input.imageData.length / 1024).toFixed(1)} KB)`)
+          logger.debug(`Saving site image for ${input.siteId}, size: ${input.imageData.length} chars (${(input.imageData.length / 1024).toFixed(1)} KB)`)
 
           // Reject temporary site IDs - they should not be saved to the database
           // Temporary IDs are: "site-" followed only by digits (timestamp), or "temp-"
           const isTempId = /^site-\d+$/.test(input.siteId) || input.siteId.startsWith('temp-')
           if (isTempId) {
-            console.warn(`⚠️ [SERVER] Rejecting temporary site ID: ${input.siteId}. Images for new sites should be saved after the site is created in the database.`)
+            logger.warn(`Rejecting temporary site ID: ${input.siteId}. Images for new sites should be saved after the site is created in the database.`)
             throw new Error(`Cannot save image for temporary site ID: ${input.siteId}. Please create the site first.`)
           }
 
@@ -48,7 +49,7 @@ export const imageRouter = router({
           })
 
           if (!siteExists) {
-            console.error(`❌ [SERVER] Site ${input.siteId} does not exist in database. Cannot save image.`)
+            logger.error(`Site ${input.siteId} does not exist in database. Cannot save image.`)
             throw new Error(`Site ${input.siteId} does not exist. Please create the site first.`)
           }
 
@@ -80,12 +81,12 @@ export const imageRouter = router({
                   .getPublicUrl(fileName)
 
                 imageUrl = urlData.publicUrl
-                console.log(`✅ [SERVER] Uploaded site image to Supabase Storage: ${imageUrl}`)
+                logger.debug(`Uploaded site image to Supabase Storage: ${imageUrl}`)
               } else {
-                console.warn(`⚠️ [SERVER] Supabase upload failed, using base64 fallback:`, error?.message)
+                logger.warn(`Supabase upload failed, using base64 fallback:`, error?.message)
               }
             } catch (uploadError: any) {
-              console.warn(`⚠️ [SERVER] Supabase upload error, using base64 fallback:`, uploadError.message)
+              logger.warn(`Supabase upload error, using base64 fallback:`, uploadError.message)
             }
           }
 
@@ -95,16 +96,16 @@ export const imageRouter = router({
             data: { imageUrl },
           })
 
-          console.log(`✅ [SERVER] Site image saved for ${input.siteId}`)
+          logger.info(`Site image saved for ${input.siteId}`)
           const isSupabaseUrl = imageUrl.startsWith('http')
           if (isSupabaseUrl) {
-            console.log(`✅ [SERVER] Uploaded site image to Supabase Storage: ${imageUrl}`)
+            logger.debug(`Uploaded site image to Supabase Storage: ${imageUrl}`)
           } else {
-            console.log(`   imageUrl preview: ${imageUrl.substring(0, 100)}...`)
-            console.warn(`   ⚠️ WARNING: Image saved as base64, not Supabase URL. This means:`)
-            console.warn(`      - Supabase Storage is not configured or upload failed`)
-            console.warn(`      - Image will be stored in database (not ideal for large images)`)
-            console.warn(`      - Check SUPABASE_SERVICE_ROLE_KEY environment variable`)
+            logger.debug(`imageUrl preview: ${imageUrl.substring(0, 100)}...`)
+            logger.warn(`WARNING: Image saved as base64, not Supabase URL. This means:`)
+            logger.warn(`- Supabase Storage is not configured or upload failed`)
+            logger.warn(`- Image will be stored in database (not ideal for large images)`)
+            logger.warn(`- Check SUPABASE_SERVICE_ROLE_KEY environment variable`)
           }
 
           // Verify it was actually saved by reading it back
@@ -114,23 +115,23 @@ export const imageRouter = router({
           })
           if (verify?.imageUrl) {
             const verifyIsSupabase = verify.imageUrl.startsWith('http')
-            console.log(`✅ [SERVER] Verified: Image URL saved to database for ${input.siteId}`)
+            logger.debug(`Verified: Image URL saved to database for ${input.siteId}`)
 
             if (verifyIsSupabase) {
-              console.log(`   URL: ${verify.imageUrl}`)
+              logger.debug(`URL: ${verify.imageUrl}`)
             }
           } else {
-            console.error(`❌ [SERVER] VERIFICATION FAILED: Image URL not found in database after save for ${input.siteId}`)
+            logger.error(`VERIFICATION FAILED: Image URL not found in database after save for ${input.siteId}`)
           }
 
           return { success: true, siteId: input.siteId, imageUrl }
         } catch (error: any) {
           lastError = error
-          console.error(`Error saving site image to database (attempt ${attempt + 1}):`, error)
+          logger.error(`Error saving site image to database (attempt ${attempt + 1}):`, error)
 
           // Handle missing column error
           if (error.code === 'P2022' && error.meta?.column === 'Site.imageUrl') {
-            console.warn('imageUrl column missing, attempting to add it...')
+            logger.warn('imageUrl column missing, attempting to add it...')
             try {
               await prisma.$executeRaw`ALTER TABLE "Site" ADD COLUMN IF NOT EXISTS "imageUrl" TEXT`
               // Retry the update (will use base64 fallback if Supabase not configured)
@@ -141,7 +142,7 @@ export const imageRouter = router({
               })
               return { success: true, siteId: input.siteId }
             } catch (addColumnError) {
-              console.error('Failed to add imageUrl column:', addColumnError)
+              logger.error('Failed to add imageUrl column:', addColumnError)
               if (attempt < MAX_RETRIES - 1) continue
               throw new Error('Database schema update required. Please run migrations.')
             }
@@ -171,13 +172,13 @@ export const imageRouter = router({
       siteId: z.string(),
     }))
     .query(async ({ input }) => {
-      console.log(`🔍 [SERVER] getSiteImage called for siteId: ${input.siteId} at ${new Date().toISOString()}`)
+      logger.debug(`getSiteImage called for siteId: ${input.siteId} at ${new Date().toISOString()}`)
       const MAX_RETRIES = 3
 
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
           if (attempt > 0) {
-            console.log(`  [SERVER] Retry attempt ${attempt + 1}/${MAX_RETRIES}...`)
+            logger.debug(`Retry attempt ${attempt + 1}/${MAX_RETRIES}...`)
             await new Promise(resolve => setTimeout(resolve, 200 * attempt))
           }
 
@@ -193,21 +194,21 @@ export const imageRouter = router({
               select: { id: true },
               take: 10
             }).catch(() => [])
-            console.log(`⚠️ [SERVER] Site ${input.siteId} does not exist in database. Available sites:`,
+            logger.warn(`Site ${input.siteId} does not exist in database. Available sites:`,
               availableSites.map(s => s.id)
             )
             return null
           }
 
           if (siteExists.imageUrl && siteExists.imageUrl.trim().length > 0) {
-            console.log(`✅ [SERVER] Found image in database for ${input.siteId}, length: ${siteExists.imageUrl.length}`)
+            logger.debug(`Found image in database for ${input.siteId}, length: ${siteExists.imageUrl.length}`)
             return siteExists.imageUrl
           } else {
-            console.log(`ℹ️ [SERVER] Site ${input.siteId} exists but imageUrl is ${siteExists.imageUrl === null ? 'null' : 'empty'}`)
+            logger.debug(`Site ${input.siteId} exists but imageUrl is ${siteExists.imageUrl === null ? 'null' : 'empty'}`)
             return null
           }
         } catch (error: any) {
-          console.error(`❌ [SERVER] Error getting site image from database (attempt ${attempt + 1}):`, {
+          logger.error(`Error getting site image from database (attempt ${attempt + 1}):`, {
             message: error.message,
             code: error.code,
             siteId: input.siteId,
@@ -216,13 +217,13 @@ export const imageRouter = router({
 
           // Handle missing column error
           if (error.code === 'P2022' && error.meta?.column === 'Site.imageUrl') {
-            console.warn(`⚠️ [SERVER] imageUrl column missing for ${input.siteId}`)
+            logger.warn(`imageUrl column missing for ${input.siteId}`)
             return null
           }
 
           // Handle site not found
           if (error.code === 'P2025' || error.message?.includes('Record to find does not exist')) {
-            console.log(`⚠️ [SERVER] Site ${input.siteId} not found in database`)
+            logger.debug(`Site ${input.siteId} not found in database`)
             return null
           }
 
@@ -236,7 +237,7 @@ export const imageRouter = router({
         }
       }
 
-      console.warn(`⚠️ [SERVER] Failed to get site image after ${MAX_RETRIES} attempts for ${input.siteId}`)
+      logger.warn(`Failed to get site image after ${MAX_RETRIES} attempts for ${input.siteId}`)
       return null
     }),
 
@@ -254,11 +255,11 @@ export const imageRouter = router({
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
           if (attempt > 0) {
-            console.log(`  Retry attempt ${attempt + 1}/${MAX_RETRIES}...`)
+            logger.debug(`Retry attempt ${attempt + 1}/${MAX_RETRIES}...`)
             await new Promise(resolve => setTimeout(resolve, 200 * attempt))
           }
 
-          console.log(`💾 [SERVER] Saving library image for ${input.libraryId}, size: ${input.imageData.length} chars`)
+          logger.debug(`Saving library image for ${input.libraryId}, size: ${input.imageData.length} chars`)
 
           // Try to upload to Supabase Storage
           let imageUrl = input.imageData // Fallback to base64
@@ -288,12 +289,12 @@ export const imageRouter = router({
                   .getPublicUrl(fileName)
 
                 imageUrl = urlData.publicUrl
-                console.log(`✅ [SERVER] Uploaded library image to Supabase Storage: ${imageUrl}`)
+                logger.debug(`Uploaded library image to Supabase Storage: ${imageUrl}`)
               } else {
-                console.warn(`⚠️ [SERVER] Supabase upload failed, using base64 fallback:`, error?.message)
+                logger.warn(`Supabase upload failed, using base64 fallback:`, error?.message)
               }
             } catch (uploadError: any) {
-              console.warn(`⚠️ [SERVER] Supabase upload error, using base64 fallback:`, uploadError.message)
+              logger.warn(`Supabase upload error, using base64 fallback:`, uploadError.message)
             }
           }
 
@@ -314,15 +315,15 @@ export const imageRouter = router({
             },
           })
 
-          console.log(`✅ [SERVER] Library image saved for ${input.libraryId}`)
+          logger.info(`Library image saved for ${input.libraryId}`)
           return { success: true, libraryId: input.libraryId, imageUrl }
         } catch (error: any) {
           lastError = error
-          console.error(`Error saving library image to database (attempt ${attempt + 1}):`, error)
+          logger.error(`Error saving library image to database (attempt ${attempt + 1}):`, error)
 
           // Handle missing column error (imageUrl column doesn't exist)
           if (error.code === 'P2022' && error.meta?.column === 'LibraryImage.imageUrl') {
-            console.warn('⚠️ [SERVER] imageUrl column missing in LibraryImage table, attempting to add it...')
+            logger.warn('imageUrl column missing in LibraryImage table, attempting to add it...')
             try {
               // First check if table exists, if not create it
               await prisma.$executeRaw`
@@ -345,11 +346,11 @@ export const imageRouter = router({
               await prisma.$executeRaw`
                 CREATE INDEX IF NOT EXISTS "LibraryImage_libraryId_idx" ON "LibraryImage"("libraryId")
               `
-              console.log('✅ [SERVER] Added imageUrl column to LibraryImage table')
+              logger.info('Added imageUrl column to LibraryImage table')
               // Retry the upsert
               if (attempt < MAX_RETRIES - 1) continue
             } catch (addColumnError: any) {
-              console.error('❌ [SERVER] Failed to add imageUrl column to LibraryImage table:', addColumnError)
+              logger.error('Failed to add imageUrl column to LibraryImage table:', addColumnError)
               if (attempt < MAX_RETRIES - 1) continue
               throw new Error('Database schema update required. Please run migrations.')
             }
@@ -357,7 +358,7 @@ export const imageRouter = router({
 
           // Handle table doesn't exist error
           if (error.code === 'P2021' || error.message?.includes('does not exist') || error.message?.includes('LibraryImage')) {
-            console.warn('⚠️ [SERVER] LibraryImage table missing, attempting to create it...')
+            logger.warn('LibraryImage table missing, attempting to create it...')
             try {
               await prisma.$executeRaw`
                 CREATE TABLE IF NOT EXISTS "LibraryImage" (
@@ -376,11 +377,11 @@ export const imageRouter = router({
               await prisma.$executeRaw`
                 CREATE INDEX IF NOT EXISTS "LibraryImage_libraryId_idx" ON "LibraryImage"("libraryId")
               `
-              console.log('✅ [SERVER] Created LibraryImage table')
+              logger.info('Created LibraryImage table')
               // Retry the upsert
               if (attempt < MAX_RETRIES - 1) continue
             } catch (createTableError) {
-              console.error('❌ [SERVER] Failed to create LibraryImage table:', createTableError)
+              logger.error('Failed to create LibraryImage table:', createTableError)
               if (attempt < MAX_RETRIES - 1) continue
               throw new Error('Database schema update required. Please run migrations or visit /api/migrate-library-images')
             }
@@ -420,7 +421,7 @@ export const imageRouter = router({
 
           return libraryImage?.imageUrl || null
         } catch (error: any) {
-          console.error(`Error getting library image from database (attempt ${attempt + 1}):`, error)
+          logger.error(`Error getting library image from database (attempt ${attempt + 1}):`, error)
 
           // Handle table doesn't exist - return null (will fallback to client storage)
           if (error.code === 'P2021' || error.message?.includes('does not exist') || error.message?.includes('LibraryImage')) {
@@ -457,7 +458,7 @@ export const imageRouter = router({
         if (error.code === 'P2025') {
           return { success: true }
         }
-        console.error('Error removing library image from database:', error)
+        logger.error('Error removing library image from database:', error)
         throw new Error(`Failed to remove library image: ${error.message}`)
       }
     }),

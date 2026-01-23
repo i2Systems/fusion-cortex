@@ -70,7 +70,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // Sync server data to local state, applying read status
   useEffect(() => {
     if (serverNotifications) {
-      const mapped = serverNotifications.map((n: any) => ({
+      const mapped = serverNotifications.map(n => ({
         ...n,
         timestamp: new Date(n.timestamp), // Ensure date object
         read: readIds.has(n.id),

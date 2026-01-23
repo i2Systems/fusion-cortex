@@ -15,7 +15,7 @@ import { skipToken } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/Badge'
 import { Site, useSite } from '@/lib/SiteContext'
 import { Device } from '@/lib/mockData'
-import { Zone } from '@/lib/ZoneContext'
+import { Zone } from '@/lib/DomainContext'
 import { Rule } from '@/lib/mockRules'
 import { FaultCategory } from '@/lib/faultDefinitions'
 import { calculateWarrantyStatus } from '@/lib/warranty'
@@ -49,6 +49,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { SiteFocusedModal } from './SiteFocusedContent'
+import { ConfirmationModal } from '@/components/shared/ConfirmationModal'
 
 interface SiteDetailsPanelProps {
   site: Site | null
@@ -101,6 +102,7 @@ export function SiteDetailsPanel({
   const [siteImageUrl, setSiteImageUrl] = useState<string | null>(null)
   const [imageKey, setImageKey] = useState(0) // Force re-render on update
   const [showFocusedModal, setShowFocusedModal] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
 
   // Close dropdown when activeSiteId changes (synced from top-right selector)
   useEffect(() => {
@@ -641,11 +643,7 @@ export function SiteDetailsPanel({
         {onRemoveSite && (
           <div className="pt-4 border-t border-[var(--color-danger)]/20">
             <Button
-              onClick={() => {
-                if (confirm(`Are you sure you want to remove "${site.name}"? This will delete all associated data.`)) {
-                  onRemoveSite?.(site.id)
-                }
-              }}
+              onClick={() => setIsDeleteModalOpen(true)}
               variant="danger"
               className="w-full justify-center"
             >
@@ -655,6 +653,22 @@ export function SiteDetailsPanel({
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={() => {
+          if (onRemoveSite) {
+            onRemoveSite(site.id)
+            setIsDeleteModalOpen(false)
+          }
+        }}
+        title="Delete Site"
+        message={`Are you sure you want to remove "${site.name}"? This will delete all associated data including devices, zones, rules, and mappings. This action cannot be undone.`}
+        variant="danger"
+        confirmLabel="Delete Site"
+      />
 
       {/* Action Buttons Bar */}
       <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] flex-shrink-0">

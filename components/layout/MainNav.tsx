@@ -29,7 +29,7 @@ import {
   Download
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
-import { useRole } from '@/lib/role'
+import { useRole } from '@/lib/auth'
 import { LoginModal } from '@/components/auth/LoginModal'
 import { SettingsModal } from '@/components/settings/SettingsModal'
 
@@ -194,7 +194,8 @@ export function MainNav() {
       <>
         {/* Backdrop */}
         <div 
-          className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[calc(var(--z-nav)-1)]"
+          className="md:hidden fixed inset-0 backdrop-blur-sm z-[calc(var(--z-nav)-1)]"
+          style={{ backgroundColor: 'var(--color-backdrop)' }}
           onClick={() => setMobileMenuOpen(false)}
         />
         {/* Mobile Menu */}

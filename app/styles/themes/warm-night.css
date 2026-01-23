@@ -23,12 +23,17 @@
     /* Warm coral/red */
     --color-danger: #ee5253;
     /* Soft red */
+    --color-danger-soft: rgba(238, 82, 83, 0.15);
+    --color-danger-text: #ee5253;
     --color-success: #1dd1a1;
     /* Soft mint/green */
     --color-warning: #feca57;
     /* Warm yellow */
     --color-info: #54a0ff;
     /* Soft blue (cooler sibling) */
+    
+    /* Overlay & backdrop colors */
+    --color-backdrop: rgba(0, 0, 0, 0.6);
 
     /* Text colors - Warm whites/creams */
     --color-text: #f7f1e3;
@@ -41,6 +46,13 @@
     --color-tooltip-border: var(--color-primary);
     --color-tooltip-text: var(--color-text);
     --color-tooltip-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+
+    /* Canvas-specific colors for Konva/Canvas rendering */
+    --color-fixture: var(--color-primary-strong);
+    --color-canvas-border: rgba(255, 160, 60, 0.3);
+    --color-canvas-selection-fill: rgba(255, 159, 67, 0.25);
+    --color-canvas-selection-stroke: rgba(255, 159, 67, 1);
+    --color-canvas-selection-shadow: rgba(255, 159, 67, 0.9);
 
     /* Shadows - Deep, cozy diffusion */
     --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.5);

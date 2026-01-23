@@ -32,6 +32,7 @@ import {
 import { FocusedObjectModal } from '@/components/shared/FocusedObjectModal'
 import { TabDefinition } from '@/components/shared/FocusedModalTabs'
 import { Device } from '@/lib/mockData'
+import { useSite } from '@/lib/SiteContext'
 import { Rule } from '@/lib/mockRules'
 import { ZONE_COLORS, DEFAULT_ZONE_COLOR } from '@/lib/zoneColors'
 
@@ -521,6 +522,9 @@ export function ZoneFocusedModal({
   rules?: Rule[]
   allZones?: Zone[]
 }) {
+  const { activeSite } = useSite()
+  const siteLabel = activeSite?.siteNumber ? `Site #${activeSite.siteNumber}` : activeSite?.name ?? 'Site'
+  const breadcrumb = [{ label: siteLabel }, { label: 'Zone' }]
   const zoneColor = getZoneColor(zone)
 
   return (
@@ -529,6 +533,7 @@ export function ZoneFocusedModal({
       onClose={onClose}
       title={zone.name}
       subtitle={`${zone.deviceCount} devices • Control Zone`}
+      breadcrumb={breadcrumb}
       icon={<Layers size={28} style={{ color: zoneColor }} />}
       iconBgClass="bg-[var(--color-surface-subtle)]"
       tabs={zoneTabs}

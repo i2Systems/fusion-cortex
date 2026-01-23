@@ -10,10 +10,12 @@
 
 'use client'
 
-import { useState, useEffect, useCallback, ReactNode } from 'react'
+import { useState, useEffect, useCallback, ReactNode, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Maximize2 } from 'lucide-react'
 import { FocusedModalTabs, TabDefinition } from './FocusedModalTabs'
+import { Breadcrumb, type BreadcrumbItem } from './Breadcrumb'
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 
 export interface FocusedObjectModalProps {
   isOpen: boolean
@@ -26,6 +28,8 @@ export interface FocusedObjectModalProps {
   children: (activeTab: string) => ReactNode
   footer?: ReactNode
   defaultTab?: string
+  /** Optional breadcrumb shown above the title (e.g. Site → Device). Uses subtle styling. */
+  breadcrumb?: BreadcrumbItem[]
 }
 
 export function FocusedObjectModal({
@@ -39,10 +43,21 @@ export function FocusedObjectModal({
   children,
   footer,
   defaultTab,
+  breadcrumb,
 }: FocusedObjectModalProps) {
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id || 'overview')
   const [isAnimating, setIsAnimating] = useState(false)
+  const modalRef = useRef<HTMLDivElement>(null)
+  const titleId = `focused-modal-title-${Math.random().toString(36).substr(2, 9)}`
+
+  // Focus trap
+  useFocusTrap({
+    isOpen,
+    onClose,
+    containerRef: modalRef,
+    enabled: isOpen && mounted,
+  })
 
   // Handle mount state for portal
   useEffect(() => {
@@ -109,12 +124,18 @@ export function FocusedObjectModal({
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 backdrop-blur-sm"
+        style={{ backgroundColor: 'var(--color-backdrop)' }}
         onClick={onClose}
       />
 
       {/* Modal Container */}
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className={`
           relative w-full max-w-4xl h-[85vh] max-h-[900px]
           bg-[var(--color-surface)] backdrop-blur-xl
@@ -139,7 +160,10 @@ export function FocusedObjectModal({
 
             {/* Title & Subtitle */}
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg md:text-xl font-bold text-[var(--color-text)] truncate">
+              {breadcrumb && breadcrumb.length > 0 && (
+                <Breadcrumb items={breadcrumb} variant="subtle" className="mb-0.5" />
+              )}
+              <h2 id={titleId} className="text-lg md:text-xl font-bold text-[var(--color-text)] truncate">
                 {title}
               </h2>
               {subtitle && (
@@ -163,6 +187,7 @@ export function FocusedObjectModal({
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors ml-2 flex-shrink-0"
+            aria-label="Close dialog"
             title="Close (Esc)"
           >
             <X size={20} className="text-[var(--color-text-muted)]" />
@@ -207,10 +232,14 @@ export function FocusedModalTrigger({
   onClick: () => void
   className?: string
 }) {
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  
   return (
     <button
+      ref={triggerRef}
       onClick={onClick}
       className={`p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-surface)] transition-all ${className}`}
+      aria-label="Open focused view"
       title="Open focused view"
     >
       <Maximize2 size={16} />

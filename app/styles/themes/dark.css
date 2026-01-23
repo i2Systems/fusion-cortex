@@ -25,12 +25,17 @@
         /* Fuschia Neon */
         --color-danger: #ff1744;
         /* Red Neon */
+        --color-danger-soft: rgba(255, 23, 68, 0.15);
+        --color-danger-text: #ff1744;
         --color-success: #00e676;
         /* Green Neon */
         --color-warning: #ffea00;
         /* Yellow Neon */
         --color-info: #2979ff;
         /* Blue Neon */
+        
+        /* Overlay & backdrop colors */
+        --color-backdrop: rgba(0, 0, 0, 0.6);
 
         /* Text colors - Monitor White */
         --color-text: #f0f4f8;
@@ -43,6 +48,13 @@
         --color-tooltip-border: var(--color-primary);
         --color-tooltip-text: var(--color-text);
         --color-tooltip-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
+
+        /* Canvas-specific colors for Konva/Canvas rendering */
+        --color-fixture: var(--color-primary-strong);
+        --color-canvas-border: rgba(0, 0, 0, 0.4);
+        --color-canvas-selection-fill: rgba(0, 229, 255, 0.25);
+        --color-canvas-selection-stroke: rgba(0, 229, 255, 1);
+        --color-canvas-selection-shadow: rgba(0, 229, 255, 0.9);
 
         /* ============================================
        SPACING SCALE (scales automatically with root font-size)
@@ -232,8 +244,11 @@
 
         --color-accent: #d946ef;
         --color-danger: #ff1744;
+        --color-danger-soft: rgba(255, 23, 68, 0.15);
+        --color-danger-text: #ff1744;
         --color-success: #00e676;
         --color-warning: #ffea00;
+        --color-backdrop: rgba(0, 0, 0, 0.6);
 
         --color-text: #f0f4f8;
         --color-text-muted: #94a3b8;

@@ -22,9 +22,14 @@
     /* Accent & status colors - Slightly richer to stand out */
     --color-accent: #db2777;
     --color-danger: #ef4444;
+    --color-danger-soft: rgba(239, 68, 68, 0.1);
+    --color-danger-text: #dc2626;
     --color-success: #10b981;
     --color-warning: #f59e0b;
     --color-info: #3b82f6;
+    
+    /* Overlay & backdrop colors */
+    --color-backdrop: rgba(0, 0, 0, 0.5);
 
     /* Text colors - Deeper contrast for legibility */
     --color-text: #2d3748;
@@ -39,6 +44,13 @@
     --color-tooltip-shadow:
         8px 8px 16px rgba(163, 177, 198, 0.6),
         -8px -8px 16px rgba(255, 255, 255, 0.8);
+
+    /* Canvas-specific colors for Konva/Canvas rendering */
+    --color-fixture: var(--color-primary-strong);
+    --color-canvas-border: rgba(163, 177, 198, 0.4);
+    --color-canvas-selection-fill: rgba(59, 130, 246, 0.25);
+    --color-canvas-selection-stroke: rgba(59, 130, 246, 1);
+    --color-canvas-selection-shadow: rgba(59, 130, 246, 0.6);
 
     /* Shadows - The "True Neumorphism" 3D Look */
     /* Key: Dark shadow bottom-right, Light shadow top-left */

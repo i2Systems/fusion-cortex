@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Image as KonvaImage, Group, Rect, Text } from 'react-konva'
+import { getRgbaVariable } from '@/lib/canvasColors'
 
 export interface ImageBounds {
   x: number
@@ -160,7 +161,7 @@ export function FloorPlanImage({ url, width, height, onImageBoundsChange, zoomBo
           y={0}
           width={width}
           height={height}
-          fill="rgba(17, 24, 39, 0.3)"
+          fill={getRgbaVariable('--color-tooltip-bg', 0.3) || 'rgba(17, 24, 39, 0.3)'}
           listening={false}
         />
         <Rect
@@ -168,7 +169,7 @@ export function FloorPlanImage({ url, width, height, onImageBoundsChange, zoomBo
           y={height / 2 - 20}
           width={100}
           height={40}
-          fill="rgba(0, 217, 255, 0.1)"
+          fill={getRgbaVariable('--color-primary', 0.1) || 'rgba(0, 217, 255, 0.1)'}
           cornerRadius={8}
           listening={false}
         />
@@ -177,7 +178,7 @@ export function FloorPlanImage({ url, width, height, onImageBoundsChange, zoomBo
           y={height / 2 + 5}
           text="Loading..."
           fontSize={12}
-          fill="rgba(0, 217, 255, 0.6)"
+          fill={getRgbaVariable('--color-primary', 0.6) || 'rgba(0, 217, 255, 0.6)'}
           align="center"
           listening={false}
         />
@@ -194,7 +195,7 @@ export function FloorPlanImage({ url, width, height, onImageBoundsChange, zoomBo
           y={0}
           width={width}
           height={height}
-          fill="rgba(17, 24, 39, 0.3)"
+          fill={getRgbaVariable('--color-tooltip-bg', 0.3) || 'rgba(17, 24, 39, 0.3)'}
           listening={false}
         />
         <Text
@@ -202,7 +203,7 @@ export function FloorPlanImage({ url, width, height, onImageBoundsChange, zoomBo
           y={height / 2}
           text="Failed to load image"
           fontSize={14}
-          fill="rgba(255, 51, 102, 0.8)"
+          fill={getRgbaVariable('--color-danger', 0.8) || 'rgba(255, 51, 102, 0.8)'}
           align="center"
           listening={false}
         />

@@ -17,6 +17,7 @@ import { trpc } from '@/lib/trpc/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useToast } from '@/lib/ToastContext'
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 
 interface AddSiteModalProps {
   isOpen: boolean
@@ -45,6 +46,16 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
   const [isUploading, setIsUploading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+  const titleId = `add-site-modal-title-${Math.random().toString(36).substr(2, 9)}`
+
+  // Focus trap
+  useFocusTrap({
+    isOpen,
+    onClose,
+    containerRef: modalRef,
+    enabled: isOpen,
+  })
 
   // tRPC hooks for image operations
   const utils = trpc.useUtils()
@@ -522,15 +533,24 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center">
+    <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center" aria-hidden="true">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 backdrop-blur-sm"
+        style={{ backgroundColor: 'var(--color-backdrop)' }}
         onClick={onClose}
+        aria-hidden="true"
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg mx-4 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border-subtle)] shadow-[var(--shadow-strong)] overflow-hidden">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="relative w-full max-w-lg mx-4 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border-subtle)] shadow-[var(--shadow-strong)] overflow-hidden"
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[var(--color-border-subtle)]">
           <div className="flex items-center gap-3">
@@ -538,7 +558,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
               <Building2 size={20} className="text-[var(--color-primary)]" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-[var(--color-text)]">
+              <h2 id={titleId} className="text-lg font-semibold text-[var(--color-text)]">
                 {editingSite ? 'Edit Site' : 'Add New Site'}
               </h2>
               <p className="text-xs text-[var(--color-text-muted)]">
@@ -549,6 +569,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors"
+            aria-label="Close dialog"
           >
             <X size={20} className="text-[var(--color-text-muted)]" />
           </button>
@@ -558,10 +579,11 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
         <form id="add-site-form" onSubmit={handleSubmit} className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
           {/* Site Name */}
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
+            <label htmlFor="site-name" className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
               Site Name *
             </label>
             <Input
+              id="site-name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="e.g., Site #1234 - Main St"
@@ -573,10 +595,11 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
 
           {/* Site Number */}
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
+            <label htmlFor="site-number" className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
               Site Number *
             </label>
             <Input
+              id="site-number"
               value={formData.siteNumber}
               onChange={(e) => setFormData({ ...formData, siteNumber: e.target.value })}
               placeholder="e.g., 1234"
@@ -588,10 +611,11 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
 
           {/* Address */}
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
+            <label htmlFor="site-address" className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
               Street Address
             </label>
             <Input
+              id="site-address"
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               placeholder="e.g., 1250 Main Street"
@@ -603,10 +627,11 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
           {/* City, State, Zip */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
+              <label htmlFor="site-city" className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
                 City
               </label>
               <Input
+                id="site-city"
                 value={formData.city}
                 onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                 placeholder="City"
@@ -614,10 +639,11 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
+              <label htmlFor="site-state" className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
                 State
               </label>
               <Input
+                id="site-state"
                 value={formData.state}
                 onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                 placeholder="State"
@@ -627,10 +653,11 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
+              <label htmlFor="site-zip" className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
                 ZIP Code
               </label>
               <Input
+                id="site-zip"
                 value={formData.zipCode}
                 onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
                 placeholder="ZIP"
@@ -642,10 +669,11 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
 
           {/* Phone */}
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
+            <label htmlFor="site-phone" className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
               Phone Number
             </label>
             <Input
+              id="site-phone"
               type="tel"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -657,10 +685,11 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
 
           {/* Manager */}
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
+            <label htmlFor="site-manager" className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
               Site Manager
             </label>
             <Input
+              id="site-manager"
               value={formData.manager}
               onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
               placeholder="e.g., John Smith"
@@ -671,10 +700,11 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
 
           {/* Square Footage */}
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
+            <label htmlFor="site-square-footage" className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
               Square Footage
             </label>
             <Input
+              id="site-square-footage"
               type="number"
               value={formData.squareFootage}
               onChange={(e) => setFormData({ ...formData, squareFootage: e.target.value })}
@@ -686,7 +716,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
 
           {/* Site Image Upload - Only available when editing existing site */}
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
+            <label htmlFor="site-image-upload" className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
               Site Image
             </label>
             {editingSite ? (
@@ -702,6 +732,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
                     {/* Image Controls - Lower Left */}
                     <div className="absolute bottom-3 left-3 flex items-center gap-2">
                       <input
+                        id="site-image-upload"
                         ref={fileInputRef}
                         type="file"
                         accept="image/*"
@@ -768,6 +799,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
                 {!displayImage && (
                   <div>
                     <input
+                      id="site-image-upload-empty"
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"

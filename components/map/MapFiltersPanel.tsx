@@ -95,8 +95,9 @@ export function MapFiltersPanel({
             Layers
           </h4>
           <div className="space-y-2">
-            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
+            <label htmlFor="map-filter-show-map" className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
               <input
+                id="map-filter-show-map"
                 type="checkbox"
                 checked={filters.showMap}
                 onChange={() => handleToggleLayer('showMap')}
@@ -105,8 +106,9 @@ export function MapFiltersPanel({
               <Map size={18} className="text-[var(--color-text-muted)]" />
               <span className="text-sm text-[var(--color-text)]">Map</span>
             </label>
-            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
+            <label htmlFor="map-filter-show-fixtures" className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
               <input
+                id="map-filter-show-fixtures"
                 type="checkbox"
                 checked={filters.showFixtures}
                 onChange={() => handleToggleLayer('showFixtures')}
@@ -115,8 +117,9 @@ export function MapFiltersPanel({
               <Lightbulb size={18} className="text-[var(--color-primary)]" />
               <span className="text-sm text-[var(--color-text)]">Fixtures</span>
             </label>
-            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
+            <label htmlFor="map-filter-show-motion" className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
               <input
+                id="map-filter-show-motion"
                 type="checkbox"
                 checked={filters.showMotion}
                 onChange={() => handleToggleLayer('showMotion')}
@@ -125,8 +128,9 @@ export function MapFiltersPanel({
               <Radio size={18} className="text-[var(--color-accent)]" />
               <span className="text-sm text-[var(--color-text)]">Motion Sensors</span>
             </label>
-            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
+            <label htmlFor="map-filter-show-light-sensors" className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
               <input
+                id="map-filter-show-light-sensors"
                 type="checkbox"
                 checked={filters.showLightSensors}
                 onChange={() => handleToggleLayer('showLightSensors')}
@@ -135,8 +139,9 @@ export function MapFiltersPanel({
               <Eye size={18} className="text-[var(--color-success)]" />
               <span className="text-sm text-[var(--color-text)]">Light Sensors</span>
             </label>
-            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
+            <label htmlFor="map-filter-show-zones" className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
               <input
+                id="map-filter-show-zones"
                 type="checkbox"
                 checked={filters.showZones}
                 onChange={() => handleToggleLayer('showZones')}
@@ -155,8 +160,9 @@ export function MapFiltersPanel({
             Vector Layers
           </h4>
           <div className="space-y-2">
-            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
+            <label htmlFor="map-filter-show-walls" className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
               <input
+                id="map-filter-show-walls"
                 type="checkbox"
                 checked={filters.showWalls}
                 onChange={() => handleToggleLayer('showWalls')}
@@ -165,8 +171,9 @@ export function MapFiltersPanel({
               <div className="w-4 h-4 border-2 border-[var(--color-text)]" />
               <span className="text-sm text-[var(--color-text)]">Base Building</span>
             </label>
-            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
+            <label htmlFor="map-filter-show-annotations" className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
               <input
+                id="map-filter-show-annotations"
                 type="checkbox"
                 checked={filters.showAnnotations}
                 onChange={() => handleToggleLayer('showAnnotations')}
@@ -175,8 +182,9 @@ export function MapFiltersPanel({
               <div className="w-4 h-4 border-2 border-[var(--color-text-muted)]" />
               <span className="text-sm text-[var(--color-text)]">Annotations (Greys)</span>
             </label>
-            <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
+            <label htmlFor="map-filter-show-text" className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors">
               <input
+                id="map-filter-show-text"
                 type="checkbox"
                 checked={filters.showText}
                 onChange={() => handleToggleLayer('showText')}
@@ -215,9 +223,11 @@ export function MapFiltersPanel({
               availableZones.map((zone) => (
                 <label
                   key={zone}
+                  htmlFor={`map-filter-zone-${zone}`}
                   className="flex items-center gap-2 p-2 rounded-lg hover:bg-[var(--color-surface-subtle)] cursor-pointer transition-colors"
                 >
                   <input
+                    id={`map-filter-zone-${zone}`}
                     type="checkbox"
                     checked={filters.selectedZones.includes(zone)}
                     onChange={() => handleToggleZone(zone)}

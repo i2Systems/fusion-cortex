@@ -16,6 +16,7 @@ import { Power, Sun, Clock, Radio, CheckCircle2, AlertCircle, XCircle, Edit2, Tr
 import type { ControlCapability } from '@/lib/initialBACnetMappings'
 import { PanelEmptyState } from '@/components/shared/PanelEmptyState'
 import { Button } from '@/components/ui/Button'
+import { ConfirmationModal } from '@/components/shared/ConfirmationModal'
 
 interface BACnetMapping {
   zoneId: string
@@ -82,6 +83,7 @@ export function BACnetDetailsPanel({
 }: BACnetDetailsPanelProps) {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [formData, setFormData] = useState<Partial<BACnetMapping>>({
     bacnetObjectId: null,
     networkAddress: undefined,
@@ -438,11 +440,7 @@ export function BACnetDetailsPanel({
         {!isEditing && (
           <div className="pt-4 mt-4 border-t border-[var(--color-border-subtle)]">
             <button
-              onClick={() => {
-                if (confirm('Are you sure you want to delete this BACnet mapping?')) {
-                  onDelete()
-                }
-              }}
+              onClick={() => setIsDeleteModalOpen(true)}
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 rounded-lg text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/20 transition-colors"
             >
               <Trash2 size={14} />
@@ -451,6 +449,20 @@ export function BACnetDetailsPanel({
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={() => {
+          onDelete()
+          setIsDeleteModalOpen(false)
+        }}
+        title="Delete BACnet Mapping"
+        message={`Are you sure you want to delete the BACnet mapping for "${mapping.zoneName}"? This action cannot be undone.`}
+        variant="danger"
+        confirmLabel="Delete Mapping"
+      />
 
       {/* Actions Footer */}
       <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] space-y-2 flex-shrink-0">

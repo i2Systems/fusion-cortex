@@ -9,11 +9,12 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { X } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 
 interface LoginModalProps {
   isOpen: boolean
@@ -27,8 +28,18 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const modalRef = useRef<HTMLDivElement>(null)
+  const titleId = `login-modal-title-${Math.random().toString(36).substr(2, 9)}`
 
   const { login, signup } = useAuth()
+
+  // Focus trap
+  useFocusTrap({
+    isOpen,
+    onClose,
+    containerRef: modalRef,
+    enabled: isOpen,
+  })
 
   if (!isOpen) return null
 
@@ -65,21 +76,28 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     <div
       className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-[var(--z-modal)]"
       onClick={onClose}
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
+      style={{ backgroundColor: 'var(--color-backdrop)' }}
+      aria-hidden="true"
     >
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className="bg-[var(--color-surface)] backdrop-blur-xl rounded-[var(--radius-2xl)] shadow-[var(--shadow-strong)] w-full max-w-md p-8 border border-[var(--color-primary)]/30"
         style={{ boxShadow: 'var(--glow-modal)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-[var(--color-text)]">
+          <h2 id={titleId} className="text-2xl font-bold text-[var(--color-text)]">
             {isSignup ? 'Create Account' : 'Sign In'}
           </h2>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors text-[var(--color-text-muted)]"
+            aria-label="Close dialog"
           >
             <X size={20} />
           </button>
@@ -89,10 +107,11 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {isSignup && (
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+              <label htmlFor="login-name" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
                 Name
               </label>
               <Input
+                id="login-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -103,10 +122,11 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+            <label htmlFor="login-email" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
               Email
             </label>
             <Input
+              id="login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -116,10 +136,11 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+            <label htmlFor="login-password" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
               Password
             </label>
             <Input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -153,6 +174,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
               setError('')
             }}
             className="text-sm text-[var(--color-primary)] hover:underline"
+            aria-label={isSignup ? 'Switch to sign in' : 'Switch to sign up'}
           >
             {isSignup
               ? 'Already have an account? Sign in'

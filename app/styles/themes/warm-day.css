@@ -22,12 +22,17 @@
     --color-accent: #c0392b;
     /* Brick red */
     --color-danger: #c0392b;
+    --color-danger-soft: rgba(192, 57, 43, 0.15);
+    --color-danger-text: #c0392b;
     --color-success: #27ae60;
     /* Forest green */
     --color-warning: #f39c12;
     /* Sunflower */
     --color-info: #2980b9;
     /* Ocean blue */
+    
+    /* Overlay & backdrop colors */
+    --color-backdrop: rgba(0, 0, 0, 0.5);
 
     /* Text colors - Dark Coffee/Sepia (High contrast against paper) */
     --color-text: #2c2520;
@@ -40,6 +45,13 @@
     --color-tooltip-border: var(--color-primary);
     --color-tooltip-text: var(--color-text);
     --color-tooltip-shadow: 0 4px 12px rgba(44, 37, 32, 0.15);
+
+    /* Canvas-specific colors for Konva/Canvas rendering */
+    --color-fixture: var(--color-primary-strong);
+    --color-canvas-border: rgba(44, 37, 32, 0.3);
+    --color-canvas-selection-fill: rgba(230, 126, 34, 0.25);
+    --color-canvas-selection-stroke: rgba(230, 126, 34, 1);
+    --color-canvas-selection-shadow: rgba(230, 126, 34, 0.6);
 
     /* Shadows - Warm, diffuse parchment shadows */
     --shadow-soft: 0 2px 8px rgba(139, 69, 19, 0.05);

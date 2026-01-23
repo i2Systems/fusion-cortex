@@ -18,7 +18,7 @@ import { ComponentTree } from '@/components/shared/ComponentTree'
 import { calculateWarrantyStatus, getWarrantyStatusLabel, getWarrantyStatusTokenClass, formatWarrantyExpiry } from '@/lib/warranty'
 import { PanelEmptyState } from '@/components/shared/PanelEmptyState'
 import { assignFaultCategory, generateFaultDescription, faultCategories } from '@/lib/faultDefinitions'
-import { useDevices } from '@/lib/DeviceContext'
+import { useDevices } from '@/lib/DomainContext'
 import { isFixtureType } from '@/lib/deviceUtils'
 import { getDeviceLibraryUrl, getDeviceImage, getDeviceImageAsync } from '@/lib/libraryUtils'
 import { SelectSwitcher } from '@/components/shared/SelectSwitcher'
@@ -26,6 +26,7 @@ import { getStatusTokenClass, getSignalTokenClass, getBatteryTokenClass } from '
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/lib/ToastContext'
 import { DeviceFocusedModal } from './DeviceFocusedContent'
+import { ConfirmationModal } from '@/components/shared/ConfirmationModal'
 
 interface DeviceProfilePanelProps {
   device: Device | null
@@ -172,6 +173,7 @@ export function DeviceProfilePanel({ device, onDeviceSelect, onComponentClick, o
   const { addToast } = useToast()
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [showFocusedModal, setShowFocusedModal] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
 
   // Simulate device discovery with structured groups
   const handleSimulateDiscovery = async () => {
@@ -861,11 +863,7 @@ export function DeviceProfilePanel({ device, onDeviceSelect, onComponentClick, o
         {onDelete && (
           <div className="pt-4 mt-4 border-t border-[var(--color-border-subtle)]">
             <button
-              onClick={() => {
-                if (confirm(`Are you sure you want to delete device ${device.deviceId}? This cannot be undone.`)) {
-                  onDelete(device.id)
-                }
-              }}
+              onClick={() => setIsDeleteModalOpen(true)}
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 rounded-lg text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/20 transition-colors"
             >
               <Trash2 size={14} />
@@ -874,6 +872,22 @@ export function DeviceProfilePanel({ device, onDeviceSelect, onComponentClick, o
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={() => {
+          if (onDelete) {
+            onDelete(device.id)
+            setIsDeleteModalOpen(false)
+          }
+        }}
+        title="Delete Device"
+        message={`Are you sure you want to delete device "${device.deviceId}"? This action cannot be undone.`}
+        variant="danger"
+        confirmLabel="Delete Device"
+      />
 
       {/* Focused Modal */}
       <DeviceFocusedModal

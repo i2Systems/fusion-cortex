@@ -59,6 +59,13 @@ model Device {
   @@index([parentId])
   @@index([serialNumber])
   @@index([siteId])
+  
+  // Composite indexes for performance
+  @@index([siteId, status])
+  @@index([siteId, type])
+  @@index([siteId, warrantyExpiry])
+  @@index([siteId, signal])
+  @@index([siteId, parentId])
 }
 
 model Fault {
@@ -76,6 +83,7 @@ model Fault {
   @@index([detectedAt])
   @@index([deviceId])
   @@index([resolved])
+  @@index([deviceId, resolved])
 }
 
 model FirmwareDeviceUpdate {
@@ -120,6 +128,7 @@ model FirmwareUpdate {
 
   @@index([siteId])
   @@index([status])
+  @@index([siteId, status])
 }
 
 model LibraryImage {

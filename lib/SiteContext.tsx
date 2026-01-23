@@ -342,10 +342,8 @@ export function SiteProvider({ children }: { children: ReactNode }) {
   })
 
   const removeSite = (siteId: string) => {
-    // Confirm deletion
-    if (!confirm(`Are you sure you want to delete this site? This will also delete all devices, zones, rules, and other data associated with this site.`)) {
-      return
-    }
+    // Note: Confirmation should be handled by the calling component (e.g., StoreDetailsPanel)
+    // This function performs the actual deletion
 
     // If removing active site, switch to first remaining site
     if (activeSiteId === siteId) {

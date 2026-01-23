@@ -18,12 +18,13 @@
 import { Stage, Layer, Circle, Image as KonvaImage, Group, Text, Rect, Line } from 'react-konva'
 import { useEffect, useState, useRef, useMemo, useCallback, useLayoutEffect } from 'react'
 import { Component, Device as DeviceType, DeviceType as DeviceTypeEnum } from '@/lib/mockData'
-import { useZoomContext } from '@/lib/ZoomContext'
+import { useZoomContext } from '@/lib/MapContext'
 
 import { FloorPlanImage, type ImageBounds } from './FloorPlanImage'
 import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 import type { Location } from '@/lib/locationStorage'
 import { isFixtureType } from '@/lib/deviceUtils'
+import { getCanvasColors, getRgbaVariable } from '@/lib/canvasColors'
 
 /**
  * Get fixture size multiplier based on fixture type
@@ -364,20 +365,7 @@ export function MapCanvas({
     return devicesData.find(d => d.id === hoveredDevice.id) || null
   }, [hoveredDevice, devicesData])
   const animationFrameRef = useRef<number | null>(null)
-  const [colors, setColors] = useState({
-    primary: '#4c7dff',
-    fixture: '#3b5998', // Darker blue for fixtures
-    accent: '#f97316',
-    success: '#22c55e',
-    warning: '#ffcc00',
-    muted: '#9ca3af',
-    border: 'rgba(0,0,0,0.4)', // Dark border for contrast
-    text: '#ffffff',
-    tooltipBg: 'rgba(17, 24, 39, 0.95)',
-    tooltipBorder: '#4c7dff',
-    tooltipText: '#ffffff',
-    tooltipShadow: 'rgba(0, 0, 0, 0.5)',
-  })
+  const [colors, setColors] = useState<ReturnType<typeof getCanvasColors>>(getCanvasColors())
 
   // Sort devices in logical order (by deviceId) for keyboard navigation
   const sortedDevices = useMemo(() => {
@@ -460,24 +448,9 @@ export function MapCanvas({
       }
     }
 
-    // Get theme colors from CSS variables
+    // Get theme colors from CSS variables using utility
     const updateColors = () => {
-      const root = document.documentElement
-      const computedStyle = getComputedStyle(root)
-      setColors({
-        primary: computedStyle.getPropertyValue('--color-primary').trim() || '#4c7dff',
-        fixture: computedStyle.getPropertyValue('--color-fixture').trim() || '#3b5998',
-        accent: computedStyle.getPropertyValue('--color-accent').trim() || '#f97316',
-        success: computedStyle.getPropertyValue('--color-success').trim() || '#22c55e',
-        warning: computedStyle.getPropertyValue('--color-warning').trim() || '#ffcc00',
-        muted: computedStyle.getPropertyValue('--color-text-muted').trim() || '#9ca3af',
-        border: 'rgba(0,0,0,0.4)',
-        text: computedStyle.getPropertyValue('--color-text').trim() || '#ffffff',
-        tooltipBg: computedStyle.getPropertyValue('--color-tooltip-bg').trim() || 'rgba(17, 24, 39, 0.95)',
-        tooltipBorder: computedStyle.getPropertyValue('--color-tooltip-border').trim() || computedStyle.getPropertyValue('--color-primary').trim() || '#4c7dff',
-        tooltipText: computedStyle.getPropertyValue('--color-tooltip-text').trim() || computedStyle.getPropertyValue('--color-text').trim() || '#ffffff',
-        tooltipShadow: computedStyle.getPropertyValue('--color-tooltip-shadow').trim() || 'rgba(0, 0, 0, 0.5)',
-      })
+      setColors(getCanvasColors())
     }
 
     updateDimensions()
@@ -730,7 +703,7 @@ export function MapCanvas({
                 const transform = stage.getAbsoluteTransform().copy().invert()
                 const pos = transform.point(pointerPos)
 
-                console.log('Starting selection at:', pos, 'mode:', mode)
+                // logger.debug('Starting selection at:', pos, 'mode:', mode)
                 setIsSelecting(true)
                 setSelectionStart({ x: pos.x, y: pos.y })
                 setSelectionEnd({ x: pos.x, y: pos.y })
@@ -1516,7 +1489,7 @@ export function MapCanvas({
                       const warrantyColor = component.warrantyStatus === 'Active'
                         ? colors.success
                         : component.warrantyStatus === 'Expired'
-                          ? '#ef4444'
+                          ? colors.danger || '#ef4444'
                           : colors.muted
                       const parentDevice = devicesData.find(d => d.id === device.id)
                       const handleComponentClick = (e: any) => {
@@ -1538,7 +1511,7 @@ export function MapCanvas({
                             y={0}
                             width={266}
                             height={65}
-                            fill={onComponentClick ? 'rgba(76, 125, 255, 0.05)' : 'transparent'}
+                            fill={onComponentClick ? getRgbaVariable('--color-primary', 0.05) : 'transparent'}
                             cornerRadius={4}
                             opacity={0}
                             onMouseEnter={(e) => {
@@ -1860,11 +1833,11 @@ export function MapCanvas({
                     width={width + 4}
                     height={height + 4}
                     fill="transparent"
-                    stroke="rgba(76, 125, 255, 0.4)"
+                    stroke={getRgbaVariable('--color-primary', 0.4)}
                     strokeWidth={5}
                     listening={false}
                     shadowBlur={20}
-                    shadowColor="rgba(76, 125, 255, 0.9)"
+                    shadowColor={colors.selectionShadow || getRgbaVariable('--color-primary', 0.9)}
                     cornerRadius={Math.max(0, safeCornerRadius + 1)}
                   />
 
@@ -1874,13 +1847,13 @@ export function MapCanvas({
                     y={minY}
                     width={width}
                     height={height}
-                    fill="rgba(76, 125, 255, 0.25)"
-                    stroke="rgba(76, 125, 255, 1)"
+                    fill={colors.selectionFill || getRgbaVariable('--color-primary', 0.25)}
+                    stroke={colors.selectionStroke || colors.primary}
                     strokeWidth={4}
                     dash={[12, 6]}
                     listening={false}
                     shadowBlur={25}
-                    shadowColor="rgba(76, 125, 255, 1)"
+                    shadowColor={colors.selectionShadow || colors.primary}
                     cornerRadius={Math.max(0, safeCornerRadius)}
                   />
 
@@ -1905,14 +1878,14 @@ export function MapCanvas({
                     {/* Top-left corner */}
                     <Line
                       points={[minX, minY, minX + 20, minY]}
-                      stroke="rgba(76, 125, 255, 1)"
+                      stroke={colors.selectionStroke || colors.primary}
                       strokeWidth={4}
                       lineCap="round"
                       listening={false}
                     />
                     <Line
                       points={[minX, minY, minX, minY + 20]}
-                      stroke="rgba(76, 125, 255, 1)"
+                      stroke={colors.selectionStroke || colors.primary}
                       strokeWidth={4}
                       lineCap="round"
                       listening={false}
@@ -1920,14 +1893,14 @@ export function MapCanvas({
                     {/* Top-right corner */}
                     <Line
                       points={[maxX, minY, maxX - 20, minY]}
-                      stroke="rgba(76, 125, 255, 1)"
+                      stroke={colors.selectionStroke || colors.primary}
                       strokeWidth={4}
                       lineCap="round"
                       listening={false}
                     />
                     <Line
                       points={[maxX, minY, maxX, minY + 20]}
-                      stroke="rgba(76, 125, 255, 1)"
+                      stroke={colors.selectionStroke || colors.primary}
                       strokeWidth={4}
                       lineCap="round"
                       listening={false}
@@ -1935,14 +1908,14 @@ export function MapCanvas({
                     {/* Bottom-left corner */}
                     <Line
                       points={[minX, maxY, minX + 20, maxY]}
-                      stroke="rgba(76, 125, 255, 1)"
+                      stroke={colors.selectionStroke || colors.primary}
                       strokeWidth={4}
                       lineCap="round"
                       listening={false}
                     />
                     <Line
                       points={[minX, maxY, minX, maxY - 20]}
-                      stroke="rgba(76, 125, 255, 1)"
+                      stroke={colors.selectionStroke || colors.primary}
                       strokeWidth={4}
                       lineCap="round"
                       listening={false}
@@ -1950,14 +1923,14 @@ export function MapCanvas({
                     {/* Bottom-right corner */}
                     <Line
                       points={[maxX, maxY, maxX - 20, maxY]}
-                      stroke="rgba(76, 125, 255, 1)"
+                      stroke={colors.selectionStroke || colors.primary}
                       strokeWidth={4}
                       lineCap="round"
                       listening={false}
                     />
                     <Line
                       points={[maxX, maxY, maxX, maxY - 20]}
-                      stroke="rgba(76, 125, 255, 1)"
+                      stroke={colors.selectionStroke || colors.primary}
                       strokeWidth={4}
                       lineCap="round"
                       listening={false}
@@ -1967,9 +1940,9 @@ export function MapCanvas({
                   {/* Device indicators - show prominent highlights for each device in selection */}
                   {devicesInSelection.map((device) => {
                     const deviceCoords = toCanvasCoords({ x: device.x, y: device.y })
-                    const color = isFixtureType(device.type) ? '#4c7dff' :
-                      device.type === 'motion' ? '#f97316' :
-                        '#22c55e'
+                    const color = isFixtureType(device.type) ? colors.fixture || colors.primary :
+                      device.type === 'motion' ? colors.accent :
+                        colors.success
 
                     return (
                       <Group key={device.id}>
@@ -2027,11 +2000,11 @@ export function MapCanvas({
                       y={0}
                       width={Math.max(160, 100 + (totalCount > 9 ? 20 : 0))}
                       height={totalCount > 0 ? 60 : 35}
-                      fill="rgba(17, 24, 39, 0.98)"
+                      fill={colors.tooltipBg || 'rgba(17, 24, 39, 0.98)'}
                       cornerRadius={8}
                       listening={false}
                       shadowBlur={25}
-                      shadowColor="rgba(0, 0, 0, 0.7)"
+                      shadowColor={getRgbaVariable('--color-tooltip-shadow', 0.7) || 'rgba(0, 0, 0, 0.7)'}
                     />
                     <Rect
                       x={0}
@@ -2039,7 +2012,7 @@ export function MapCanvas({
                       width={Math.max(160, 100 + (totalCount > 9 ? 20 : 0))}
                       height={totalCount > 0 ? 60 : 35}
                       fill="transparent"
-                      stroke="rgba(76, 125, 255, 1)"
+                      stroke={colors.selectionStroke || colors.primary}
                       strokeWidth={3}
                       cornerRadius={8}
                       listening={false}
@@ -2053,7 +2026,7 @@ export function MapCanvas({
                       fontSize={13}
                       fontFamily="system-ui, -apple-system, sans-serif"
                       fontStyle="bold"
-                      fill={totalCount > 0 ? "#ffffff" : "rgba(255, 255, 255, 0.7)"}
+                      fill={totalCount > 0 ? colors.text : getRgbaVariable('--color-text', 0.7)}
                       align="left"
                       listening={false}
                     />
@@ -2066,7 +2039,7 @@ export function MapCanvas({
                             text={`• ${fixtures} fixture${fixtures !== 1 ? 's' : ''}`}
                             fontSize={10}
                             fontFamily="system-ui, -apple-system, sans-serif"
-                            fill="#4c7dff"
+                            fill={colors.fixture || colors.primary}
                             align="left"
                             listening={false}
                           />
@@ -2078,7 +2051,7 @@ export function MapCanvas({
                             text={`• ${motion} motion sensor${motion !== 1 ? 's' : ''}`}
                             fontSize={10}
                             fontFamily="system-ui, -apple-system, sans-serif"
-                            fill="#f97316"
+                            fill={colors.accent}
                             align="left"
                             listening={false}
                           />
@@ -2090,7 +2063,7 @@ export function MapCanvas({
                             text={`• ${sensors} light sensor${sensors !== 1 ? 's' : ''}`}
                             fontSize={10}
                             fontFamily="system-ui, -apple-system, sans-serif"
-                            fill="#22c55e"
+                            fill={colors.success}
                             align="left"
                             listening={false}
                           />

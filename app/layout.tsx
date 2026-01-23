@@ -5,28 +5,24 @@
  * Sets up all global providers (tRPC, Auth, Theme, Contexts, etc.)
  * 
  * AI Note: This is the top-level layout. All pages inherit from this.
- * Providers are ordered: TRPC → Auth → Theme → Role → Site → Data Contexts → UI Contexts
+ * Providers are ordered: TRPC → Appearance → Auth → Site → Map → Toast → Domain → Notification
+ * (Reduced from 13 to 8 providers via consolidation)
  */
 
 import type { Metadata } from 'next'
 import './globals.css'
 import { TRPCProvider } from '@/lib/trpc/Provider'
 import { AuthProvider } from '@/lib/auth'
-import { ThemeProvider } from '@/lib/theme'
-import { RoleProvider } from '@/lib/role'
+import { AppearanceProvider } from '@/lib/AppearanceContext'
 import { SiteProvider } from '@/lib/SiteContext'
 import { DomainProvider } from '@/lib/DomainContext'
 import { NotificationProvider } from '@/lib/NotificationContext'
 import { MapProvider } from '@/lib/MapContext'
 import { ToastProvider } from '@/lib/ToastContext'
 import { ToastContainer } from '@/components/ui/Toast'
-import { FontProvider } from '@/lib/FontContext'
-import { I18nProvider } from '@/lib/i18n'
-import { AdvancedSettingsProvider } from '@/lib/AdvancedSettingsContext'
-import { ZoomProvider } from '@/lib/ZoomContext'
+import { ComposeProviders } from '@/components/shared/ComposeProviders'
 // Import exportData to make exportFusionData() available in browser console
 import '@/lib/exportData'
-import { ComposeProviders } from '@/components/shared/ComposeProviders'
 
 export const metadata: Metadata = {
   title: 'Fusion / Cortex — Commissioning & Configuration',
@@ -55,16 +51,11 @@ export default function RootLayout({
         <ComposeProviders
           components={[
             TRPCProvider,
-            ThemeProvider,
-            FontProvider,
-            I18nProvider,
-            AdvancedSettingsProvider,
-            RoleProvider,
-            AuthProvider,
+            AppearanceProvider,  // Theme + Font + I18n + AdvancedSettings
+            AuthProvider,        // Auth + Role
             SiteProvider,
-            MapProvider,
-            ZoomProvider,
-            ToastProvider,        // Must be before DomainProvider for error handling
+            MapProvider,         // Map + Zoom
+            ToastProvider,
             DomainProvider,
             NotificationProvider,
           ]}
@@ -76,3 +67,4 @@ export default function RootLayout({
     </html>
   )
 }
+

@@ -8,6 +8,25 @@
  */
 
 import { DeviceType } from './mockData'
+import { logger } from './logger'
+
+// Define strict types for tRPC client usage in this file
+export interface TrpcImageClient {
+  image: {
+    getLibraryImage: {
+      query: (input: { libraryId: string }) => Promise<string | null>
+    }
+    saveLibraryImage: {
+      mutateAsync: (input: { libraryId: string; imageData: string; mimeType: string }) => Promise<void>
+    }
+    getSiteImage: {
+      query: (input: { siteId: string }) => Promise<string | null>
+    }
+    saveSiteImage: {
+      mutateAsync: (input: { siteId: string; imageData: string; mimeType: string }) => Promise<void>
+    }
+  }
+}
 
 // Use a special store ID for library images (not store-specific)
 const LIBRARY_STORE_ID = 'library'
@@ -81,26 +100,26 @@ export function getComponentLibraryUrl(componentType: string): string | null {
 /**
  * Get custom image for a library object (stored in localStorage or IndexedDB)
  */
-async function getCustomImage(libraryId: string, trpcClient?: any): Promise<string | null> {
+async function getCustomImage(libraryId: string, trpcClient?: TrpcImageClient): Promise<string | null> {
   if (typeof window === 'undefined') return null
-  
+
   // Validate libraryId before attempting any queries
   if (!libraryId || typeof libraryId !== 'string' || libraryId.length === 0) {
-    console.warn(`⚠️ Invalid libraryId provided to getCustomImage: ${libraryId}`)
+    logger.warn(`⚠️ Invalid libraryId provided to getCustomImage: ${libraryId}`)
     return null
   }
-  
-  console.log(`🔍 Loading custom image for libraryId: ${libraryId}`)
-  
+
+  logger.debug(`🔍 Loading custom image for libraryId: ${libraryId}`)
+
   // METHOD 1: Try to load from Supabase database first (primary source)
   try {
     if (trpcClient && libraryId && libraryId.length > 0) {
       const dbImage = await trpcClient.image.getLibraryImage.query({ libraryId })
       if (dbImage) {
-        console.log(`✅ Loaded library image from Supabase database for ${libraryId}`)
+        logger.debug(`✅ Loaded library image from Supabase database for ${libraryId}`)
         return dbImage
       } else {
-        console.log(`ℹ️ No database image found for ${libraryId}`)
+        logger.debug(`ℹ️ No database image found for ${libraryId}`)
       }
     } else {
       // Try direct API call if trpcClient not provided
@@ -113,25 +132,25 @@ async function getCustomImage(libraryId: string, trpcClient?: any): Promise<stri
           if (result?.result?.data) {
             const dbImage = result.result.data
             if (dbImage) {
-              console.log(`✅ Loaded library image from database via API for ${libraryId}`)
+              logger.debug(`✅ Loaded library image from database via API for ${libraryId}`)
               return dbImage
             }
           }
         }
-      } catch (apiError: any) {
+      } catch (apiError: unknown) {
         // Silently fail - will fallback to client storage
-        console.log(`ℹ️ Direct API call failed for ${libraryId}, trying client storage`)
+        logger.debug(`ℹ️ Direct API call failed for ${libraryId}, trying client storage`)
       }
     }
   } catch (dbError: any) {
-    console.warn(`⚠️ Failed to load from database for ${libraryId}, trying client storage:`, dbError.message)
+    logger.warn(`⚠️ Failed to load from database for ${libraryId}, trying client storage:`, dbError.message)
   }
 
   // METHOD 2: Fallback to client storage (localStorage/IndexedDB)
   try {
     const stored = localStorage.getItem(`library_image_${libraryId}`)
     if (!stored) return null
-    
+
     // Check if it's an IndexedDB reference
     if (stored.startsWith('indexeddb:')) {
       const imageId = stored.replace('indexeddb:', '')
@@ -157,13 +176,13 @@ async function getCustomImage(libraryId: string, trpcClient?: any): Promise<stri
             await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)))
             continue
           }
-          console.error('Failed to load image from IndexedDB:', error)
+          logger.error('Failed to load image from IndexedDB:', error)
           return null
         }
       }
       return null
     }
-    
+
     // It's a direct base64 string
     return stored
   } catch {
@@ -201,25 +220,25 @@ export async function compressImage(base64String: string, maxWidth: number = 400
       const canvas = document.createElement('canvas')
       let width = img.width
       let height = img.height
-      
+
       // Scale down if too large (more aggressive)
       if (width > maxWidth) {
         height = (height * maxWidth) / width
         width = maxWidth
       }
-      
+
       canvas.width = width
       canvas.height = height
-      
+
       const ctx = canvas.getContext('2d')
       if (ctx) {
         ctx.drawImage(img, 0, 0, width, height)
-        
+
         // Always use JPEG for maximum compression (images are not critical)
         // Start with aggressive quality setting
         let compressed = canvas.toDataURL('image/jpeg', quality)
         let currentQuality = quality
-        
+
         // If still too large, reduce quality further (down to 0.4 minimum)
         let attempts = 0
         while (compressed.length > maxSizeBytes && attempts < 5 && currentQuality > 0.4) {
@@ -227,20 +246,20 @@ export async function compressImage(base64String: string, maxWidth: number = 400
           compressed = canvas.toDataURL('image/jpeg', currentQuality)
           attempts++
         }
-        
+
         // If still too large after quality reduction, scale down more aggressively
         if (compressed.length > maxSizeBytes && width > 300) {
           const scaleFactor = Math.sqrt(maxSizeBytes / compressed.length) * 0.9 // Extra 10% reduction
           width = Math.max(300, Math.floor(width * scaleFactor))
           height = Math.floor((height * width) / img.width)
-          
+
           canvas.width = width
           canvas.height = height
           ctx.drawImage(img, 0, 0, width, height)
           compressed = canvas.toDataURL('image/jpeg', 0.5)
         }
-        
-        console.log(`✅ Compressed image: ${compressed.length} bytes (${(compressed.length / 1024).toFixed(1)} KB)`)
+
+        logger.debug(`Compressed image: ${compressed.length} bytes (${(compressed.length / 1024).toFixed(1)} KB)`)
         resolve(compressed)
       } else {
         resolve(base64String) // Fallback to original
@@ -254,18 +273,18 @@ export async function compressImage(base64String: string, maxWidth: number = 400
 /**
  * Set custom image for a library object (stored in Supabase database AND client storage as backup)
  */
-export async function setCustomImage(libraryId: string, imageUrl: string, trpcClient?: any): Promise<void> {
+export async function setCustomImage(libraryId: string, imageUrl: string, trpcClient?: TrpcImageClient): Promise<void> {
   if (typeof window === 'undefined') return
-  
+
   try {
     // Compress image first to reduce size (aggressive compression to avoid 414 errors)
     const compressedImage = await compressImage(imageUrl, 600, 0.7, 500000) // Max 500KB
-    console.log(`Compressed library image size: ${compressedImage.length} chars (${(compressedImage.length / 1024).toFixed(1)} KB)`)
-    
+    logger.debug(`Compressed library image size: ${compressedImage.length} chars (${(compressedImage.length / 1024).toFixed(1)} KB)`)
+
     // Check if compressed image is still too large for HTTP requests
     const MAX_REQUEST_SIZE = 500000 // 500KB
     if (compressedImage.length > MAX_REQUEST_SIZE) {
-      console.warn(`⚠️ Compressed library image still too large (${compressedImage.length} bytes), using client storage only`)
+      logger.warn(`Compressed library image still too large (${compressedImage.length} bytes), using client storage only`)
       // Skip database save, go straight to client storage
     } else {
       // Determine mime type
@@ -275,17 +294,17 @@ export async function setCustomImage(libraryId: string, imageUrl: string, trpcCl
       // METHOD 1: Try to save to Supabase database first (primary storage)
       try {
         if (trpcClient) {
-          console.log('💾 Attempting to save library image to Supabase database...')
+          logger.debug('💾 Attempting to save library image to Supabase database...')
           await trpcClient.image.saveLibraryImage.mutateAsync({
             libraryId,
             imageData: compressedImage,
             mimeType,
           })
-          console.log('✅ Library image saved to Supabase database')
+          logger.info('✅ Library image saved to Supabase database')
         } else {
           // Try direct API call for mutation (POST with batch format)
           try {
-            console.log('💾 Attempting to save library image to Supabase database (direct API call)...')
+            logger.debug('💾 Attempting to save library image to Supabase database (direct API call)...')
             // tRPC batch format for mutations: POST with JSON body
             const requestBody = JSON.stringify({
               "0": {
@@ -296,52 +315,52 @@ export async function setCustomImage(libraryId: string, imageUrl: string, trpcCl
                 },
               },
             })
-            
+
             // Check request body size
             if (requestBody.length > MAX_REQUEST_SIZE) {
               throw new Error('Request body too large (414 URI_TOO_LONG)')
             }
-            
+
             const response = await fetch(`/api/trpc/image.saveLibraryImage?batch=1`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: requestBody,
             })
-          if (response.ok) {
-            const result = await response.json()
-            if (Array.isArray(result) && result[0]?.result?.data) {
-              console.log('✅ Library image saved to Supabase database via API')
-            } else if (result[0]?.error) {
-              throw new Error(result[0].error.json?.message || result[0].error.message || 'Database save failed')
+            if (response.ok) {
+              const result = await response.json()
+              if (Array.isArray(result) && result[0]?.result?.data) {
+                logger.info('✅ Library image saved to Supabase database via API')
+              } else if (result[0]?.error) {
+                throw new Error(result[0].error.json?.message || result[0].error.message || 'Database save failed')
+              } else {
+                throw new Error('Invalid response format')
+              }
             } else {
-              throw new Error('Invalid response format')
+              const errorText = await response.text()
+              throw new Error(`API returned ${response.status}: ${errorText.substring(0, 200)}`)
             }
-          } else {
-            const errorText = await response.text()
-            throw new Error(`API returned ${response.status}: ${errorText.substring(0, 200)}`)
-          }
           } catch (apiError: any) {
             if (apiError.message?.includes('414') || apiError.message?.includes('URI_TOO_LONG')) {
-              console.warn('⚠️ Library image too large for database (414 error), using client storage only')
+              logger.warn('Library image too large for database (414 error), using client storage only')
             } else {
-              console.warn('⚠️ Failed to save library image to database via API, using client storage:', apiError.message)
+              logger.warn('Failed to save library image to database via API, using client storage:', apiError.message)
             }
             // Continue to client storage fallback
           }
         }
       } catch (dbError: any) {
         if (dbError.message?.includes('414') || dbError.message?.includes('URI_TOO_LONG')) {
-          console.warn('⚠️ Library image too large for database (414 error), using client storage only')
+          logger.warn('Library image too large for database (414 error), using client storage only')
         } else {
-          console.warn('⚠️ Failed to save to database, using client storage as fallback:', dbError.message)
+          logger.warn('Failed to save to database, using client storage as fallback:', dbError.message)
         }
         // Continue to client storage fallback
       }
     }
-    
+
     // METHOD 2: Also save to client storage as backup (IndexedDB or localStorage)
     // Always save to client storage as backup, even if database save succeeded
-    console.log('💾 Saving to client storage as backup...')
+    logger.debug('💾 Saving to client storage as backup...')
     // Check if compressed image is still too large for localStorage
     if (compressedImage.length > IMAGE_SIZE_THRESHOLD) {
       // Large image - store in IndexedDB
@@ -350,12 +369,12 @@ export async function setCustomImage(libraryId: string, imageUrl: string, trpcCl
         // Convert base64 to Blob
         const response = await fetch(compressedImage)
         const blob = await response.blob()
-        
+
         // Determine file extension and mime type based on compressed image format
         const isPNG = compressedImage.startsWith('data:image/png')
         const fileExtension = isPNG ? 'png' : 'jpg'
         const mimeType = isPNG ? 'image/png' : 'image/jpeg'
-        
+
         // Store in IndexedDB and wait for it to complete
         const imageId = await storeImage(
           LIBRARY_STORE_ID,
@@ -363,8 +382,8 @@ export async function setCustomImage(libraryId: string, imageUrl: string, trpcCl
           `library_${libraryId}.${fileExtension}`,
           mimeType
         )
-        
-            // Verify the image was actually stored before saving reference
+
+        // Verify the image was actually stored before saving reference
         // Note: We wait a bit longer for IndexedDB to be ready
         let verified = false
         for (let i = 0; i < 5; i++) {
@@ -372,26 +391,26 @@ export async function setCustomImage(libraryId: string, imageUrl: string, trpcCl
             const storedImage = await getImage(imageId)
             if (storedImage) {
               verified = true
-              console.log(`✅ Verified image stored in IndexedDB on attempt ${i + 1}`)
+              logger.debug(`Verified image stored in IndexedDB on attempt ${i + 1}`)
               break
             }
           } catch (verifyError) {
-            console.warn(`Verification attempt ${i + 1} failed:`, verifyError)
+            logger.warn(`Verification attempt ${i + 1} failed:`, verifyError)
           }
           // Wait a bit before retrying (longer waits for later attempts)
           await new Promise(resolve => setTimeout(resolve, 150 * (i + 1)))
         }
 
         if (!verified) {
-          console.warn('⚠️ Image stored but could not be verified after 5 attempts - saving reference anyway')
+          logger.warn('Image stored but could not be verified after 5 attempts - saving reference anyway')
           // Don't throw - save the reference anyway, retry logic will handle it on read
         }
-        
+
         // Store only the reference in localStorage after verification
         const reference = `indexeddb:${imageId}`
         localStorage.setItem(`library_image_${libraryId}`, reference)
       } catch (indexedDBError) {
-        console.error('Failed to store image in IndexedDB:', indexedDBError)
+        logger.error('Failed to store image in IndexedDB:', indexedDBError)
         // Try localStorage as fallback (might fail if too large)
         try {
           localStorage.setItem(`library_image_${libraryId}`, compressedImage)
@@ -403,7 +422,7 @@ export async function setCustomImage(libraryId: string, imageUrl: string, trpcCl
       // Small image - can store in localStorage
       localStorage.setItem(`library_image_${libraryId}`, compressedImage)
     }
-    
+
     // Trigger a custom event so components can react to image changes
     // Add a small delay to ensure IndexedDB is ready
     setTimeout(() => {
@@ -411,7 +430,7 @@ export async function setCustomImage(libraryId: string, imageUrl: string, trpcCl
       window.dispatchEvent(new Event('libraryImageUpdated'))
     }, 200)
   } catch (error) {
-    console.error('Failed to save custom library image:', error)
+    logger.error('Failed to save custom library image:', error)
     throw error // Re-throw so caller can show error message
   }
 }
@@ -425,7 +444,7 @@ export function removeCustomImage(libraryId: string): void {
     localStorage.removeItem(`library_image_${libraryId}`)
     window.dispatchEvent(new CustomEvent('libraryImageUpdated', { detail: { libraryId } }))
   } catch (error) {
-    console.error('Failed to remove custom library image:', error)
+    logger.error('Failed to remove custom library image:', error)
   }
 }
 
@@ -436,11 +455,11 @@ export function removeCustomImage(libraryId: string): void {
 export function getDeviceImage(deviceType: DeviceType): string | null {
   const libraryId = DEVICE_TYPE_TO_LIBRARY_ID[deviceType]
   if (!libraryId) return null
-  
+
   // Check for custom image first (synchronous - may return null for IndexedDB refs)
   const customImage = getCustomImageSync(libraryId)
   if (customImage) return customImage
-  
+
   // Fall back to default
   return DEVICE_IMAGES[libraryId] || null
 }
@@ -453,11 +472,11 @@ export function getComponentImage(componentType: string): string | null {
   const normalized = normalizeComponentType(componentType)
   const libraryId = COMPONENT_TYPE_TO_LIBRARY_ID[normalized]
   if (!libraryId) return null
-  
+
   // Check for custom image first (synchronous - may return null for IndexedDB refs)
   const customImage = getCustomImageSync(libraryId)
   if (customImage) return customImage
-  
+
   // Fall back to default
   return COMPONENT_IMAGES[libraryId] || null
 }
@@ -468,11 +487,11 @@ export function getComponentImage(componentType: string): string | null {
 export async function getDeviceImageAsync(deviceType: DeviceType): Promise<string | null> {
   const libraryId = DEVICE_TYPE_TO_LIBRARY_ID[deviceType]
   if (!libraryId) return null
-  
+
   // Check for custom image first
   const customImage = await getCustomImage(libraryId)
   if (customImage) return customImage
-  
+
   // Fall back to default
   return DEVICE_IMAGES[libraryId] || null
 }
@@ -484,11 +503,11 @@ export async function getComponentImageAsync(componentType: string): Promise<str
   const normalized = normalizeComponentType(componentType)
   const libraryId = COMPONENT_TYPE_TO_LIBRARY_ID[normalized]
   if (!libraryId) return null
-  
+
   // Check for custom image first
   const customImage = await getCustomImage(libraryId)
   if (customImage) return customImage
-  
+
   // Fall back to default
   return COMPONENT_IMAGES[libraryId] || null
 }
@@ -527,25 +546,25 @@ const SITE_IMAGE_PREFIX = 'site_image_'
  */
 export async function getSiteImage(siteId: string, retries: number = 3, trpcClient?: any): Promise<string | null> {
   if (typeof window === 'undefined') return null
-  
+
   // Validate siteId before attempting any queries
   if (!siteId || typeof siteId !== 'string' || siteId.length === 0) {
-    console.warn(`⚠️ Invalid siteId provided to getSiteImage: ${siteId}`)
+    logger.warn(`Invalid siteId provided to getSiteImage: ${siteId}`)
     return null
   }
-  
-  console.log(`🔍 Loading site image for siteId: ${siteId}`)
-  
+
+  logger.debug(`Loading site image for siteId: ${siteId}`)
+
   // METHOD 1: Try to load from Supabase database first (primary source)
   // NOTE: Only works if trpcClient is provided. Components should use tRPC hooks directly.
   try {
     if (trpcClient && siteId && siteId.length > 0) {
       const dbImage = await trpcClient.image.getSiteImage.query({ siteId })
       if (dbImage) {
-        console.log(`✅ Loaded site image from Supabase database for ${siteId}`)
+        logger.debug(`Loaded site image from Supabase database for ${siteId}`)
         return dbImage
       } else {
-        console.log(`ℹ️ No database image found for ${siteId}`)
+        logger.debug(`No database image found for ${siteId}`)
       }
     } else {
       // No trpcClient provided - skip database lookup, go straight to client storage
@@ -553,14 +572,14 @@ export async function getSiteImage(siteId: string, retries: number = 3, trpcClie
 
     }
   } catch (dbError: any) {
-    console.warn(`⚠️ Failed to load from database for ${siteId}, trying client storage:`, dbError.message)
+    logger.warn(`Failed to load from database for ${siteId}, trying client storage:`, dbError.message)
   }
 
   // METHOD 2: Fallback to client storage (localStorage/IndexedDB)
   try {
     const stored = localStorage.getItem(`${SITE_IMAGE_PREFIX}${siteId}`)
     if (!stored) {
-      console.log(`No site image found in client storage for ${siteId}`)
+      logger.debug(`No site image found in client storage for ${siteId}`)
       return null
     }
 
@@ -579,18 +598,18 @@ export async function getSiteImage(siteId: string, retries: number = 3, trpcClie
             await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)))
             continue
           }
-          console.warn(`Failed to load site image from IndexedDB for ${siteId} after ${retries} attempts, imageId: ${imageId}`)
+          logger.warn(`Failed to load site image from IndexedDB for ${siteId} after ${retries} attempts, imageId: ${imageId}`)
         } catch (error) {
           if (attempt < retries - 1) {
             // Wait before retrying
             await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)))
             continue
           }
-          console.error(`Failed to load site image from IndexedDB for ${siteId}:`, error)
+          logger.error(`Failed to load site image from IndexedDB for ${siteId}:`, error)
           // Try to remove the broken reference
           try {
             localStorage.removeItem(`${SITE_IMAGE_PREFIX}${siteId}`)
-          } catch {}
+          } catch { }
           return null
         }
       }
@@ -601,11 +620,11 @@ export async function getSiteImage(siteId: string, retries: number = 3, trpcClie
     if (stored.startsWith('data:') || stored.length > 100) {
       return stored
     }
-    
-    console.warn(`Invalid site image format for ${siteId}`)
+
+    logger.warn(`Invalid site image format for ${siteId}`)
     return null
   } catch (error) {
-    console.error(`Failed to get site image for ${siteId}:`, error)
+    logger.error(`Failed to get site image for ${siteId}:`, error)
     return null
   }
 }
@@ -615,24 +634,24 @@ export async function getSiteImage(siteId: string, retries: number = 3, trpcClie
  */
 export async function setSiteImage(siteId: string, imageUrl: string, trpcClient?: any): Promise<void> {
   if (typeof window === 'undefined') {
-    console.warn('setSiteImage called on server side, skipping')
+    logger.warn('setSiteImage called on server side, skipping')
     return
   }
-  
-  console.log(`📸 Saving site image for ${siteId}, size: ${imageUrl.length} chars`)
-  
+
+  logger.debug(`Saving site image for ${siteId}, size: ${imageUrl.length} chars`)
+
   try {
     // Compress image first (aggressive compression to avoid 414 errors)
-    console.log('Compressing image...')
+    logger.debug('Compressing image...')
     const compressedImage = await compressImage(imageUrl, 600, 0.7, 500000) // Max 500KB
-    console.log(`Compressed size: ${compressedImage.length} chars (${(compressedImage.length / 1024).toFixed(1)} KB)`)
+    logger.debug(`Compressed size: ${compressedImage.length} chars (${(compressedImage.length / 1024).toFixed(1)} KB)`)
 
     // Check if compressed image is still too large for HTTP requests (avoid 414 errors)
     // Most servers have URL length limits around 8KB-32KB, but POST body can be larger
     // However, to be safe, we'll limit to 500KB for the entire request body
     const MAX_REQUEST_SIZE = 500000 // 500KB
     if (compressedImage.length > MAX_REQUEST_SIZE) {
-      console.warn(`⚠️ Compressed image still too large (${compressedImage.length} bytes), using client storage only`)
+      logger.warn(`Compressed image still too large (${compressedImage.length} bytes), using client storage only`)
       // Skip database save, go straight to client storage
     } else {
       // Determine mime type
@@ -642,26 +661,26 @@ export async function setSiteImage(siteId: string, imageUrl: string, trpcClient?
       // METHOD 1: Try to save to Supabase database first (primary storage)
       if (trpcClient) {
         try {
-          console.log('💾 Attempting to save to Supabase database...')
+          logger.debug('Attempting to save to Supabase database...')
           await trpcClient.image.saveSiteImage.mutateAsync({
             siteId,
             imageData: compressedImage,
             mimeType,
           })
-          console.log('✅ Site image saved to Supabase database')
+          logger.info('Site image saved to Supabase database')
         } catch (dbError: any) {
           // Check for 414 error specifically
           if (dbError.message?.includes('414') || dbError.message?.includes('URI_TOO_LONG')) {
-            console.warn('⚠️ Image too large for database (414 error), using client storage only')
+            logger.warn('Image too large for database (414 error), using client storage only')
           } else {
-            console.warn('⚠️ Failed to save to database, using client storage as fallback:', dbError.message)
+            logger.warn('Failed to save to database, using client storage as fallback:', dbError.message)
           }
           // Continue to client storage fallback
         }
       } else {
         // Try direct API call for mutation (POST with batch format)
         try {
-          console.log('💾 Attempting to save to Supabase database (direct API call)...')
+          logger.debug('Attempting to save to Supabase database (direct API call)...')
           // tRPC batch format for mutations: POST with JSON body
           const requestBody = JSON.stringify({
             "0": {
@@ -672,41 +691,41 @@ export async function setSiteImage(siteId: string, imageUrl: string, trpcClient?
               },
             },
           })
-          
+
           // Check request body size
           if (requestBody.length > MAX_REQUEST_SIZE) {
             throw new Error('Request body too large (414 URI_TOO_LONG)')
           }
-          
+
           const response = await fetch(`/api/trpc/image.saveSiteImage?batch=1`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: requestBody,
           })
-        if (response.ok) {
-          const result = await response.json()
-          if (Array.isArray(result) && result[0]?.result?.data) {
-            console.log('✅ Site image saved to Supabase database via API')
-          } else if (result[0]?.error) {
-            throw new Error(result[0].error.json?.message || result[0].error.message || 'Database save failed')
-          } else {
-            throw new Error('Invalid response format')
-          }
+          if (response.ok) {
+            const result = await response.json()
+            if (Array.isArray(result) && result[0]?.result?.data) {
+              logger.info('Site image saved to Supabase database via API')
+            } else if (result[0]?.error) {
+              throw new Error(result[0].error.json?.message || result[0].error.message || 'Database save failed')
+            } else {
+              throw new Error('Invalid response format')
+            }
           } else {
             const errorText = await response.text()
             const errorMsg = `API returned ${response.status}: ${errorText.substring(0, 200)}`
             // Check for 414 specifically
             if (response.status === 414 || errorText.includes('URI_TOO_LONG')) {
-              console.warn('⚠️ Image too large for database (414 URI_TOO_LONG), using client storage only')
+              logger.warn('Image too large for database (414 URI_TOO_LONG), using client storage only')
             } else {
               throw new Error(errorMsg)
             }
           }
         } catch (apiError: any) {
           if (apiError.message?.includes('414') || apiError.message?.includes('URI_TOO_LONG')) {
-            console.warn('⚠️ Image too large for database (414 error), using client storage only')
+            logger.warn('Image too large for database (414 error), using client storage only')
           } else {
-            console.warn('⚠️ Failed to save to database via API, using client storage:', apiError.message)
+            logger.warn('Failed to save to database via API, using client storage:', apiError.message)
           }
           // Continue to client storage fallback
         }
@@ -715,19 +734,19 @@ export async function setSiteImage(siteId: string, imageUrl: string, trpcClient?
 
     // Check if compressed image is still too large for localStorage
     if (compressedImage.length > IMAGE_SIZE_THRESHOLD) {
-      console.log('Image is large, storing in IndexedDB...')
+      logger.debug('Image is large, storing in IndexedDB...')
       // Large image - store in IndexedDB
       try {
         const { storeImage } = await import('./indexedDB')
         const response = await fetch(compressedImage)
         const blob = await response.blob()
-        console.log(`Blob size: ${blob.size} bytes`)
+        logger.debug(`Blob size: ${blob.size} bytes`)
 
         // Determine file extension and mime type based on compressed image format
         const isPNG = compressedImage.startsWith('data:image/png')
         const fileExtension = isPNG ? 'png' : 'jpg'
         const mimeType = isPNG ? 'image/png' : 'image/jpeg'
-        
+
         // Store in IndexedDB and wait for it to complete
         const imageId = await storeImage(
           siteId,
@@ -735,7 +754,7 @@ export async function setSiteImage(siteId: string, imageUrl: string, trpcClient?
           `site_image_${siteId}.${fileExtension}`,
           mimeType
         )
-        console.log(`✅ Stored in IndexedDB with ID: ${imageId}`)
+        logger.debug(`Stored in IndexedDB with ID: ${imageId}`)
 
         // Verify the image was actually stored before saving reference
         const { getImage } = await import('./indexedDB')
@@ -745,51 +764,51 @@ export async function setSiteImage(siteId: string, imageUrl: string, trpcClient?
             const storedImage = await getImage(imageId)
             if (storedImage) {
               verified = true
-              console.log(`✅ Verified library image stored in IndexedDB on attempt ${i + 1}`)
+              logger.debug(`Verified library image stored in IndexedDB on attempt ${i + 1}`)
               break
             }
           } catch (verifyError) {
-            console.warn(`Library image verification attempt ${i + 1} failed:`, verifyError)
+            logger.warn(`Library image verification attempt ${i + 1} failed:`, verifyError)
           }
           // Wait a bit before retrying (longer waits for later attempts)
           await new Promise(resolve => setTimeout(resolve, 150 * (i + 1)))
         }
 
         if (!verified) {
-          console.warn('⚠️ Library image stored but could not be verified after 5 attempts - saving reference anyway')
+          logger.warn('Library image stored but could not be verified after 5 attempts - saving reference anyway')
           // Don't throw - save the reference anyway, retry logic will handle it on read
         }
 
         // Store only the reference in localStorage after verification
         const reference = `indexeddb:${imageId}`
         localStorage.setItem(`${SITE_IMAGE_PREFIX}${siteId}`, reference)
-        console.log(`✅ Saved reference to localStorage: ${SITE_IMAGE_PREFIX}${siteId}`)
+        logger.debug(`Saved reference to localStorage: ${SITE_IMAGE_PREFIX}${siteId}`)
       } catch (indexedDBError) {
-        console.error('❌ Failed to store image in IndexedDB:', indexedDBError)
+        logger.error('Failed to store image in IndexedDB:', indexedDBError)
         // Try localStorage as fallback (might fail if too large)
         try {
           localStorage.setItem(`${SITE_IMAGE_PREFIX}${siteId}`, compressedImage)
-          console.log(`✅ Fallback: Saved to localStorage (may be too large)`)
+          logger.debug('Fallback: Saved to localStorage (may be too large)')
         } catch (storageError) {
-          console.error('❌ Failed to save to localStorage:', storageError)
+          logger.error('Failed to save to localStorage:', storageError)
           throw new Error('Image is too large to store. Please use a smaller image.')
         }
       }
     } else {
       // Small image - can store in localStorage
-      console.log('Image is small, storing in localStorage...')
+      logger.debug('Image is small, storing in localStorage...')
       localStorage.setItem(`${SITE_IMAGE_PREFIX}${siteId}`, compressedImage)
-      console.log(`✅ Saved to localStorage: ${SITE_IMAGE_PREFIX}${siteId}`)
+      logger.debug(`Saved to localStorage: ${SITE_IMAGE_PREFIX}${siteId}`)
     }
 
     // Verify it was saved (with a small delay for IndexedDB)
     await new Promise(resolve => setTimeout(resolve, 200))
     const verify = localStorage.getItem(`${SITE_IMAGE_PREFIX}${siteId}`)
     if (verify) {
-      console.log(`✅ Verified: Image reference saved in localStorage for ${siteId}`)
-      console.log(`   Reference type: ${verify.startsWith('indexeddb:') ? 'IndexedDB' : 'localStorage'}`)
+      logger.debug(`Verified: Image reference saved in localStorage for ${siteId}`)
+      logger.debug(`   Reference type: ${verify.startsWith('indexeddb:') ? 'IndexedDB' : 'localStorage'}`)
     } else {
-      console.error(`❌ Verification failed: Image reference not found after save for ${siteId}`)
+      logger.error(`Verification failed: Image reference not found after save for ${siteId}`)
     }
 
     // Dispatch event to notify components (with a delay to ensure IndexedDB is ready)
@@ -797,10 +816,10 @@ export async function setSiteImage(siteId: string, imageUrl: string, trpcClient?
       window.dispatchEvent(new CustomEvent('siteImageUpdated', { detail: { siteId } }))
       // Also dispatch a general event without detail to force all components to refresh
       window.dispatchEvent(new Event('siteImageUpdated'))
-      console.log(`✅ Dispatched siteImageUpdated event for ${siteId}`)
+      logger.debug(`Dispatched siteImageUpdated event for ${siteId}`)
     }, 300)
   } catch (error) {
-    console.error(`❌ Failed to save site image for ${siteId}:`, error)
+    logger.error(`Failed to save site image for ${siteId}:`, error)
     throw error
   }
 }
@@ -818,13 +837,13 @@ export async function removeSiteImage(siteId: string): Promise<void> {
         const { deleteImage } = await import('./indexedDB')
         await deleteImage(imageId)
       } catch (error) {
-        console.error('Failed to delete image from IndexedDB:', error)
+        logger.error('Failed to delete image from IndexedDB:', error)
       }
     }
     localStorage.removeItem(`${SITE_IMAGE_PREFIX}${siteId}`)
     window.dispatchEvent(new CustomEvent('siteImageUpdated', { detail: { siteId } }))
   } catch (error) {
-    console.error('Failed to remove site image:', error)
+    logger.error('Failed to remove site image:', error)
     throw error
   }
 }

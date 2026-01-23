@@ -31,7 +31,13 @@ export const ConfirmationModal = ({
             <DialogHeader>
                 <div className="flex items-center gap-3">
                     {variant === 'danger' && (
-                        <div className="p-2 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                        <div 
+                            className="p-2 rounded-full"
+                            style={{
+                                backgroundColor: 'var(--color-danger-soft)',
+                                color: 'var(--color-danger-text)'
+                            }}
+                        >
                             <AlertTriangle size={20} />
                         </div>
                     )}

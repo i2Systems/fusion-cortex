@@ -9,12 +9,13 @@ import { useState } from 'react'
 import { useSite } from './SiteContext'
 import { trpc } from './trpc/client'
 import { supabaseAdmin, STORAGE_BUCKETS } from './supabase'
+import { logger } from './logger'
 
 export function useMapUpload() {
   const { activeSiteId } = useSite()
   const [isUploading, setIsUploading] = useState(false)
   const utils = trpc.useUtils()
-  
+
   const createLocationMutation = trpc.location.create.useMutation({
     onSuccess: () => {
       // Invalidate location list to refresh all views
@@ -39,7 +40,7 @@ export function useMapUpload() {
       // If it's a base64 string, upload it to Supabase
       if (imageUrl.startsWith('data:')) {
         try {
-          console.log('📤 Uploading map image to Supabase...')
+          logger.info('📤 Uploading map image to Supabase...')
 
           // Convert base64 to Blob
           const fetchRes = await fetch(imageUrl)
@@ -61,15 +62,15 @@ export function useMapUpload() {
 
           const { url } = await uploadRes.json()
           finalImageUrl = url
-          console.log('✅ Map image uploaded to Supabase:', url)
+          logger.info('✅ Map image uploaded to Supabase:', url)
         } catch (e) {
-          console.error('Failed to upload map image:', e)
+          logger.error('Failed to upload map image:', e)
           alert('Failed to upload map image. Using local copy (may not persist).')
           // Fallback to base64 if upload fails
         }
       }
 
-      console.log('💾 Creating location in database...')
+      logger.info('💾 Creating location in database...')
       // Create location in database
       await createLocationMutation.mutateAsync({
         siteId: activeSiteId,
@@ -78,16 +79,17 @@ export function useMapUpload() {
         imageUrl: finalImageUrl,
       })
 
-      console.log('✅ Location created successfully')
-    } catch (error: any) {
-      console.error('Failed to upload map:', error)
-      throw new Error(error.message || 'Failed to upload map')
+      logger.info('✅ Location created successfully')
+    } catch (error: unknown) {
+      logger.error('Failed to upload map:', error)
+      const message = error instanceof Error ? error.message : 'Failed to upload map'
+      throw new Error(message)
     } finally {
       setIsUploading(false)
     }
   }
 
-  const uploadVectorData = async (vectorData: any, locationName?: string): Promise<void> => {
+  const uploadVectorData = async (vectorData: unknown, locationName?: string): Promise<void> => {
     if (!activeSiteId) {
       throw new Error('No site selected')
     }
@@ -102,11 +104,11 @@ export function useMapUpload() {
     try {
       // Store vector data as JSON string (or upload to storage if too large)
       const vectorDataString = JSON.stringify(vectorData)
-      
+
       // For now, store in vectorDataUrl field (could be enhanced to use Supabase Storage)
       const vectorDataUrl = `data:application/json;base64,${btoa(vectorDataString)}`
 
-      console.log('💾 Creating location with vector data in database...')
+      logger.info('💾 Creating location with vector data in database...')
       await createLocationMutation.mutateAsync({
         siteId: activeSiteId,
         name,
@@ -114,10 +116,11 @@ export function useMapUpload() {
         vectorDataUrl,
       })
 
-      console.log('✅ Location with vector data created successfully')
-    } catch (error: any) {
-      console.error('Failed to upload vector data:', error)
-      throw new Error(error.message || 'Failed to upload vector data')
+      logger.info('✅ Location with vector data created successfully')
+    } catch (error: unknown) {
+      logger.error('Failed to upload vector data:', error)
+      const message = error instanceof Error ? error.message : 'Failed to upload vector data'
+      throw new Error(message)
     } finally {
       setIsUploading(false)
     }
@@ -129,4 +132,3 @@ export function useMapUpload() {
     isUploading,
   }
 }
-

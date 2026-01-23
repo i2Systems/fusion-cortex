@@ -24,12 +24,17 @@
     /* Yellow */
     --color-danger: #ff0000;
     /* Red */
+    --color-danger-soft: rgba(255, 0, 0, 0.2);
+    --color-danger-text: #ff0000;
     --color-success: #00ff00;
     /* Green */
     --color-warning: #ffcc00;
     /* Orange-Yellow */
     --color-info: #00ffff;
     /* Cyan */
+    
+    /* Overlay & backdrop colors */
+    --color-backdrop: rgba(0, 0, 0, 0.7);
 
     /* Text colors - Maximum Contrast */
     --color-text: #ffffff;
@@ -42,6 +47,13 @@
     --color-tooltip-border: #ffffff;
     --color-tooltip-text: #ffffff;
     --color-tooltip-shadow: none;
+
+    /* Canvas-specific colors for Konva/Canvas rendering */
+    --color-fixture: var(--color-primary-strong);
+    --color-canvas-border: #ffffff;
+    --color-canvas-selection-fill: rgba(0, 255, 255, 0.3);
+    --color-canvas-selection-stroke: #00ffff;
+    --color-canvas-selection-shadow: rgba(0, 255, 255, 1);
 
     /* Shadows - Disabled for flatness/clarity */
     --shadow-soft: none;

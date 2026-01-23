@@ -25,7 +25,13 @@ export const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEleme
     ({ className = '', ...props }, ref) => (
         <div
             ref={ref}
-            className={`flex flex-col space-y-1.5 p-6 pb-2 ${className}`}
+            className={`flex flex-col ${className}`}
+            style={{ 
+                gap: 'var(--space-2)', 
+                padding: 'var(--space-6)', 
+                paddingBottom: 'var(--space-2)',
+                ...props.style 
+            }}
             {...props}
         />
     )
@@ -59,7 +65,16 @@ CardDescription.displayName = 'CardDescription';
 // --- Card Content ---
 export const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     ({ className = '', ...props }, ref) => (
-        <div ref={ref} className={`p-6 pt-0 ${className}`} {...props} />
+        <div 
+            ref={ref} 
+            className={className}
+            style={{ 
+                padding: 'var(--space-6)', 
+                paddingTop: 'var(--space-0)',
+                ...props.style 
+            }}
+            {...props} 
+        />
     )
 );
 CardContent.displayName = 'CardContent';
@@ -69,7 +84,12 @@ export const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEleme
     ({ className = '', ...props }, ref) => (
         <div
             ref={ref}
-            className={`flex items-center p-6 pt-0 ${className}`}
+            className={`flex items-center ${className}`}
+            style={{ 
+                padding: 'var(--space-6)', 
+                paddingTop: 'var(--space-0)',
+                ...props.style 
+            }}
             {...props}
         />
     )

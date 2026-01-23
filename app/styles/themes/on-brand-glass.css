@@ -22,12 +22,17 @@
     --color-accent: #db2777;
     /* Ruby */
     --color-danger: #dc2626;
+    --color-danger-soft: rgba(220, 38, 38, 0.15);
+    --color-danger-text: #dc2626;
     --color-success: #059669;
     /* Emerald */
     --color-warning: #d97706;
     /* Topaz */
     --color-info: #7c3aed;
     /* Amethyst */
+    
+    /* Overlay & backdrop colors */
+    --color-backdrop: rgba(0, 0, 0, 0.6);
 
     /* Text colors - Deep Indigo */
     --color-text: #1e1b4b;
@@ -40,6 +45,13 @@
     --color-tooltip-border: var(--color-primary);
     --color-tooltip-text: var(--color-text);
     --color-tooltip-shadow: 0 8px 32px rgba(139, 92, 246, 0.15);
+
+    /* Canvas-specific colors for Konva/Canvas rendering */
+    --color-fixture: var(--color-primary-strong);
+    --color-canvas-border: rgba(139, 92, 246, 0.3);
+    --color-canvas-selection-fill: rgba(139, 92, 246, 0.25);
+    --color-canvas-selection-stroke: rgba(139, 92, 246, 1);
+    --color-canvas-selection-shadow: rgba(139, 92, 246, 0.6);
 
     /* Shadows - Colored light passing through glass */
     --shadow-soft: 0 4px 12px rgba(139, 92, 246, 0.1);

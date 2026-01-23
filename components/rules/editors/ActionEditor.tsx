@@ -10,8 +10,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { X, Check, ChevronDown, Target } from 'lucide-react'
 import { Rule, RuleType } from '@/lib/mockRules'
-import { useZones } from '@/lib/ZoneContext'
-import { useDevices } from '@/lib/DeviceContext'
+import { useZones } from '@/lib/DomainContext'
+import { useDevices } from '@/lib/DomainContext'
 import { createPortal } from 'react-dom'
 
 interface ActionEditorProps {
@@ -248,8 +248,9 @@ export function ActionEditor({ action, ruleType, onChange, onCancel }: ActionEdi
 
         {/* Return to BMS (not for schedules) */}
         {ruleType !== 'schedule' && (
-          <label className="flex items-center gap-2 cursor-pointer text-sm text-[var(--color-text)]">
+          <label htmlFor="action-return-to-bms" className="flex items-center gap-2 cursor-pointer text-sm text-[var(--color-text)]">
             <input
+              id="action-return-to-bms"
               type="checkbox"
               checked={localAction.returnToBMS || false}
               onChange={(e) => setLocalAction({ ...localAction, returnToBMS: e.target.checked })}

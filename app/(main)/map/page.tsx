@@ -42,11 +42,11 @@ const MapCanvas = dynamic(() => import('@/components/map/MapCanvas').then(mod =>
   ),
 })
 
-import { useDevices } from '@/lib/DeviceContext'
-import { useZones } from '@/lib/ZoneContext'
+import { useDevices } from '@/lib/DomainContext'
+import { useZones } from '@/lib/DomainContext'
 import { useSite } from '@/lib/SiteContext'
 import { useMap } from '@/lib/MapContext'
-import { useRole } from '@/lib/role'
+import { useRole } from '@/lib/auth'
 import { detectAllLights, createDevicesFromLights } from '@/lib/lightDetection'
 import { trpc } from '@/lib/trpc/client'
 import { supabaseAdmin, STORAGE_BUCKETS } from '@/lib/supabase'
@@ -149,6 +149,8 @@ export default function MapPage() {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [isUploadingMap, setIsUploadingMap] = useState(false)
   const [showClearConfirmation, setShowClearConfirmation] = useState(false)
+  const [isDeleteLocationModalOpen, setIsDeleteLocationModalOpen] = useState(false)
+  const [locationToDelete, setLocationToDelete] = useState<string | null>(null)
   const [imageBounds, setImageBounds] = useState<{ x: number; y: number; width: number; height: number; naturalWidth: number; naturalHeight: number } | null>(null)
 
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
@@ -485,12 +487,19 @@ export default function MapPage() {
   }
 
   const handleDeleteLocation = async (locationId: string) => {
-    if (!confirm('Are you sure you want to delete this location?')) return
-    deleteLocationMutation.mutate({ id: locationId })
+    setLocationToDelete(locationId)
+    setIsDeleteLocationModalOpen(true)
+  }
 
-    if (locationId === currentLocationId) {
+  const handleConfirmDeleteLocation = async () => {
+    if (!locationToDelete) return
+    deleteLocationMutation.mutate({ id: locationToDelete })
+
+    if (locationToDelete === currentLocationId) {
       setCurrentLocationId(null)
     }
+    setIsDeleteLocationModalOpen(false)
+    setLocationToDelete(null)
   }
 
   // Auto-detect lights from uploaded map
@@ -1473,6 +1482,19 @@ export default function MapPage() {
         message="Are you sure you want to clear all locations? This action cannot be undone."
         variant="danger"
         confirmLabel="Clear Map"
+      />
+
+      <ConfirmationModal
+        isOpen={isDeleteLocationModalOpen}
+        onClose={() => {
+          setIsDeleteLocationModalOpen(false)
+          setLocationToDelete(null)
+        }}
+        onConfirm={handleConfirmDeleteLocation}
+        title="Delete Location"
+        message={locationToDelete ? `Are you sure you want to delete this location? This action cannot be undone.` : ''}
+        variant="danger"
+        confirmLabel="Delete Location"
       />
     </div>
   )

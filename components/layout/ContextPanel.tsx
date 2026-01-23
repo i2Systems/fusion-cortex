@@ -38,7 +38,8 @@ export function ContextPanel({
     <>
       {/* Mobile/Tablet Backdrop */}
       <div
-        className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[calc(var(--z-panel)-1)]"
+        className="md:hidden fixed inset-0 backdrop-blur-sm z-[calc(var(--z-panel)-1)]"
+        style={{ backgroundColor: 'var(--color-backdrop)' }}
         onClick={onClose}
       />
       <div

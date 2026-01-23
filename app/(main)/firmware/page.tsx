@@ -21,6 +21,7 @@ import { ResizablePanel } from '@/components/layout/ResizablePanel'
 import { useSite } from '@/lib/SiteContext'
 import { trpc } from '@/lib/trpc/client'
 import { CreateFirmwareCampaignModal } from '@/components/firmware/CreateFirmwareCampaignModal'
+import { ConfirmationModal } from '@/components/shared/ConfirmationModal'
 
 export default function FirmwarePage() {
   const { activeSiteId } = useSite()
@@ -29,6 +30,8 @@ export default function FirmwarePage() {
 
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [campaignToDelete, setCampaignToDelete] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [includeCompleted, setIncludeCompleted] = useState(false)
 
@@ -122,8 +125,17 @@ export default function FirmwarePage() {
   }
 
   const handleDeleteCampaign = async (id: string) => {
-    if (confirm('Are you sure you want to delete this campaign? This cannot be undone.')) {
-      await deleteCampaignMutation.mutateAsync({ id })
+    setCampaignToDelete(id)
+    setIsDeleteModalOpen(true)
+  }
+
+  const handleConfirmDeleteCampaign = async () => {
+    if (!campaignToDelete) return
+    await deleteCampaignMutation.mutateAsync({ id: campaignToDelete })
+    setIsDeleteModalOpen(false)
+    setCampaignToDelete(null)
+    if (selectedCampaignId === campaignToDelete) {
+      setSelectedCampaignId(null)
     }
   }
 
@@ -254,6 +266,19 @@ export default function FirmwarePage() {
           onSuccess={handleCampaignCreated}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false)
+          setCampaignToDelete(null)
+        }}
+        onConfirm={handleConfirmDeleteCampaign}
+        title="Delete Campaign"
+        message={campaignToDelete ? `Are you sure you want to delete this campaign? This action cannot be undone.` : ''}
+        variant="danger"
+        confirmLabel="Delete Campaign"
+      />
     </div>
   )
 }

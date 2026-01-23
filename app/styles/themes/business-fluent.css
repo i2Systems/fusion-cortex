@@ -25,12 +25,17 @@
     /* Purple */
     --color-danger: #d13438;
     /* Office Red */
+    --color-danger-soft: rgba(209, 52, 56, 0.15);
+    --color-danger-text: #d13438;
     --color-success: #107c10;
     /* Office Green */
     --color-warning: #ffb900;
     /* Office Yellow */
     --color-info: #0078d4;
     /* Office Blue */
+    
+    /* Overlay & backdrop colors */
+    --color-backdrop: rgba(0, 0, 0, 0.6);
 
     /* Text colors - High legibility */
     --color-text: #ffffff;
@@ -43,6 +48,13 @@
     --color-tooltip-border: var(--color-border-subtle);
     --color-tooltip-text: var(--color-text);
     --color-tooltip-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+
+    /* Canvas-specific colors for Konva/Canvas rendering */
+    --color-fixture: var(--color-primary-strong);
+    --color-canvas-border: rgba(255, 255, 255, 0.15);
+    --color-canvas-selection-fill: rgba(0, 120, 212, 0.25);
+    --color-canvas-selection-stroke: rgba(0, 120, 212, 1);
+    --color-canvas-selection-shadow: rgba(0, 120, 212, 0.9);
 
     /* Shadows - Measured, depth-based */
     --shadow-soft: 0 2px 4px rgba(0, 0, 0, 0.15);

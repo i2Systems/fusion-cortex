@@ -385,7 +385,8 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
       {/* Mobile/Tablet Backdrop - Only show when panel is open on mobile/tablet */}
       {!isCollapsed && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[calc(var(--z-panel)-1)]"
+          className="lg:hidden fixed inset-0 backdrop-blur-sm z-[calc(var(--z-panel)-1)]"
+          style={{ backgroundColor: 'var(--color-backdrop)' }}
           onClick={handleClose}
           onTouchStart={(e) => {
             // Close on backdrop tap

@@ -13,11 +13,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Edit2, Save, Trash2, Radio, Clock, Sun, Zap, Calendar, Plus, X, Layers, Lightbulb, Workflow, CalendarClock, ArrowLeft } from 'lucide-react'
 import { Rule, RuleType, TargetType, TriggerType, ScheduleFrequency } from '@/lib/mockRules'
-import { useZones } from '@/lib/ZoneContext'
-import { useDevices } from '@/lib/DeviceContext'
+import { useZones } from '@/lib/DomainContext'
+import { useDevices } from '@/lib/DomainContext'
 import { RuleFlowEditor } from './RuleFlowEditor'
 import { RulePreview } from './RulePreview'
 import { Button } from '@/components/ui/Button'
+import { ConfirmationModal } from '@/components/shared/ConfirmationModal'
 
 interface RulesPanelProps {
   selectedRule: Rule | null
@@ -69,6 +70,7 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
   const [selectedTargetType, setSelectedTargetType] = useState<TargetType | null>(null)
   const [selectedRuleType, setSelectedRuleType] = useState<RuleType | null>(null)
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [formData, setFormData] = useState<Partial<Rule>>({
     name: '',
     description: '',
@@ -514,10 +516,11 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
           <div className="space-y-4">
             {/* Target Selection */}
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+              <label htmlFor="rule-target-select" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
                 Target {selectedTargetType === 'device' ? 'Device' : 'Zone'}
               </label>
               <select
+                id="rule-target-select"
                 value={selectedTargetId || ''}
                 onChange={(e) => {
                   const targetId = e.target.value
@@ -546,10 +549,11 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
 
             {/* Name and Description */}
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+              <label htmlFor="rule-name-input" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
                 Rule Name
               </label>
               <input
+                id="rule-name-input"
                 type="text"
                 value={formData.name || ''}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -565,10 +569,11 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
+              <label htmlFor="rule-description-textarea" className="block text-sm font-medium text-[var(--color-text-muted)] mb-2">
                 Description (optional)
               </label>
               <textarea
+                id="rule-description-textarea"
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Describe what this rule does..."
@@ -694,11 +699,7 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
         {selectedRule && mode === 'view' && onDelete && (
           <div className="pt-4 mt-4 border-t border-[var(--color-border-subtle)]">
             <button
-              onClick={() => {
-                if (confirm('Are you sure you want to delete this rule?')) {
-                  onDelete(selectedRule.id)
-                }
-              }}
+              onClick={() => setIsDeleteModalOpen(true)}
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 rounded-lg text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/20 transition-colors"
             >
               <Trash2 size={14} />
@@ -707,6 +708,22 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={() => {
+          if (selectedRule && onDelete) {
+            onDelete(selectedRule.id)
+            setIsDeleteModalOpen(false)
+          }
+        }}
+        title="Delete Rule"
+        message={`Are you sure you want to delete "${selectedRule?.name}"? This action cannot be undone.`}
+        variant="danger"
+        confirmLabel="Delete Rule"
+      />
 
       {/* Action Buttons Footer */}
       <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] space-y-2 flex-shrink-0">

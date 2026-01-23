@@ -12,6 +12,7 @@ import { FaultCategory, faultCategories } from '@/lib/faultDefinitions'
 import { FloorPlanImage, type ImageBounds } from '@/components/map/FloorPlanImage'
 
 import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
+import { getCanvasColors, getRgbaVariable } from '@/lib/canvasColors'
 
 interface DevicePoint {
   id: string
@@ -69,15 +70,7 @@ export function FaultsMapCanvas({
   const [scale, setScale] = useState(1)
   const [hoveredDevice, setHoveredDevice] = useState<DevicePoint | null>(null)
   const [imageBounds, setImageBounds] = useState<ImageBounds | null>(null)
-  const [colors, setColors] = useState({
-    primary: '#4c7dff',
-    accent: '#f97316',
-    success: '#22c55e',
-    danger: '#ef4444',
-    warning: '#eab308',
-    muted: '#9ca3af',
-    text: '#ffffff',
-  })
+  const [colors, setColors] = useState<ReturnType<typeof getCanvasColors>>(getCanvasColors())
 
   // Sort devices in logical order (by deviceId) for keyboard navigation
   const sortedDevices = useMemo(() => {
@@ -99,17 +92,7 @@ export function FaultsMapCanvas({
     }
 
     const updateColors = () => {
-      const root = document.documentElement
-      const computedStyle = getComputedStyle(root)
-      setColors({
-        primary: computedStyle.getPropertyValue('--color-primary').trim() || '#4c7dff',
-        accent: computedStyle.getPropertyValue('--color-accent').trim() || '#f97316',
-        success: computedStyle.getPropertyValue('--color-success').trim() || '#22c55e',
-        danger: computedStyle.getPropertyValue('--color-danger').trim() || '#ef4444',
-        warning: computedStyle.getPropertyValue('--color-warning').trim() || '#eab308',
-        muted: computedStyle.getPropertyValue('--color-text-muted').trim() || '#9ca3af',
-        text: computedStyle.getPropertyValue('--color-text').trim() || '#ffffff',
-      })
+      setColors(getCanvasColors())
     }
 
     updateDimensions()
@@ -309,7 +292,7 @@ export function FaultsMapCanvas({
                   y={0}
                   radius={isSelected ? 8 : (isHovered ? 6 : (device.hasFault ? 5 : 4))}
                   fill={device.hasFault ? faultColor : getDeviceColor(device.type)}
-                  stroke={isSelected ? colors.text : 'rgba(255,255,255,0.3)'}
+                  stroke={isSelected ? colors.text : getRgbaVariable('--color-text', 0.3)}
                   strokeWidth={isSelected ? 3 : (device.hasFault ? 2 : 1)}
                   shadowBlur={isSelected ? 12 : (device.hasFault ? 8 : 4)}
                   shadowColor={device.hasFault ? faultColor : getDeviceColor(device.type)}

@@ -8,6 +8,8 @@
  * being stored, but the structure is ready when needed.
  */
 
+import { logger } from './logger'
+
 const DB_NAME = 'fusion_storage'
 const DB_VERSION = 3 // Increment to force upgrade
 const STORE_NAME = 'images'
@@ -34,7 +36,7 @@ export async function deleteDatabase(): Promise<void> {
     dbInstance.close()
     dbInstance = null
   }
-  
+
   return new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DB_NAME)
     request.onsuccess = () => resolve()
@@ -64,7 +66,7 @@ export async function initIndexedDB(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
     request.onerror = async (event) => {
-      console.error('IndexedDB open error, attempting to recreate database')
+      logger.error('IndexedDB open error, attempting to recreate database')
       try {
         await deleteDatabase()
         // Try again after deletion
@@ -82,10 +84,10 @@ export async function initIndexedDB(): Promise<IDBDatabase> {
 
     request.onsuccess = () => {
       dbInstance = request.result
-      
+
       // Verify object stores exist - if not, we need to recreate
       if (!dbInstance.objectStoreNames.contains(VECTOR_STORE_NAME)) {
-        console.warn('Missing object stores, will recreate database on next access')
+        logger.warn('Missing object stores, will recreate database on next access')
         dbInstance.close()
         dbInstance = null
         // Trigger recreation by increasing version
@@ -94,7 +96,7 @@ export async function initIndexedDB(): Promise<IDBDatabase> {
         }).catch(reject)
         return
       }
-      
+
       resolve(dbInstance)
     }
 
@@ -108,12 +110,12 @@ function createObjectStores(event: IDBVersionChangeEvent) {
   // Create images object store if it doesn't exist
   if (!db.objectStoreNames.contains(STORE_NAME)) {
     const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' })
-    
+
     // Create indexes for efficient querying
     objectStore.createIndex('storeId', 'storeId', { unique: false })
     objectStore.createIndex('uploadedAt', 'uploadedAt', { unique: false })
   }
-  
+
   // Create vector data object store if it doesn't exist
   if (!db.objectStoreNames.contains(VECTOR_STORE_NAME)) {
     const vectorStore = db.createObjectStore(VECTOR_STORE_NAME, { keyPath: 'id' })
@@ -133,7 +135,7 @@ export async function storeImage(
 ): Promise<string> {
   const db = await initIndexedDB()
   const id = `${storeId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-  
+
   const image: StoredImage = {
     id,
     storeId,
@@ -204,7 +206,7 @@ export async function getImageDataUrl(imageId: string, retries: number = 3): Pro
         }
         return null
       }
-      
+
       return new Promise((resolve, reject) => {
         const reader = new FileReader()
         reader.onloadend = () => {
@@ -228,7 +230,7 @@ export async function getImageDataUrl(imageId: string, retries: number = 3): Pro
         await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1)))
         continue
       }
-      console.error(`Failed to get image data URL after ${retries} attempts:`, error)
+      logger.error(`Failed to get image data URL after ${retries} attempts:`, error)
       return null
     }
   }
@@ -240,21 +242,21 @@ export async function getImageDataUrl(imageId: string, retries: number = 3): Pro
  */
 export async function loadMapImage(storageKey: string): Promise<string | null> {
   if (typeof window === 'undefined') return null
-  
+
   try {
     const stored = localStorage.getItem(storageKey)
     if (!stored) return null
-    
+
     // Check if it's an IndexedDB reference
     if (stored.startsWith('indexeddb:')) {
       const imageId = stored.replace('indexeddb:', '')
       return await getImageDataUrl(imageId)
     }
-    
+
     // Otherwise, it's a direct base64 string (for small images)
     return stored
   } catch (error) {
-    console.error('Failed to load map image:', error)
+    logger.error('Failed to load map image:', error)
     return null
   }
 }
@@ -344,16 +346,16 @@ export async function getStoreImageSize(storeId: string): Promise<number> {
  */
 export async function storeVectorData(
   storeId: string,
-  vectorData: any,
+  vectorData: unknown,
   key: string
 ): Promise<void> {
   const db = await initIndexedDB()
   const id = `${storeId}-${key}`
-  
+
   // Convert to JSON string and then to Blob for efficient storage
   const jsonString = JSON.stringify(vectorData)
   const blob = new Blob([jsonString], { type: 'application/json' })
-  
+
   const data = {
     id,
     storeId,
@@ -384,7 +386,7 @@ export async function storeVectorData(
 export async function getVectorData(
   storeId: string,
   key: string
-): Promise<any | null> {
+): Promise<unknown | null> {
   const db = await initIndexedDB()
   const id = `${storeId}-${key}`
 
@@ -399,7 +401,7 @@ export async function getVectorData(
         resolve(null)
         return
       }
-      
+
       // Convert Blob back to JSON
       try {
         const text = await result.vectorData.text()

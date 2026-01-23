@@ -48,6 +48,7 @@ import { getStatusTokenClass, getSignalTokenClass, getBatteryTokenClass } from '
 import { FocusedObjectModal, FocusedModalTrigger } from '@/components/shared/FocusedObjectModal'
 import { TabDefinition } from '@/components/shared/FocusedModalTabs'
 import { Button } from '@/components/ui/Button'
+import { useSite } from '@/lib/SiteContext'
 
 interface DeviceFocusedContentProps {
   device: Device
@@ -664,6 +665,10 @@ export function DeviceFocusedModal({
   allDevices?: Device[]
   onComponentClick?: (component: Component, parentDevice: Device) => void
 }) {
+  const { activeSite } = useSite()
+  const siteLabel = activeSite?.siteNumber ? `Site #${activeSite.siteNumber}` : activeSite?.name ?? 'Site'
+  const breadcrumb = [{ label: siteLabel }, { label: 'Device' }]
+
   const getTypeLabel = (type: string) => {
     if (type.startsWith('fixture-')) {
       const parts = type.replace('fixture-', '').split('-')
@@ -684,6 +689,7 @@ export function DeviceFocusedModal({
       onClose={onClose}
       title={device.deviceId}
       subtitle={`${getTypeLabel(device.type)} • ${device.serialNumber}`}
+      breadcrumb={breadcrumb}
       icon={
         isFixtureType(device.type) ? (
           <Image size={28} className="text-[var(--color-primary)]" />

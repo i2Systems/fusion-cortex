@@ -37,7 +37,7 @@ import { FocusedObjectModal } from '@/components/shared/FocusedObjectModal'
 import { TabDefinition } from '@/components/shared/FocusedModalTabs'
 import { Site } from '@/lib/SiteContext'
 import { Device } from '@/lib/mockData'
-import { Zone } from '@/lib/ZoneContext'
+import { Zone } from '@/lib/DomainContext'
 import { Rule } from '@/lib/mockRules'
 import { FaultCategory, faultCategories } from '@/lib/faultDefinitions'
 import { calculateWarrantyStatus } from '@/lib/warranty'
@@ -589,6 +589,7 @@ export function SiteFocusedModal({
       onClose={onClose}
       title={site.name}
       subtitle={site.address ? `${site.address}, ${site.city}, ${site.state}` : 'Retail Location'}
+      breadcrumb={[{ label: 'Site' }]}
       icon={<Building2 size={28} className="text-[var(--color-primary)]" />}
       tabs={siteTabs}
     >

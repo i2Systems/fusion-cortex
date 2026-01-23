@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Button } from './Button';
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 
 interface DialogProps {
     isOpen: boolean;
@@ -15,7 +16,15 @@ interface DialogProps {
  * Includes backdrop blur and centering properties.
  */
 export const Dialog = ({ isOpen, onClose, children, className = '' }: DialogProps) => {
-    const overlayRef = useRef<HTMLDivElement>(null);
+    const modalRef = useRef<HTMLDivElement>(null);
+
+    // Focus trap for accessibility
+    useFocusTrap({
+        isOpen,
+        onClose,
+        containerRef: modalRef,
+        enabled: isOpen,
+    });
 
     // Close on Escape key
     useEffect(() => {
@@ -41,13 +50,16 @@ export const Dialog = ({ isOpen, onClose, children, className = '' }: DialogProp
         <div className="fixed inset-0 z-modal flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true">
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+                className="absolute inset-0 backdrop-blur-sm transition-opacity"
+                style={{ backgroundColor: 'var(--color-backdrop)' }}
                 onClick={onClose}
                 aria-hidden="true"
             />
 
             {/* Content Container */}
             <div
+                ref={modalRef}
+                tabIndex={-1}
                 className={`relative z-50 w-full max-w-lg transform rounded-xl bg-bg-elevated border border-border-subtle shadow-strong p-6 text-left shadow-xl transition-all animate-in fade-in zoom-in-95 duration-200 ${className}`}
             >
                 {children}

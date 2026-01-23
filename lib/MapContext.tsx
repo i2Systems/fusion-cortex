@@ -2,7 +2,7 @@
  * Map Context
  * 
  * Provides cached map data (images and vector data) across all pages.
- * Prevents reloading the same map data when switching between pages.
+ * Also includes zoom state and interaction hints (consolidated from ZoomContext).
  * 
  * AI Note: This context caches map data in memory per site, so switching
  * pages doesn't require re-fetching from IndexedDB.
@@ -10,7 +10,7 @@
 
 'use client'
 
-import { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react'
+import { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSite } from './SiteContext'
 import { loadLocations } from './locationStorage'
 import { trpc } from './trpc/client'
@@ -23,10 +23,28 @@ interface MapData {
   isLoading: boolean
 }
 
+// Zoom state (merged from ZoomContext)
+interface ZoomState {
+  zoomLevel: number
+  isZooming: boolean
+  interactionHint: string | null
+  modeHint: string | null
+}
+
 interface MapContextType {
+  // Map data
   mapData: MapData
   refreshMapData: () => Promise<void>
   clearMapCache: () => void
+  // Zoom state
+  zoomLevel: number
+  isZooming: boolean
+  setZoomLevel: (level: number) => void
+  triggerZoomIndicator: () => void
+  interactionHint: string | null
+  setInteractionHint: (hint: string | null) => void
+  modeHint: string | null
+  setModeHint: (hint: string | null) => void
 }
 
 const MapContext = createContext<MapContextType | undefined>(undefined)
@@ -35,6 +53,27 @@ export function MapProvider({ children }: { children: ReactNode }) {
   const { activeSiteId } = useSite()
   const [mapCache, setMapCache] = useState<Record<string, MapData>>({})
   const [isLoading, setIsLoading] = useState(false)
+
+  // Zoom state (merged from ZoomContext)
+  const [zoomLevel, setZoomLevelState] = useState(100)
+  const [isZooming, setIsZooming] = useState(false)
+  const [interactionHint, setInteractionHint] = useState<string | null>(null)
+  const [modeHint, setModeHint] = useState<string | null>(null)
+  const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const setZoomLevel = useCallback((level: number) => {
+    setZoomLevelState(Math.round(level * 100))
+  }, [])
+
+  const triggerZoomIndicator = useCallback(() => {
+    setIsZooming(true)
+    if (zoomTimeoutRef.current) {
+      clearTimeout(zoomTimeoutRef.current)
+    }
+    zoomTimeoutRef.current = setTimeout(() => {
+      setIsZooming(false)
+    }, 2000)
+  }, [])
 
   // Load locations from database via tRPC
   const { data: dbLocationsData, isLoading: dbLocationsLoading } = trpc.location.list.useQuery(
@@ -62,11 +101,11 @@ export function MapProvider({ children }: { children: ReactNode }) {
     }
 
     setIsLoading(true)
-    
+
     try {
       // First try to load from database (preferred)
       let locations: any[] = []
-      
+
       // Use database locations if available
       if (dbLocations.length > 0) {
         locations = dbLocations.map(loc => ({
@@ -104,9 +143,10 @@ export function MapProvider({ children }: { children: ReactNode }) {
           const { getVectorData } = await import('@/lib/indexedDB')
           const stored = await getVectorData(siteId, location.storageKey)
           if (stored) {
+            const typedStored = stored as any
             const mapData: MapData = {
-              mapImageUrl: stored.data || null,
-              vectorData: (stored.paths || stored.texts) ? stored : null,
+              mapImageUrl: typedStored.data || null,
+              vectorData: (typedStored.paths || typedStored.texts) ? typedStored : null,
               mapUploaded: true,
               isLoading: false,
             }
@@ -259,12 +299,12 @@ export function MapProvider({ children }: { children: ReactNode }) {
         isLoading: false,
       }
     }
-    
+
     const cached = mapCache[activeSiteId]
     if (cached) {
       return { ...cached, isLoading }
     }
-    
+
     return {
       mapImageUrl: null,
       vectorData: null,
@@ -292,6 +332,15 @@ export function MapProvider({ children }: { children: ReactNode }) {
       mapData,
       refreshMapData,
       clearMapCache,
+      // Zoom state
+      zoomLevel,
+      isZooming,
+      setZoomLevel,
+      triggerZoomIndicator,
+      interactionHint,
+      setInteractionHint,
+      modeHint,
+      setModeHint,
     }}>
       {children}
     </MapContext.Provider>
@@ -306,3 +355,32 @@ export function useMap() {
   return context
 }
 
+/**
+ * @deprecated Use useMap() instead. This is for backward compatibility with ZoomContext.
+ */
+export function useZoomContext() {
+  const context = useContext(MapContext)
+  if (!context) {
+    // Return default values if not in provider (e.g., on non-map pages)
+    return {
+      zoomLevel: 100,
+      isZooming: false,
+      setZoomLevel: () => { },
+      triggerZoomIndicator: () => { },
+      interactionHint: null,
+      setInteractionHint: () => { },
+      modeHint: null,
+      setModeHint: () => { }
+    }
+  }
+  return {
+    zoomLevel: context.zoomLevel,
+    isZooming: context.isZooming,
+    setZoomLevel: context.setZoomLevel,
+    triggerZoomIndicator: context.triggerZoomIndicator,
+    interactionHint: context.interactionHint,
+    setInteractionHint: context.setInteractionHint,
+    modeHint: context.modeHint,
+    setModeHint: context.setModeHint,
+  }
+}

@@ -9,6 +9,8 @@ import { z } from 'zod'
 import { router, publicProcedure } from '../trpc'
 import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
+import { logger } from '@/lib/logger'
+import { withRetry, isConnectionError } from '../utils/withRetry'
 
 export const siteRouter = router({
   list: publicProcedure.query(async () => {
@@ -26,10 +28,10 @@ export const siteRouter = router({
         meta: error.meta,
         stack: error.stack,
       })
-      
+
       // Handle missing column error (P2022) - use raw SQL to select without imageUrl
       if (error.code === 'P2022' && error.meta?.column === 'Site.imageUrl') {
-        console.log('imageUrl column missing, using raw SQL query without imageUrl...')
+        logger.debug('imageUrl column missing, using raw SQL query without imageUrl...')
         try {
           const sites = await prisma.$queryRaw<Array<{
             id: string
@@ -57,15 +59,15 @@ export const siteRouter = router({
           return []
         }
       }
-      
+
       // Handle authentication errors specifically
-      if (error.message?.includes('Authentication failed') || 
-          error.message?.includes('credentials') ||
-          error.code === 'P1000' || error.code === 'P1001') {
+      if (error.message?.includes('Authentication failed') ||
+        error.message?.includes('credentials') ||
+        error.code === 'P1000' || error.code === 'P1001') {
         console.error('❌ Database authentication failed. Check DATABASE_URL environment variable.')
         throw new Error('Database connection failed. Please check your database credentials.')
       }
-      
+
       // Return empty array on other errors to prevent UI crashes
       return []
     }
@@ -108,23 +110,23 @@ export const siteRouter = router({
       imageUrl: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-        const site = await prisma.site.create({
-          data: {
-            id: randomUUID(),
-            name: input.name,
-            storeNumber: input.storeNumber,
-            address: input.address,
-            city: input.city,
-            state: input.state,
-            zipCode: input.zipCode,
-            phone: input.phone,
-            manager: input.manager,
-            squareFootage: input.squareFootage,
-            openedDate: input.openedDate,
-            imageUrl: input.imageUrl,
-            updatedAt: new Date(),
-          },
-        })
+      const site = await prisma.site.create({
+        data: {
+          id: randomUUID(),
+          name: input.name,
+          storeNumber: input.storeNumber,
+          address: input.address,
+          city: input.city,
+          state: input.state,
+          zipCode: input.zipCode,
+          phone: input.phone,
+          manager: input.manager,
+          squareFootage: input.squareFootage,
+          openedDate: input.openedDate,
+          imageUrl: input.imageUrl,
+          updatedAt: new Date(),
+        },
+      })
       return site
     }),
 
@@ -144,58 +146,26 @@ export const siteRouter = router({
       imageUrl: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
+      const { id, ...updates } = input
+
+      if (updates.imageUrl) {
+        logger.debug('Updating site imageUrl length:', updates.imageUrl.length)
+      }
+
       try {
-        const { id, ...updates } = input
-        
-        // Log imageUrl length if present (for debugging)
-        if (updates.imageUrl) {
-          console.log('Updating site imageUrl length:', updates.imageUrl.length, 'starts with:', updates.imageUrl.substring(0, 50))
-        }
-        
-        const site = await prisma.site.update({
-          where: { id },
-          data: updates,
-        })
-        return site
+        return await withRetry(
+          () => prisma.site.update({ where: { id }, data: updates }),
+          { context: 'site.update' }
+        )
       } catch (error: any) {
-        console.error('Error in site.update:', {
-          message: error.message,
-          code: error.code,
-          meta: error.meta,
-          stack: error.stack,
-          input: input,
-        })
-        
         // Handle "record not found" errors
-        if (error.code === 'P2025' || error.message?.includes('Record to update not found')) {
+        if (error.code === 'P2025' || error.message?.includes('not found')) {
           throw new Error(`Site with ID ${input.id} not found in database`)
         }
-        
-        // Handle column doesn't exist errors (migration needed)
-        if (error.code === '42703' || error.message?.includes('column') || error.message?.includes('does not exist')) {
-          console.error('❌ Database column missing. You may need to run: npx prisma db push')
+        // Handle column doesn't exist errors
+        if (error.code === '42703' || error.message?.includes('does not exist')) {
           throw new Error('Database schema is out of date. Please run database migration.')
         }
-        
-        // Handle prepared statement errors with retry
-        if (error.code === '26000' || error.message?.includes('prepared statement')) {
-          console.log('Retrying site.update after prepared statement error...')
-          await new Promise(resolve => setTimeout(resolve, 200))
-          
-          try {
-            const { id, ...updates } = input
-            const site = await prisma.site.update({
-              where: { id },
-              data: updates,
-            })
-            return site
-          } catch (retryError: any) {
-            console.error('Retry also failed:', retryError)
-            throw new Error(`Failed to update site: ${retryError.message || 'Unknown error'}`)
-          }
-        }
-        
-        // Re-throw with more context
         throw new Error(`Failed to update site: ${error.message || 'Unknown error'}`)
       }
     }),
@@ -219,7 +189,7 @@ export const siteRouter = router({
     .mutation(async ({ input }) => {
       const MAX_RETRIES = 3
       let retries = 0
-      
+
       while (retries < MAX_RETRIES) {
         try {
           // Try to find existing site - handle missing imageUrl column gracefully
@@ -305,7 +275,7 @@ export const siteRouter = router({
             id: input.id,
             name: input.name,
           }
-          
+
           if (input.storeNumber !== undefined) siteData.storeNumber = input.storeNumber
           if (input.address !== undefined) siteData.address = input.address
           if (input.city !== undefined) siteData.city = input.city
@@ -347,17 +317,17 @@ export const siteRouter = router({
             input: input,
             retry: retries,
           })
-          
+
           // Handle prepared statement errors with retry
           if (error.code === '26000' || error.code === '42P05' || error.message?.includes('prepared statement')) {
             retries++
             if (retries < MAX_RETRIES) {
-              console.log(`Retrying site.ensureExists after prepared statement error. Attempt ${retries}/${MAX_RETRIES}...`)
+              logger.debug(`Retrying site.ensureExists after prepared statement error. Attempt ${retries}/${MAX_RETRIES}...`)
               await new Promise(resolve => setTimeout(resolve, 200 * retries)) // Exponential backoff
               continue // Retry the loop
             }
           }
-          
+
           // If it's a unique constraint violation, try to find the existing site
           if (error.code === 'P2002') {
             try {
@@ -369,7 +339,7 @@ export const siteRouter = router({
               if (input.storeNumber) {
                 orConditions.push({ storeNumber: input.storeNumber })
               }
-              
+
               const found = await prisma.site.findFirst({
                 where: {
                   OR: orConditions,
@@ -382,26 +352,26 @@ export const siteRouter = router({
               console.error('Error finding existing site during P2002 handling:', findError)
             }
           }
-          
+
           // Check for database connection errors
-          if (error.message?.includes('Can\'t reach database') || 
-              error.message?.includes('P1001') ||
-              error.message?.includes('Authentication failed') ||
-              error.code === 'P1001' ||
-              error.code === 'P1000') {
+          if (error.message?.includes('Can\'t reach database') ||
+            error.message?.includes('P1001') ||
+            error.message?.includes('Authentication failed') ||
+            error.code === 'P1001' ||
+            error.code === 'P1000') {
             throw new Error('Database connection failed. Please check your DATABASE_URL environment variable.')
           }
-          
+
           // If we've exhausted retries, throw the error
           if (retries >= MAX_RETRIES) {
             throw new Error(`Failed to ensure site exists after ${MAX_RETRIES} retries: ${error.message || 'Unknown error'}`)
           }
-          
+
           // For other errors, throw immediately
           throw new Error(`Failed to ensure site exists: ${error.message || 'Unknown error'}`)
         }
       }
-      
+
       throw new Error(`Failed to ensure site exists after ${MAX_RETRIES} retries.`)
     }),
 
@@ -425,7 +395,7 @@ export const siteRouter = router({
         // Delete related data first (cascade order matters)
         // Note: Prisma should handle cascades if foreign keys are set up correctly,
         // but we'll do explicit deletes to be safe
-        
+
         // First, get all zones for this site to delete related rules and mappings
         const zones = await prisma.zone.findMany({
           where: { siteId: input.id },
@@ -493,11 +463,11 @@ export const siteRouter = router({
         }
 
         // Handle database connection errors
-        if (error.message?.includes('Can\'t reach database') || 
-            error.message?.includes('P1001') ||
-            error.message?.includes('Authentication failed') ||
-            error.code === 'P1001' ||
-            error.code === 'P1000') {
+        if (error.message?.includes('Can\'t reach database') ||
+          error.message?.includes('P1001') ||
+          error.message?.includes('Authentication failed') ||
+          error.code === 'P1001' ||
+          error.code === 'P1000') {
           throw new Error('Database connection failed. Please check your DATABASE_URL environment variable.')
         }
 

@@ -188,10 +188,24 @@ export function DevicePalette({
     const getRoleColor = (role: string) => {
         switch (role) {
             case 'entry': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-            case 'follower': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+            case 'follower': {
+                // Use primary color tokens for follower role
+                return ''
+            }
             case 'sensor': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
             default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
         }
+    }
+
+    const getRoleStyle = (role: string) => {
+        if (role === 'follower') {
+            return {
+                backgroundColor: 'var(--color-primary-soft)',
+                color: 'var(--color-primary)',
+                borderColor: 'var(--color-primary-soft)'
+            }
+        }
+        return {}
     }
 
     // Group devices
@@ -232,9 +246,17 @@ export function DevicePalette({
         return groups
     }, [displayDevices, groupBy])
 
+    // Collapse state
+    const [isCollapsed, setIsCollapsed] = useState(false)
+
     return (
         <div
-            className="absolute top-24 left-4 z-10 w-56 flex flex-col gap-2 bg-[var(--color-surface-glass)] backdrop-blur-xl border border-[var(--color-border-subtle)] rounded-xl shadow-2xl overflow-hidden max-h-[60vh] transition-all duration-200"
+            className={`
+                absolute top-24 left-4 z-10 
+                flex flex-col bg-[var(--color-surface-glass)] backdrop-blur-xl border border-[var(--color-border-subtle)] rounded-xl shadow-2xl overflow-hidden 
+                transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-top-left
+                ${isCollapsed ? 'w-[42px] h-[42px]' : 'w-64 max-h-[60vh]'}
+            `}
             onDragOver={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
@@ -245,18 +267,56 @@ export function DevicePalette({
             }}
         >
             {/* Header */}
-            <div className="p-3 border-b border-[var(--color-border)] flex items-center justify-between bg-[var(--color-surface-hover)]">
-                <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-blue-500/10 rounded-md">
-                        <Lightbulb size={14} className="text-blue-500" />
+            <div className={`
+                flex items-center justify-between bg-[var(--color-surface-hover)]
+                transition-all duration-300
+                ${isCollapsed ? 'p-0 bg-transparent' : 'p-3 border-b border-[var(--color-border)]'}
+            `}>
+                <div className="flex items-center gap-2 relative z-20">
+                    <div
+                        className={`
+                            flex items-center justify-center rounded-md cursor-pointer transition-all duration-300
+                            ${isCollapsed ? 'w-[40px] h-[40px] bg-transparent hover:bg-[var(--color-surface-hover)]' : 'p-1.5'}
+                        `}
+                        style={!isCollapsed ? {
+                            backgroundColor: 'var(--color-primary-soft)'
+                        } : undefined}
+                        onMouseEnter={(e) => {
+                            if (!isCollapsed) {
+                                e.currentTarget.style.backgroundColor = 'var(--color-primary-soft)'
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (!isCollapsed) {
+                                e.currentTarget.style.backgroundColor = 'var(--color-primary-soft)'
+                            }
+                        }}
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        title={isCollapsed ? "Show New Devices" : "Hide Palette"}
+                    >
+                        <Lightbulb
+                            size={isCollapsed ? 18 : 14}
+                            className={`transition-all duration-300 ${isCollapsed ? 'scale-110' : ''}`}
+                            style={{ color: 'var(--color-primary)' }}
+                        />
                     </div>
-                    <div>
+
+                    {/* Title & Count - Fade out when blocked */}
+                    <div className={`
+                        transition-all duration-200 origin-left whitespace-nowrap
+                        ${isCollapsed ? 'opacity-0 w-0 scale-95 pointer-events-none' : 'opacity-100 w-auto scale-100'}
+                    `}>
                         <h3 className="text-xs font-semibold text-[var(--color-text)] leading-tight">New Devices</h3>
                         <p className="text-[10px] text-[var(--color-text-muted)]">{displayDevices.length} waiting</p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1">
+                {/* Right Side Controls - Fade out */}
+                <div className={`
+                    flex items-center gap-1
+                    transition-all duration-200 origin-right
+                    ${isCollapsed ? 'opacity-0 w-0 scale-95 pointer-events-none translate-x-4' : 'opacity-100 w-auto scale-100 translate-x-0'}
+                `}>
                     <button
                         onClick={onAdd}
                         className="p-1 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors"
@@ -301,7 +361,12 @@ export function DevicePalette({
             </div>
 
             {/* Scrollable Content */}
-            <div className={`overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-[var(--color-border)] scrollbar-track-transparent ${displayDevices.length === 0 ? 'h-32 flex items-center justify-center' : ''}`}>
+            <div className={`
+                overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--color-border)] scrollbar-track-transparent
+                transition-all duration-300 origin-top
+                ${isCollapsed ? 'opacity-0 h-0 p-0 pointer-events-none' : 'opacity-100 p-2 h-auto'}
+                ${displayDevices.length === 0 && !isCollapsed ? 'h-32 flex items-center justify-center' : ''}
+            `}>
                 {displayDevices.length === 0 ? (
                     <div className="text-center p-4">
                         <div
@@ -376,12 +441,16 @@ export function DevicePalette({
                                                     : isDropTarget
                                                         ? 'bg-[var(--drop-target-bg)] border-[var(--color-primary)] shadow-[var(--drop-target-shadow)] scale-[1.02]'
                                                         : isSelected
-                                                            ? 'bg-blue-500/20 border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]'
+                                                            ? 'border-[var(--color-primary)]'
                                                             : 'bg-[var(--color-surface)] border-[var(--color-border-subtle)] hover:border-[var(--drag-hover-border)] hover:bg-[var(--color-surface-hover)] hover:scale-[var(--drag-hover-scale)] hover:shadow-[var(--drag-hover-shadow)]'
                                                 }
                                             `}
                                             style={{
                                                 transitionDuration: 'var(--drag-hover-transition)',
+                                                ...(isSelected ? {
+                                                    backgroundColor: 'var(--color-primary-soft)',
+                                                    boxShadow: '0 0 10px var(--color-primary-soft)'
+                                                } : {})
                                             }}
                                         >
                                             <div
@@ -393,7 +462,10 @@ export function DevicePalette({
                                                 <GripVertical size={12} />
                                             </div>
 
-                                            <div className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold border ${roleColor}`}>
+                                            <div
+                                                className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold border ${roleColor}`}
+                                                style={getRoleStyle(role)}
+                                            >
                                                 {positionNum}
                                             </div>
 
@@ -409,8 +481,16 @@ export function DevicePalette({
                                                 </div>
                                             </div>
 
-                                            <div className={`w-3 h-3 rounded-full border border-current flex items-center justify-center transition-opacity ${isSelected ? 'text-blue-500 opacity-100' : 'text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100'}`}>
-                                                {isSelected && <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />}
+                                            <div
+                                                className={`w-3 h-3 rounded-full border border-current flex items-center justify-center transition-opacity ${isSelected ? 'opacity-100' : 'text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100'}`}
+                                                style={isSelected ? { color: 'var(--color-primary)' } : undefined}
+                                            >
+                                                {isSelected && (
+                                                    <div
+                                                        className="w-1.5 h-1.5 rounded-full"
+                                                        style={{ backgroundColor: 'var(--color-primary)' }}
+                                                    />
+                                                )}
                                             </div>
                                         </div>
                                     )

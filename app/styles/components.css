@@ -18,7 +18,7 @@
     }
 
     .fusion-card:hover {
-        border-color: rgba(255, 0, 255, 0.5);
+        border-color: var(--color-accent-soft, rgba(255, 0, 255, 0.5));
         box-shadow: var(--shadow-soft), var(--shadow-glow-accent);
     }
 
@@ -187,7 +187,7 @@
     }
 
     .fusion-button-danger:hover {
-        background: rgba(255, 51, 102, 0.9);
+        background: var(--color-danger-hover, rgba(255, 51, 102, 0.9));
         /* Slightly transparent version for hover or calculation */
         box-shadow: var(--shadow-glow-accent);
         transform: translateY(-1px);
@@ -236,7 +236,7 @@
     .token-status-online,
     .token-status-active,
     .token-status-success {
-        background: rgba(0, 255, 136, 0.15);
+        background: var(--color-success-soft, rgba(0, 255, 136, 0.15));
         /* Keep strict green for success/online regardless of theme primary */
         color: var(--color-success);
         border: var(--border-width-thin) solid var(--color-success);
@@ -247,7 +247,7 @@
     .token-status-disabled,
     .token-status-inactive,
     .token-status-not-assigned {
-        background: rgba(184, 197, 214, 0.15);
+        background: var(--color-surface-subtle, rgba(184, 197, 214, 0.15));
         color: var(--color-text-muted);
         border: var(--border-width-thin) solid var(--color-border-subtle);
     }
@@ -255,14 +255,14 @@
     .token-status-error,
     .token-status-danger,
     .token-status-missing {
-        background: rgba(255, 51, 102, 0.15);
+        background: var(--color-danger-soft, rgba(255, 51, 102, 0.15));
         /* Keep strict red */
         color: var(--color-danger);
         border: var(--border-width-thin) solid var(--color-danger);
     }
 
     .token-status-warning {
-        background: rgba(255, 204, 0, 0.15);
+        background: var(--color-warning-soft, rgba(255, 204, 0, 0.15));
         color: var(--color-warning);
         border: var(--border-width-thin) solid var(--color-warning);
     }

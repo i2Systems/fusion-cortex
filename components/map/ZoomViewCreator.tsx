@@ -16,6 +16,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { X, Check, Square } from 'lucide-react'
 import type { Location } from '@/lib/locationStorage'
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 
 interface ZoomViewCreatorProps {
   isOpen: boolean
@@ -50,6 +51,15 @@ export function ZoomViewCreator({
   const [viewName, setViewName] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+
+  // Focus trap for accessibility
+  useFocusTrap({
+    isOpen,
+    onClose,
+    containerRef: modalRef,
+    enabled: isOpen,
+  })
 
   // Track the actual rendered bounds of the image in the modal
   const [modalImageBounds, setModalImageBounds] = useState<ModalImageBounds | null>(null)
@@ -245,8 +255,17 @@ export function ZoomViewCreator({
   ) : null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-[var(--color-surface)] border border-[var(--color-border-subtle)] rounded-xl shadow-[var(--shadow-strong)] w-full max-w-4xl max-h-[90vh] flex flex-col">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
+      style={{ backgroundColor: 'var(--color-backdrop)' }}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div 
+        ref={modalRef}
+        tabIndex={-1}
+        className="bg-[var(--color-surface)] border border-[var(--color-border-subtle)] rounded-xl shadow-[var(--shadow-strong)] w-full max-w-4xl max-h-[90vh] flex flex-col"
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[var(--color-border-subtle)]">
           <div className="flex items-center gap-3">
@@ -314,10 +333,11 @@ export function ZoomViewCreator({
         {/* Name input and actions */}
         <div className="p-4 border-t border-[var(--color-border-subtle)] space-y-3">
           <div>
-            <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+            <label htmlFor="zoom-view-name-input" className="block text-sm font-medium text-[var(--color-text)] mb-2">
               Zoom View Name
             </label>
             <input
+              id="zoom-view-name-input"
               type="text"
               value={viewName}
               onChange={(e) => setViewName(e.target.value)}

@@ -10,13 +10,14 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { X, Package, Shield, Calendar, CheckCircle2, AlertCircle, XCircle, FileText, ExternalLink, Info } from 'lucide-react'
 import { Component, Device } from '@/lib/mockData'
 import { calculateWarrantyStatus, getWarrantyStatusLabel, getWarrantyStatusTokenClass, formatWarrantyExpiry } from '@/lib/warranty'
 import { getComponentLibraryUrl, getComponentImage } from '@/lib/libraryUtils'
 import { Button } from '@/components/ui/Button'
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 
 interface ComponentModalProps {
   component: Component | null
@@ -26,6 +27,17 @@ interface ComponentModalProps {
 }
 
 export function ComponentModal({ component, parentDevice, isOpen, onClose }: ComponentModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null)
+  const titleId = `component-modal-title-${Math.random().toString(36).substr(2, 9)}`
+
+  // Focus trap
+  useFocusTrap({
+    isOpen,
+    onClose,
+    containerRef: modalRef,
+    enabled: isOpen,
+  })
+
   if (!isOpen || !component) {
     return null
   }
@@ -123,11 +135,17 @@ export function ComponentModal({ component, parentDevice, isOpen, onClose }: Com
 
   return (
     <div
-      className="fixed inset-0 bg-[var(--color-bg)]/80 backdrop-blur-sm flex items-center justify-center z-[var(--z-modal)]"
+      className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-[var(--z-modal)]"
       onClick={onClose}
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
+      style={{ backgroundColor: 'var(--color-backdrop)' }}
+      aria-hidden="true"
     >
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className="bg-[var(--color-surface)] backdrop-blur-xl rounded-[var(--radius-2xl)] shadow-[var(--shadow-strong)] w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden border border-[var(--color-primary)]/30"
         style={{ boxShadow: 'var(--glow-modal)' }}
         onClick={(e) => e.stopPropagation()}
@@ -138,7 +156,7 @@ export function ComponentModal({ component, parentDevice, isOpen, onClose }: Com
             <ComponentIcon componentType={component.componentType} />
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-2xl font-bold text-[var(--color-text)]">
+                <h2 id={titleId} className="text-2xl font-bold text-[var(--color-text)]">
                   {component.componentType}
                 </h2>
                 {getComponentLibraryUrl(component.componentType) && (
@@ -147,6 +165,7 @@ export function ComponentModal({ component, parentDevice, isOpen, onClose }: Com
                     onClick={(e) => e.stopPropagation()}
                     className="p-1 rounded hover:bg-[var(--color-surface-subtle)] transition-colors"
                     title="View in library"
+                    aria-label="View component in library"
                   >
                     <Info size={16} className="text-[var(--color-primary)]" />
                   </Link>
@@ -162,6 +181,7 @@ export function ComponentModal({ component, parentDevice, isOpen, onClose }: Com
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors text-[var(--color-text-muted)]"
+            aria-label="Close dialog"
           >
             <X size={20} />
           </button>
