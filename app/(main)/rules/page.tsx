@@ -31,6 +31,7 @@ import { useSite } from '@/lib/SiteContext'
 import { Rule } from '@/lib/mockRules'
 import { useMap } from '@/lib/MapContext'
 import { useMapUpload } from '@/lib/useMapUpload'
+import { useToast } from '@/lib/ToastContext'
 
 // Dynamically import RulesZoneCanvas to avoid SSR issues with Konva
 const RulesZoneCanvas = dynamic(() => import('@/components/rules/RulesZoneCanvas').then(mod => ({ default: mod.RulesZoneCanvas })), {
@@ -47,6 +48,7 @@ export default function RulesPage() {
   const { zones } = useZones()
   const { devices } = useDevices()
   const { activeSiteId } = useSite()
+  const { addToast } = useToast()
 
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -74,7 +76,11 @@ export default function RulesPage() {
       // Refresh map data to show the new upload
       await refreshMapData()
     } catch (error: any) {
-      alert(error.message || 'Failed to upload map')
+      addToast({
+        type: 'error',
+        title: 'Upload Failed',
+        message: error.message || 'Failed to upload map'
+      })
     }
   }
 
@@ -84,7 +90,11 @@ export default function RulesPage() {
       // Refresh map data to show the new upload
       await refreshMapData()
     } catch (error: any) {
-      alert(error.message || 'Failed to upload vector data')
+      addToast({
+        type: 'error',
+        title: 'Upload Failed',
+        message: error.message || 'Failed to upload vector data'
+      })
     }
   }
 

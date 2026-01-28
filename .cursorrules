@@ -1,7 +1,12 @@
 # Fusion/Cortex - Cursor AI Rules
 
+> **📚 Documentation**: See [DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md) for complete documentation navigation.  
+> **🤖 Quick Reference**: See [AI_NOTES.md](./AI_NOTES.md) for patterns and examples.
+
 ## Project Context
 This is a web-based commissioning & configuration UI for large-scale retail lighting deployments. Focus on mapping, zones, BACnet mapping, rules, overrides, and device lookup. Supports multi-store management with store-scoped data isolation.
+
+**Current Architecture (2025)**: Zustand stores + tRPC + Next.js 14 App Router. Legacy Context API files exist for compatibility but are deprecated.
 
 ## Code Style
 - Use TypeScript strict mode
@@ -17,11 +22,14 @@ This is a web-based commissioning & configuration UI for large-scale retail ligh
 - Maintain the dark theme aesthetic defined in globals.css
 
 ## Architecture
-- tRPC for all API calls (type-safe)
-- Prisma for database access
-- Next.js App Router structure
-- Components in /components, pages in /app
-- tRPC routers organized by feature in /server/trpc/routers
+- **State Management**: Zustand stores (`lib/stores/`) + sync hooks (`lib/stores/use*Sync.ts`)
+  - ⚠️ Legacy Context API files (`*Context.tsx`) are deprecated - use Zustand stores
+- **Data Hooks**: `lib/hooks/use*.ts` - React hooks that use stores (preferred in components)
+- **API**: tRPC for all API calls (type-safe)
+- **Database**: Prisma for database access
+- **Framework**: Next.js 14 App Router structure
+- **Components**: `/components`, pages in `/app`
+- **Routers**: tRPC routers organized by feature in `/server/trpc/routers`
 
 ## AI-Friendly Notes
 - Files include JSDoc comments explaining purpose and usage
@@ -37,10 +45,18 @@ Do NOT implement:
 - Legacy energy/analytics features beyond the spec
 
 ## When Adding Features
-1. Create route in app/(main)/[feature]/page.tsx
-2. Add nav item in components/layout/MainNav.tsx
-3. Create tRPC router in server/trpc/routers/[feature].ts
-4. Add router to server/trpc/routers/_app.ts
+1. Create route in `app/(main)/[feature]/page.tsx`
+2. Add nav item in `components/layout/MainNav.tsx`
+3. Create tRPC router in `server/trpc/routers/[feature].ts`
+4. Add router to `server/trpc/routers/_app.ts`
 5. Update Prisma schema if needed
 6. Use design tokens, not hard-coded values
+7. **State Management**: Use Zustand stores (`lib/stores/`) + sync hooks, NOT deprecated Context API
+8. **Data Access**: Use data hooks (`useDevices()`, `useZones()`, etc.) from `lib/hooks/`
+
+## Documentation
+- **Main Docs**: [README.md](./README.md) - Project overview
+- **AI Reference**: [AI_NOTES.md](./AI_NOTES.md) - Patterns and examples
+- **Architecture**: [ARCHITECTURE.md](./ARCHITECTURE.md) - System design
+- **All Docs**: [DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md) - Complete navigation
 

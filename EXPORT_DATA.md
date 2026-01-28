@@ -1,5 +1,7 @@
 # Exporting Zones and Device Positions
 
+> **AI Note**: Instructions for exporting current state as seed data. See [SEEDING.md](./SEEDING.md) for seeding overview.
+
 **Guide for exporting and persisting zones and device positions across deployments.**
 
 ## Problem

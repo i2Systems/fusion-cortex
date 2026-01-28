@@ -48,7 +48,9 @@ export function useRuleSync() {
 
     // Sync loading state
     useEffect(() => {
-        store.setLoading(isLoading)
+        queueMicrotask(() => {
+            store.setLoading(isLoading)
+        })
     }, [isLoading])
 
     // Hydrate store from server data
@@ -60,7 +62,9 @@ export function useRuleSync() {
                 updatedAt: new Date(rule.updatedAt),
                 lastTriggered: rule.lastTriggered ? new Date(rule.lastTriggered) : undefined,
             }))
-            store.setRules(transformed)
+            queueMicrotask(() => {
+                store.setRules(transformed)
+            })
         }
     }, [rulesData])
 

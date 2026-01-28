@@ -19,6 +19,7 @@ import { RuleFlowEditor } from './RuleFlowEditor'
 import { RulePreview } from './RulePreview'
 import { Button } from '@/components/ui/Button'
 import { ConfirmationModal } from '@/components/shared/ConfirmationModal'
+import { useToast } from '@/lib/ToastContext'
 
 interface RulesPanelProps {
   selectedRule: Rule | null
@@ -63,6 +64,7 @@ type PanelMode = 'create' | 'edit' | 'view'
 type CreationStep = 'target' | 'type' | 'configure'
 
 export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPanelProps) {
+  const { addToast } = useToast()
   const { zones } = useZones()
   const { devices } = useDevices()
   const [mode, setMode] = useState<PanelMode>('view')
@@ -175,15 +177,15 @@ export function RulesPanel({ selectedRule, onSave, onCancel, onDelete }: RulesPa
 
   const handleSave = () => {
     if (!formData.name?.trim()) {
-      alert('Please enter a name')
+      addToast({ type: 'warning', title: 'Required Field', message: 'Please enter a name' })
       return
     }
     if (!selectedTargetType || !selectedRuleType) {
-      alert('Please complete the setup steps')
+      addToast({ type: 'warning', title: 'Incomplete Setup', message: 'Please complete the setup steps' })
       return
     }
     if (!selectedTargetId && creationStep === 'configure') {
-      alert('Please select a target')
+      addToast({ type: 'warning', title: 'Required Field', message: 'Please select a target' })
       return
     }
     onSave(formData)

@@ -23,6 +23,7 @@ import { BACnetDetailsPanel } from '@/components/bacnet/BACnetDetailsPanel'
 import { initialBACnetMappings, type ControlCapability } from '@/lib/initialBACnetMappings'
 import { ResizablePanel } from '@/components/layout/ResizablePanel'
 import { Badge } from '@/components/ui/Badge'
+import { useToast } from '@/lib/ToastContext'
 import {
   RefreshCw,
   Search,
@@ -160,6 +161,7 @@ export default function BACnetPage() {
   const { zones } = useZones()
   const { devices } = useDevices()
   const { activeSiteId } = useSite()
+  const { addToast } = useToast()
   const [mappings, setMappings] = useState<BACnetMapping[]>([])
   const [selectedMappingId, setSelectedMappingId] = useState<string | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
@@ -423,7 +425,11 @@ export default function BACnetPage() {
       // Refresh map data to show the new upload
       await refreshMapData()
     } catch (error: any) {
-      alert(error.message || 'Failed to upload map')
+      addToast({
+        type: 'error',
+        title: 'Upload Failed',
+        message: error.message || 'Failed to upload map'
+      })
     }
   }
 
@@ -433,7 +439,11 @@ export default function BACnetPage() {
       // Refresh map data to show the new upload
       await refreshMapData()
     } catch (error: any) {
-      alert(error.message || 'Failed to upload vector data')
+      addToast({
+        type: 'error',
+        title: 'Upload Failed',
+        message: error.message || 'Failed to upload vector data'
+      })
     }
   }
 

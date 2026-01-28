@@ -1,5 +1,7 @@
 # Deployment Guide
 
+> **AI Note**: Step-by-step deployment instructions for Vercel. See [README.md](./README.md) for project overview.
+
 This guide covers deploying Fusion/Cortex to Vercel via GitHub.
 
 ---

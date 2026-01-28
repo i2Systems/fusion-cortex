@@ -51,6 +51,8 @@ import { detectAllLights, createDevicesFromLights } from '@/lib/lightDetection'
 import { trpc } from '@/lib/trpc/client'
 import { supabaseAdmin, STORAGE_BUCKETS } from '@/lib/supabase'
 import { useErrorHandler } from '@/lib/hooks/useErrorHandler'
+import { useToast } from '@/lib/ToastContext'
+import { usePeople } from '@/lib/hooks/usePeople'
 
 // Define Location interface matching the DB schema (plus optional local props if needed)
 export interface Location {
@@ -110,6 +112,16 @@ export default function MapPage() {
   const { activeSiteId } = useSite()
   const { zones, syncZoneDeviceIds, getDevicesInZone } = useZones()
   const { handleError, handleSuccess } = useErrorHandler()
+  const { addToast } = useToast()
+  const { people, fetchPeople } = usePeople()
+
+  // Fetch people when site changes
+  useEffect(() => {
+    if (activeSiteId) {
+      fetchPeople(activeSiteId).catch(console.error)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSiteId])
 
   // TRPC Hooks
   const utils = trpc.useContext()
@@ -382,7 +394,11 @@ export default function MapPage() {
           console.log('✅ Map image uploaded to Supabase:', url)
         } catch (e) {
           console.error('Failed to upload map image:', e)
-          alert('Failed to upload map image. Using unstable local copy.')
+          addToast({
+            type: 'warning',
+            title: 'Upload Issue',
+            message: 'Failed to upload map image. Using unstable local copy.'
+          })
           // Fallback to base64 if upload fails (not ideal for db, but keeps it working)
         }
       }
@@ -408,7 +424,11 @@ export default function MapPage() {
       await utils.location.list.refetch({ siteId: activeSiteId })
     } catch (error) {
       console.error('Failed to create location:', error)
-      alert('Failed to save location. Please try again.')
+      addToast({
+        type: 'error',
+        title: 'Save Failed',
+        message: 'Failed to save location. Please try again.'
+      })
     } finally {
       setIsUploadingMap(false)
     }
@@ -416,7 +436,11 @@ export default function MapPage() {
 
   const handleVectorDataUpload = async (data: any) => {
     if (!activeSiteId) {
-      alert('No store selected. Please select a store first.')
+      addToast({
+        type: 'warning',
+        title: 'No Store Selected',
+        message: 'No store selected. Please select a store first.'
+      })
       return
     }
     const locationName = prompt('Enter a name for this location:', 'Main Floor Plan')
@@ -449,7 +473,11 @@ export default function MapPage() {
       vectorUrl = url
     } catch (e) {
       console.error('Failed to upload vector data:', e)
-      alert('Failed to upload vector data.')
+      addToast({
+        type: 'error',
+        title: 'Upload Failed',
+        message: 'Failed to upload vector data.'
+      })
       return
     }
 
@@ -1343,6 +1371,17 @@ export default function MapPage() {
                   devicesData={filteredDevices}
                   onZoneClick={handleZoneClick}
                   devices={devicesForCanvas.filter(d => d.x !== undefined && d.y !== undefined) as any}
+                  people={people
+                    .filter(p => p.x !== null && p.x !== undefined && p.y !== null && p.y !== undefined)
+                    .map(p => ({
+                      id: p.id,
+                      firstName: p.firstName,
+                      lastName: p.lastName,
+                      x: p.x!,
+                      y: p.y!,
+                      imageUrl: p.imageUrl || undefined,
+                    }))}
+                  showPeople={filters.showMap}
                   currentLocation={currentLocation ? {
                     id: currentLocation.id,
                     name: currentLocation.name,

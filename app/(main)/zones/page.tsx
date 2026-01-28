@@ -13,7 +13,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import dynamic from 'next/dynamic'
-import { X } from 'lucide-react'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { MapUpload } from '@/components/map/MapUpload'
 import { ZonesPanel } from '@/components/zones/ZonesPanel'
@@ -30,6 +29,7 @@ import { isFixtureType } from '@/lib/deviceUtils'
 import { ResizablePanel } from '@/components/layout/ResizablePanel'
 import { useMap } from '@/lib/MapContext'
 import { useMapUpload } from '@/lib/useMapUpload'
+import { useToast } from '@/lib/ToastContext'
 
 // Dynamically import ZoneCanvas to avoid SSR issues with Konva
 const ZoneCanvas = dynamic(() => import('@/components/map/ZoneCanvas').then(mod => ({ default: mod.ZoneCanvas })), {
@@ -48,6 +48,7 @@ export default function ZonesPage() {
   const { zones, addZone, updateZone, deleteZone, getDevicesInZone, syncZoneDeviceIds, saveZones, isZonesSaved } = useZones()
   const { activeSiteId } = useSite()
   const { role } = useRole()
+  const { addToast } = useToast()
 
   // tRPC mutations for database persistence
   const saveZonesMutation = trpc.zone.saveAll.useMutation()
@@ -87,7 +88,11 @@ export default function ZonesPage() {
       // Refresh map data to show the new upload
       await refreshMapData()
     } catch (error: any) {
-      alert(error.message || 'Failed to upload map')
+      addToast({
+        type: 'error',
+        title: 'Upload Failed',
+        message: error.message || 'Failed to upload map'
+      })
     }
   }
 
@@ -97,31 +102,14 @@ export default function ZonesPage() {
       // Refresh map data to show the new upload
       await refreshMapData()
     } catch (error: any) {
-      alert(error.message || 'Failed to upload vector data')
+      addToast({
+        type: 'error',
+        title: 'Upload Failed',
+        message: error.message || 'Failed to upload vector data'
+      })
     }
   }
 
-  const handleClearMap = async () => {
-    // Map clearing is handled in the map page
-    await refreshMapData()
-    setSelectedZone(null)
-    if (typeof window !== 'undefined' && activeSiteId) {
-      const imageKey = activeSiteId ? `fusion_map-image-url_${activeSiteId}` : 'map-image-url'
-      const vectorKey = `${imageKey}_vector`
-
-      // Delete from localStorage
-      localStorage.removeItem(imageKey)
-      localStorage.removeItem(vectorKey)
-
-      // Delete from IndexedDB
-      try {
-        const { deleteVectorData } = await import('@/lib/indexedDB')
-        await deleteVectorData(activeSiteId, vectorKey)
-      } catch (e) {
-        console.warn('Failed to delete vector data from IndexedDB:', e)
-      }
-    }
-  }
 
   const handleZoneCreated = (polygon: Array<{ x: number; y: number }>) => {
     const zoneNumber = zones.length + 1
@@ -238,16 +226,18 @@ export default function ZonesPage() {
   const zonesForPanel = useMemo(() => {
     console.log('Zones for panel:', zones.length, 'zones')
     return zones.map(zone => {
-      const devicesInZone = getDevicesInZone(zone.id, devices)
+      // Use deviceIds.length as the source of truth for device count
+      const deviceCount = zone.deviceIds?.length || 0
       return {
         id: zone.id,
         name: zone.name,
-        deviceCount: devicesInZone.length,
-        description: zone.description || `${devicesInZone.length} devices`,
+        deviceCount: deviceCount,
+        description: zone.description || '', // Don't include device count in description to avoid duplication
         color: zone.color,
+        deviceIds: zone.deviceIds, // Include deviceIds for ungrouped calculation
       }
     })
-  }, [zones, devices, getDevicesInZone])
+  }, [zones])
 
   // Debug: Log zones on mount
   useEffect(() => {
@@ -482,7 +472,11 @@ export default function ZonesPage() {
                     canDelete={!!selectedZone}
                     onSave={async () => {
                       if (!activeSiteId) {
-                        alert('No active store selected')
+                        addToast({
+                          type: 'warning',
+                          title: 'No Store Selected',
+                          message: 'Please select a store first.'
+                        })
                         return
                       }
 
@@ -553,23 +547,6 @@ export default function ZonesPage() {
                 </div>
               )}
 
-              {/* Clear button - Top right (hidden for Manager and Technician) */}
-              {mapUploaded && role !== 'Manager' && role !== 'Technician' && (
-                <div className="absolute top-0 right-4 z-30 pointer-events-none" style={{ transform: 'translateY(-50%)' }}>
-                  <div className="pointer-events-auto">
-                    <Button
-                      variant="secondary"
-                      size="md"
-                      onClick={handleClearMap}
-                      className="bg-[var(--color-surface)] backdrop-blur-xl border-border-subtle shadow-[var(--shadow-soft)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-danger)]"
-                      title="Clear map and show upload"
-                    >
-                      <X size={18} />
-                      <span className="text-sm font-medium">Clear</span>
-                    </Button>
-                  </div>
-                </div>
-              )}
               {!mapUploaded ? (
                 <div className="w-full h-full">
                   <MapUpload
@@ -627,10 +604,16 @@ export default function ZonesPage() {
               zones={zonesForPanel}
               selectedZoneId={selectedZone}
               onZoneSelect={setSelectedZone}
+              onDeviceMove={handleDeviceMove}
+              devices={devices}
               onCreateZone={() => {
                 if (!mapUploaded && viewMode === 'map') {
                   // Prompt to upload map first
-                  alert('Please upload a map first to create zones by drawing on it.')
+                  addToast({
+                    type: 'info',
+                    title: 'Map Required',
+                    message: 'Please upload a map first to create zones by drawing on it.'
+                  })
                   return
                 }
                 setSelectedZone(null)
@@ -658,4 +641,3 @@ export default function ZonesPage() {
     </div>
   )
 }
-

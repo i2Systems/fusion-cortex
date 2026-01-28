@@ -26,6 +26,11 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
       queries: {
         retry: 1,
         networkMode: 'always',
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+        refetchOnWindowFocus: false,
+        // Add timeout to prevent hanging queries
+        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       },
       mutations: {
         retry: false,
@@ -40,6 +45,18 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
         httpBatchLink({
           url: `${getBaseUrl()}/api/trpc`,
           transformer: superjson,
+          fetch: (url, options) => {
+            // Add timeout to prevent hanging requests
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+            
+            return fetch(url, {
+              ...options,
+              signal: controller.signal,
+            }).finally(() => {
+              clearTimeout(timeoutId)
+            })
+          },
         }),
       ],
     })

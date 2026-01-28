@@ -20,7 +20,8 @@ import { z } from 'zod'
 import { router, publicProcedure } from '../trpc'
 import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
-import { DeviceType, DeviceStatus } from '@prisma/client'
+import { DeviceType, DeviceStatus, Prisma } from '@prisma/client'
+import type { Device } from '@prisma/client'
 import {
   toDisplayType,
   fromDisplayType,
@@ -38,9 +39,14 @@ const toPrismaDeviceType = fromDisplayType
 const toFrontendDeviceStatus = toDisplayStatus
 const toPrismaDeviceStatus = fromDisplayStatus
 
+// Type for Device with child devices (components) included
+type DeviceWithComponents = Device & {
+  other_Device?: Device[]
+}
+
 // Helper to transform database device to frontend format
-function transformDevice(dbDevice: any) {
-  const components = dbDevice.other_Device?.map((comp: any) => ({
+function transformDevice(dbDevice: DeviceWithComponents) {
+  const components = dbDevice.other_Device?.map((comp) => ({
     id: comp.id,
     componentType: comp.componentType || '',
     componentSerialNumber: comp.componentSerialNumber || '',
@@ -486,7 +492,7 @@ export const deviceRouter = router({
           throw new Error(`Device with ID ${id} not found`)
         }
 
-        const updateData: any = {}
+        const updateData: Prisma.DeviceUpdateInput = {}
         if (updates.deviceId !== undefined) updateData.deviceId = updates.deviceId
         if (updates.serialNumber !== undefined) updateData.serialNumber = updates.serialNumber
         if (updates.type !== undefined) {

@@ -7,12 +7,14 @@
 
 import { useState } from 'react'
 import { useSite } from './SiteContext'
+import { useToast } from './ToastContext'
 import { trpc } from './trpc/client'
 import { supabaseAdmin, STORAGE_BUCKETS } from './supabase'
 import { logger } from './logger'
 
 export function useMapUpload() {
   const { activeSiteId } = useSite()
+  const { addToast } = useToast()
   const [isUploading, setIsUploading] = useState(false)
   const utils = trpc.useUtils()
 
@@ -65,7 +67,11 @@ export function useMapUpload() {
           logger.info('✅ Map image uploaded to Supabase:', url)
         } catch (e) {
           logger.error('Failed to upload map image:', e)
-          alert('Failed to upload map image. Using local copy (may not persist).')
+          addToast({
+            type: 'warning',
+            title: 'Upload Issue',
+            message: 'Failed to upload map image. Using local copy (may not persist).'
+          })
           // Fallback to base64 if upload fails
         }
       }

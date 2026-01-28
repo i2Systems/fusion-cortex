@@ -12,6 +12,8 @@ import { X, Image as ImageIcon, Info, Package, Zap, Settings, Upload, Trash2 } f
 import { LibraryObject } from '@/app/(main)/library/page'
 import { setCustomImage, removeCustomImage, getDeviceImage, getComponentImage, getComponentLibraryUrl, getDeviceImageAsync, getComponentImageAsync } from '@/lib/libraryUtils'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
+import { useToast } from '@/lib/ToastContext'
+import { useConfirm } from '@/lib/hooks/useConfirm'
 
 // Component type to library ID mapping (matches lib/libraryUtils.ts)
 const COMPONENT_TYPE_TO_LIBRARY_ID: Record<string, string> = {
@@ -39,6 +41,8 @@ interface LibraryObjectModalProps {
 }
 
 export function LibraryObjectModal({ object, onClose }: LibraryObjectModalProps) {
+  const { addToast } = useToast()
+  const confirm = useConfirm()
   const isComponent = 'quantity' in object
   const [currentImage, setCurrentImage] = useState<string>(object.defaultImage || '')
   const [previewImage, setPreviewImage] = useState<string | null>(null)
@@ -151,14 +155,14 @@ export function LibraryObjectModal({ object, onClose }: LibraryObjectModalProps)
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please select a valid image file')
+      addToast({ type: 'error', title: 'Invalid File', message: 'Please select a valid image file' })
       return
     }
 
     // Validate file size (max 10MB)
     const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
-      alert('Image size must be less than 10MB')
+      addToast({ type: 'error', title: 'File Too Large', message: 'Image size must be less than 10MB' })
       return
     }
 
@@ -175,13 +179,13 @@ export function LibraryObjectModal({ object, onClose }: LibraryObjectModalProps)
         }
       }
       reader.onerror = () => {
-        alert('Failed to read image file')
+        addToast({ type: 'error', title: 'Read Error', message: 'Failed to read image file' })
         setIsUploading(false)
       }
       reader.readAsDataURL(file)
     } catch (error) {
       console.error('Error processing image:', error)
-      alert('Failed to process image')
+      addToast({ type: 'error', title: 'Processing Error', message: 'Failed to process image' })
       setIsUploading(false)
     }
 
@@ -253,7 +257,11 @@ export function LibraryObjectModal({ object, onClose }: LibraryObjectModalProps)
         }, 300)
       } catch (error) {
         console.error('❌ Failed to save image:', error)
-        alert(error instanceof Error ? error.message : 'Failed to save image. The image may be too large. Please try a smaller image.')
+        addToast({
+          type: 'error',
+          title: 'Save Failed',
+          message: error instanceof Error ? error.message : 'Failed to save image. The image may be too large. Please try a smaller image.'
+        })
       }
     }
   }
@@ -265,8 +273,14 @@ export function LibraryObjectModal({ object, onClose }: LibraryObjectModalProps)
     }
   }
 
-  const handleRemoveCustomImage = () => {
-    if (confirm('Remove custom image and restore default?')) {
+  const handleRemoveCustomImage = async () => {
+    const confirmed = await confirm({
+      title: 'Remove Custom Image',
+      message: 'Remove custom image and restore the default?',
+      confirmLabel: 'Remove',
+      variant: 'danger'
+    })
+    if (confirmed) {
       // For components, use the component type mapping to get the library ID
       let libraryId: string
       if (isComponent) {

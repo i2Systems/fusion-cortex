@@ -27,6 +27,7 @@ import { useDevices } from '@/lib/DomainContext'
 import { useZones } from '@/lib/DomainContext'
 import { useSite } from '@/lib/SiteContext'
 import { useNotifications } from '@/lib/NotificationContext'
+import { useToast } from '@/lib/ToastContext'
 import { Device } from '@/lib/mockData'
 import { FaultCategory, assignFaultCategory, generateFaultDescription, faultCategories } from '@/lib/faultDefinitions'
 import { trpc } from '@/lib/trpc/client'
@@ -59,6 +60,7 @@ export default function FaultsPage() {
   const { zones } = useZones()
   const { activeSiteId } = useSite()
   const { addNotification, notifications } = useNotifications()
+  const { addToast } = useToast()
 
   // Use cached map data from context
   const { mapData } = useMap()
@@ -352,7 +354,11 @@ export default function FaultsPage() {
       // Refresh map data to show the new upload
       await refreshMapData()
     } catch (error: any) {
-      alert(error.message || 'Failed to upload map')
+      addToast({
+        type: 'error',
+        title: 'Upload Failed',
+        message: error.message || 'Failed to upload map'
+      })
     }
   }
 
@@ -362,7 +368,11 @@ export default function FaultsPage() {
       // Refresh map data to show the new upload
       await refreshMapData()
     } catch (error: any) {
-      alert(error.message || 'Failed to upload vector data')
+      addToast({
+        type: 'error',
+        title: 'Upload Failed',
+        message: error.message || 'Failed to upload vector data'
+      })
     }
   }
 
@@ -394,7 +404,11 @@ export default function FaultsPage() {
       setSelectedDeviceId(faultData.device.id)
     } catch (error) {
       console.error('Failed to create fault:', error)
-      alert('Failed to create fault. Please try again.')
+      addToast({
+        type: 'error',
+        title: 'Creation Failed',
+        message: 'Failed to create fault. Please try again.'
+      })
     }
   }
 

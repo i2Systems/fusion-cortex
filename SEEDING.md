@@ -1,5 +1,7 @@
 # Database Seeding Guide
 
+> **AI Note**: Instructions for populating the database with demo data. See [LOCAL_DB_SETUP.md](./LOCAL_DB_SETUP.md) for database setup.
+
 **Guide for populating the database with realistic demo data for testing and development.**
 
 This guide explains how to seed the database with realistic, cohesive demo data for each site.

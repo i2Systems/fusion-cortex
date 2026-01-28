@@ -22,12 +22,13 @@ import { useSite } from '@/lib/SiteContext'
 import { trpc } from '@/lib/trpc/client'
 import { CreateFirmwareCampaignModal } from '@/components/firmware/CreateFirmwareCampaignModal'
 import { ConfirmationModal } from '@/components/shared/ConfirmationModal'
+import { useConfirm } from '@/lib/hooks/useConfirm'
 
 export default function FirmwarePage() {
   const { activeSiteId } = useSite()
   const searchParams = useSearchParams()
   const campaignIdFromUrl = searchParams.get('id')
-
+  const confirm = useConfirm()
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -116,7 +117,14 @@ export default function FirmwarePage() {
   }
 
   const handleCancelCampaign = async (id: string) => {
-    if (confirm('Are you sure you want to cancel this campaign? This cannot be undone.')) {
+    const isConfirmed = await confirm({
+      title: 'Cancel Campaign',
+      message: 'Are you sure you want to cancel this campaign? This cannot be undone.',
+      confirmLabel: 'Cancel Campaign',
+      variant: 'danger'
+    })
+
+    if (isConfirmed) {
       await updateCampaignStatusMutation.mutateAsync({
         id,
         status: 'CANCELLED',

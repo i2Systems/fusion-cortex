@@ -23,6 +23,7 @@ import { useDevices } from '@/lib/DomainContext'
 import { useZones } from '@/lib/DomainContext'
 import { useRules } from '@/lib/DomainContext'
 import { trpc } from '@/lib/trpc/client'
+import { useToast } from '@/lib/ToastContext'
 import { Device } from '@/lib/mockData'
 import { Zone } from '@/lib/DomainContext'
 import { Rule } from '@/lib/mockRules'
@@ -198,6 +199,7 @@ export default function DashboardPage() {
   const { zones } = useZones()
   const { rules } = useRules()
   const trpcUtils = trpc.useUtils()
+  const { addToast } = useToast()
   const [siteSummaries, setSiteSummaries] = useState<SiteSummary[]>([])
   const [showAddSiteModal, setShowAddSiteModal] = useState(false)
   const [editingSite, setEditingSite] = useState<Site | null>(null)
@@ -225,9 +227,13 @@ export default function DashboardPage() {
     // If no activeSiteId but we have sites, select the first one
     // This ensures a site is always selected
     const firstSiteId = sites[0].id
-    setActiveSite(firstSiteId)
-    setSelectedSiteId(firstSiteId)
-  }, [activeSiteId, sites, setActiveSite])
+    // Use queueMicrotask to prevent infinite loops
+    queueMicrotask(() => {
+      setActiveSite(firstSiteId)
+      setSelectedSiteId(firstSiteId)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSiteId, sites]) // Remove setActiveSite from deps to prevent loops
 
   // Fallback: ensure selectedSiteId is never empty when sites exist
   useEffect(() => {
@@ -235,10 +241,14 @@ export default function DashboardPage() {
       const siteToSelect = activeSiteId || sites[0].id
       setSelectedSiteId(siteToSelect)
       if (!activeSiteId) {
-        setActiveSite(siteToSelect)
+        // Use queueMicrotask to prevent infinite loops
+        queueMicrotask(() => {
+          setActiveSite(siteToSelect)
+        })
       }
     }
-  }, [sites, selectedSiteId, activeSiteId, setActiveSite])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sites, selectedSiteId, activeSiteId]) // Remove setActiveSite from deps to prevent loops
 
   // Fetch devices, zones, faults, and locations for all sites - create queries dynamically
   // Note: We'll fetch data in the useEffect to avoid hook rule violations
@@ -518,7 +528,11 @@ export default function DashboardPage() {
           const importedSites = JSON.parse(text)
 
           if (!Array.isArray(importedSites)) {
-            alert('Invalid file format. Expected an array of sites.')
+            addToast({
+              type: 'error',
+              title: 'Import Failed',
+              message: 'Invalid file format. Expected an array of sites.'
+            })
             return
           }
 
@@ -540,9 +554,17 @@ export default function DashboardPage() {
             }
           })
 
-          alert(`Successfully imported ${count} site(s)`)
+          addToast({
+            type: 'success',
+            title: 'Import Successful',
+            message: `Successfully imported ${count} site(s)`
+          })
         } catch (error) {
-          alert('Error importing file. Please check the format.')
+          addToast({
+            type: 'error',
+            title: 'Import Failed',
+            message: 'Error importing file. Please check the format.'
+          })
           console.error('Import error:', error)
         }
       }
@@ -553,7 +575,11 @@ export default function DashboardPage() {
 
   const handleExportSites = useCallback(() => {
     if (sites.length === 0) {
-      alert('No sites to export')
+      addToast({
+        type: 'warning',
+        title: 'No Sites',
+        message: 'No sites to export'
+      })
       return
     }
 

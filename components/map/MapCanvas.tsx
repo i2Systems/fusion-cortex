@@ -60,6 +60,15 @@ interface Zone {
   polygon: Array<{ x: number; y: number }> // Normalized coordinates (0-1)
 }
 
+interface PersonPoint {
+  id: string
+  firstName: string
+  lastName: string
+  x: number
+  y: number
+  imageUrl?: string | null
+}
+
 interface MapCanvasProps {
   onDeviceSelect?: (deviceId: string | null) => void
   onDevicesSelect?: (deviceIds: string[]) => void
@@ -69,6 +78,7 @@ interface MapCanvasProps {
   vectorData?: ExtractedVectorData | null
   devices?: DevicePoint[]
   zones?: Zone[]
+  people?: PersonPoint[]
   highlightDeviceId?: string | null
   mode?: 'select' | 'move' | 'rotate' | 'align-direction' | 'auto-arrange'
   onDeviceMove?: (deviceId: string, x: number, y: number) => void
@@ -86,6 +96,7 @@ interface MapCanvasProps {
   showAnnotations?: boolean
   showText?: boolean
   showZones?: boolean
+  showPeople?: boolean
   currentLocation?: Location | null
   onImageBoundsChange?: (bounds: ImageBounds) => void
   // Shared zoom state props
@@ -104,6 +115,7 @@ export function MapCanvas({
   vectorData,
   devices = [],
   zones = [],
+  people = [],
   highlightDeviceId,
   mode = 'select',
   onDeviceMove,
@@ -121,6 +133,7 @@ export function MapCanvas({
   showAnnotations = true,
   showText = true,
   showZones = true,
+  showPeople = true,
   currentLocation,
   onImageBoundsChange,
   externalScale,
@@ -1585,6 +1598,42 @@ export function MapCanvas({
             )
           })}
         </Layer>
+
+        {/* People Layer - After devices */}
+        {showPeople && imageBounds && (
+          <Layer>
+            {people
+              .filter(person => person.x !== null && person.x !== undefined && person.y !== null && person.y !== undefined)
+              .map((person) => {
+                const personCoords = toCanvasCoords({ x: person.x, y: person.y })
+                
+                return (
+                  <Group key={person.id} x={personCoords.x} y={personCoords.y}>
+                    {/* Person icon circle */}
+                    <Circle
+                      radius={6}
+                      fill={getRgbaVariable('--color-primary', 0.7)}
+                      stroke={getRgbaVariable('--color-border-subtle', 0.5)}
+                      strokeWidth={1.5}
+                      shadowBlur={4}
+                      shadowColor={getRgbaVariable('--color-primary', 0.5)}
+                      shadowOpacity={0.3}
+                      listening={false}
+                    />
+                    {/* Person icon (simplified - using emoji) */}
+                    <Text
+                      text="👤"
+                      fontSize={10}
+                      x={-5}
+                      y={-5}
+                      fill={getRgbaVariable('--color-text', 1)}
+                      listening={false}
+                    />
+                  </Group>
+                )
+              })}
+          </Layer>
+        )}
 
         {/* Tooltip Layer - Always on top */}
         <Layer>

@@ -1,5 +1,7 @@
 # Local Database Setup Guide
 
+> **AI Note**: Docker-based local database setup. See [README.md](./README.md) for full getting started guide.
+
 This project uses **Docker** for local PostgreSQL development. This gives you an isolated, reproducible database without installing PostgreSQL directly on your machine.
 
 ## Quick Start

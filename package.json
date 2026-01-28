@@ -14,6 +14,8 @@
     "cortex:health": "docker compose ps",
     "cortex:logs": "docker compose logs -f --tail=100",
     "cortex": "node scripts/cortex-help.js",
+    "local:wakeup": "npm run db:up && sleep 2 && cp .env.local.template .env.local 2>/dev/null || true && echo '💻 Local dev starting... Database ready. Starting Next.js dev server...' && npm run dev",
+    "local:sleep": "npm run db:down && (pkill -f 'next dev' 2>/dev/null || pkill -f 'node.*next' 2>/dev/null || true) && echo '💤 Local dev stopped. Database stopped. (If dev server is still running, press Ctrl+C in that terminal)'",
     "db:up": "docker compose up postgres -d",
     "db:down": "docker compose down",
     "build": "prisma generate && next build",

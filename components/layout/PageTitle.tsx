@@ -16,7 +16,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useRole } from '@/lib/auth'
 import { useSite } from '@/lib/SiteContext'
 import { useNotifications } from '@/lib/NotificationContext'
-import { ChevronDown, Bell } from 'lucide-react'
+import { ChevronDown, Bell, Loader2 } from 'lucide-react'
 
 const pageTitles: Record<string, { primary: string; secondary?: string }> = {
   '/dashboard': { primary: 'Fusion', secondary: 'i2 Cloud' },
@@ -33,11 +33,12 @@ export function PageTitle() {
   const pathname = usePathname()
   const router = useRouter()
   const { role } = useRole()
-  const { sites, activeSite, setActiveSite } = useSite()
+  const { sites, activeSite, setActiveSite, activeSiteId } = useSite()
   const { unreadCount } = useNotifications()
   const title = pageTitles[pathname || '/dashboard'] || { primary: 'Fusion', secondary: 'i2 Cloud' }
   const [showSiteDropdown, setShowSiteDropdown] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [switchingSiteId, setSwitchingSiteId] = useState<string | null>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({})
 
@@ -103,12 +104,24 @@ export function PageTitle() {
           <button 
             ref={buttonRef}
               onClick={() => setShowSiteDropdown(!showSiteDropdown)}
-            className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors border border-[var(--color-border-subtle)]"
+            disabled={!!switchingSiteId}
+            className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1.5 rounded-lg hover:bg-[var(--color-surface-subtle)] transition-colors border border-[var(--color-border-subtle)] disabled:opacity-50 disabled:cursor-wait"
           >
-            <span className="text-xs md:text-sm font-medium text-[var(--color-text)] whitespace-nowrap max-w-[120px] sm:max-w-[180px] truncate">
-                {activeSite?.name || 'Select Site'}
-            </span>
-            <ChevronDown size={14} className="text-[var(--color-text-muted)] flex-shrink-0" />
+            {switchingSiteId ? (
+              <>
+                <Loader2 size={14} className="animate-spin flex-shrink-0 text-[var(--color-primary)]" />
+                <span className="text-xs md:text-sm font-medium text-[var(--color-text)] whitespace-nowrap max-w-[120px] sm:max-w-[180px] truncate">
+                  Switching...
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-xs md:text-sm font-medium text-[var(--color-text)] whitespace-nowrap max-w-[120px] sm:max-w-[180px] truncate">
+                  {activeSite?.name || 'Select Site'}
+                </span>
+                <ChevronDown size={14} className="text-[var(--color-text-muted)] flex-shrink-0" />
+              </>
+            )}
           </button>
           
           {/* Dropdown Menu - Portal to body to escape all stacking contexts */}
@@ -126,16 +139,32 @@ export function PageTitle() {
                   <button
                     key={site.id}
                     onClick={() => {
-                      setActiveSite(site.id)
-                      setShowSiteDropdown(false)
+                      // Only switch if it's a different site
+                      if (site.id !== activeSiteId) {
+                        setSwitchingSiteId(site.id)
+                        setActiveSite(site.id)
+                        setShowSiteDropdown(false)
+                        // Clear switching state after a brief delay
+                        setTimeout(() => setSwitchingSiteId(null), 500)
+                      } else {
+                        setShowSiteDropdown(false)
+                      }
                     }}
-                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                    disabled={switchingSiteId === site.id}
+                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2 ${
                       activeSite?.id === site.id
                         ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)]'
                         : 'text-[var(--color-text)] hover:bg-[var(--color-surface-subtle)]'
-                    }`}
+                    } ${switchingSiteId === site.id ? 'opacity-50 cursor-wait' : ''}`}
                   >
-                    {site.name}
+                    {switchingSiteId === site.id ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin flex-shrink-0" />
+                        <span>Switching...</span>
+                      </>
+                    ) : (
+                      site.name
+                    )}
                   </button>
                 ))}
               </div>

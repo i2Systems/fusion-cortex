@@ -1,5 +1,7 @@
 # Theme System Architecture
 
+> **AI Note**: CSS theme system documentation. See [README.md](../../README.md) for design token overview.
+
 This directory contains the CSS architecture for the Fusion/Cortex application. The system is designed to be modular, themeable, and maintainable.
 
 ## Directory Structure

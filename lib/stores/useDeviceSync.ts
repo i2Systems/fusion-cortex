@@ -66,7 +66,9 @@ export function useDeviceSync() {
 
     // Sync loading/error state to store
     useEffect(() => {
-        store.setLoading(isLoading)
+        queueMicrotask(() => {
+            store.setLoading(isLoading)
+        })
     }, [isLoading])
 
     useEffect(() => {
@@ -103,7 +105,9 @@ export function useDeviceSync() {
     // Clear devices on site change
     useEffect(() => {
         if (activeSiteId !== previousSiteIdRef.current && previousSiteIdRef.current !== null) {
-            store.setDevices([])
+            queueMicrotask(() => {
+                store.setDevices([])
+            })
         }
         previousSiteIdRef.current = activeSiteId
     }, [activeSiteId])
@@ -111,7 +115,9 @@ export function useDeviceSync() {
     // Hydrate store from server data
     useEffect(() => {
         if (devicesData !== undefined) {
-            store.setDevices(devicesData)
+            queueMicrotask(() => {
+                store.setDevices(devicesData)
+            })
         }
     }, [devicesData])
 

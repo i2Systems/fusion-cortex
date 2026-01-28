@@ -30,8 +30,13 @@ export const zoneRouter = router({
         const zones = await prisma.zone.findMany({
           where: { siteId: input.siteId },
           include: {
+            // Only select deviceId - don't fetch full Device records
             ZoneDevice: {
-              include: { Device: true },
+              select: { deviceId: true },
+            },
+            // Include device count for quick stats without fetching all IDs
+            _count: {
+              select: { ZoneDevice: true },
             },
           },
           orderBy: { createdAt: 'asc' },
@@ -43,7 +48,8 @@ export const zoneRouter = router({
           color: zone.color,
           description: zone.description,
           polygon: zone.polygon as Array<{ x: number; y: number }> | null,
-          deviceIds: zone.ZoneDevice.map((zd: any) => zd.deviceId),
+          deviceIds: zone.ZoneDevice.map(zd => zd.deviceId),
+          deviceCount: zone._count.ZoneDevice,
           daylightEnabled: zone.daylightEnabled,
           minDaylight: zone.minDaylight,
           createdAt: zone.createdAt,
@@ -114,7 +120,8 @@ export const zoneRouter = router({
             } : undefined,
           },
           include: {
-            ZoneDevice: { include: { Device: true } },
+            // Only select deviceId - don't fetch full Device records
+            ZoneDevice: { select: { deviceId: true } },
           },
         })
 
@@ -124,7 +131,7 @@ export const zoneRouter = router({
           color: zone.color,
           description: zone.description,
           polygon: zone.polygon as Array<{ x: number; y: number }> | null,
-          deviceIds: zone.ZoneDevice.map((zd: any) => zd.deviceId),
+          deviceIds: zone.ZoneDevice.map(zd => zd.deviceId),
           createdAt: zone.createdAt,
           updatedAt: zone.updatedAt,
         }
@@ -200,7 +207,8 @@ export const zoneRouter = router({
         const updatedZone = await prisma.zone.update({
           where: { id },
           data: { ...updates, polygon: input.polygon ? (input.polygon as any) : undefined },
-          include: { ZoneDevice: { include: { Device: true } } },
+          // Only select deviceId - don't fetch full Device records
+          include: { ZoneDevice: { select: { deviceId: true } } },
         })
 
         return {
@@ -209,7 +217,7 @@ export const zoneRouter = router({
           color: updatedZone.color,
           description: updatedZone.description,
           polygon: updatedZone.polygon as Array<{ x: number; y: number }> | null,
-          deviceIds: updatedZone.ZoneDevice.map((zd: any) => zd.deviceId),
+          deviceIds: updatedZone.ZoneDevice.map(zd => zd.deviceId),
           createdAt: updatedZone.createdAt,
           updatedAt: updatedZone.updatedAt,
         }

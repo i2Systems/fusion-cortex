@@ -848,3 +848,206 @@ export async function removeSiteImage(siteId: string): Promise<void> {
   }
 }
 
+// --- Person Image Utilities (stored client-side like site images) ---
+const PERSON_IMAGE_PREFIX = 'person_image_'
+
+/**
+ * Get person image (stored in localStorage or IndexedDB)
+ */
+export async function getPersonImage(personId: string, retries: number = 3): Promise<string | null> {
+  if (typeof window === 'undefined') return null
+
+  if (!personId || typeof personId !== 'string' || personId.length === 0) {
+    logger.warn(`Invalid personId provided to getPersonImage: ${personId}`)
+    return null
+  }
+
+  logger.debug(`Loading person image for personId: ${personId}`)
+
+  // Try to load from client storage (localStorage/IndexedDB)
+  try {
+    const stored = localStorage.getItem(`${PERSON_IMAGE_PREFIX}${personId}`)
+    if (!stored) {
+      logger.debug(`No person image found in client storage for ${personId}`)
+      return null
+    }
+
+    // Check if it's an IndexedDB reference
+    if (stored.startsWith('indexeddb:')) {
+      const imageId = stored.replace('indexeddb:', '')
+      for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+          const { getImageDataUrl } = await import('./indexedDB')
+          const dataUrl = await getImageDataUrl(imageId, retries)
+          if (dataUrl) {
+            return dataUrl
+          }
+          if (attempt < retries - 1) {
+            await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)))
+            continue
+          }
+          logger.warn(`Failed to load person image from IndexedDB for ${personId} after ${retries} attempts`)
+        } catch (error) {
+          if (attempt < retries - 1) {
+            await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)))
+            continue
+          }
+          logger.error(`Failed to load person image from IndexedDB for ${personId}:`, error)
+          try {
+            localStorage.removeItem(`${PERSON_IMAGE_PREFIX}${personId}`)
+          } catch { }
+          return null
+        }
+      }
+      return null
+    }
+
+    // Direct base64 string
+    if (stored.startsWith('data:') || stored.length > 100) {
+      return stored
+    }
+
+    logger.warn(`Invalid person image format for ${personId}`)
+    return null
+  } catch (error) {
+    logger.error(`Failed to get person image for ${personId}:`, error)
+    return null
+  }
+}
+
+/**
+ * Set person image (stored in client storage: IndexedDB or localStorage)
+ */
+export async function setPersonImage(personId: string, imageUrl: string): Promise<void> {
+  if (typeof window === 'undefined') {
+    logger.warn('setPersonImage called on server side, skipping')
+    return
+  }
+
+  logger.debug(`Saving person image for ${personId}, size: ${imageUrl.length} chars`)
+
+  try {
+    // Compress image first
+    logger.debug('Compressing person image...')
+    const compressedImage = await compressImage(imageUrl, 400, 0.8, 300000) // Max 300KB for person images
+    logger.debug(`Compressed size: ${compressedImage.length} chars (${(compressedImage.length / 1024).toFixed(1)} KB)`)
+
+    const MAX_REQUEST_SIZE = 300000 // 300KB
+    if (compressedImage.length > MAX_REQUEST_SIZE) {
+      logger.warn(`Compressed person image still too large (${(compressedImage.length / 1024).toFixed(1)} KB), further compressing...`)
+      const furtherCompressed = await compressImage(compressedImage, 300, 0.7, MAX_REQUEST_SIZE)
+      if (furtherCompressed.length > MAX_REQUEST_SIZE) {
+        throw new Error('Image is too large even after compression. Please use a smaller image.')
+      }
+    }
+
+    // Determine storage method based on size
+    const LARGE_IMAGE_THRESHOLD = 100000 // 100KB - use IndexedDB for larger images
+
+    if (compressedImage.length > LARGE_IMAGE_THRESHOLD) {
+      // Large image - store in IndexedDB
+      logger.debug('Person image is large, storing in IndexedDB...')
+      try {
+        const { storeImage } = await import('./indexedDB')
+        const response = await fetch(compressedImage)
+        const blob = await response.blob()
+        logger.debug(`Blob size: ${blob.size} bytes`)
+
+        // Determine file extension and mime type
+        const isPNG = compressedImage.startsWith('data:image/png')
+        const fileExtension = isPNG ? 'png' : 'jpg'
+        const mimeType = isPNG ? 'image/png' : 'image/jpeg'
+
+        // Store in IndexedDB
+        const imageId = await storeImage(
+          personId,
+          blob,
+          `person_image_${personId}.${fileExtension}`,
+          mimeType
+        )
+        logger.debug(`Stored in IndexedDB with ID: ${imageId}`)
+
+        // Verify it was stored
+        const { getImage } = await import('./indexedDB')
+        let verified = false
+        for (let i = 0; i < 5; i++) {
+          try {
+            const storedImage = await getImage(imageId)
+            if (storedImage) {
+              verified = true
+              logger.debug(`Verified person image stored in IndexedDB on attempt ${i + 1}`)
+              break
+            }
+          } catch (verifyError) {
+            logger.warn(`Person image verification attempt ${i + 1} failed:`, verifyError)
+          }
+          await new Promise(resolve => setTimeout(resolve, 150 * (i + 1)))
+        }
+
+        if (!verified) {
+          logger.warn('Person image stored but could not be verified after 5 attempts - saving reference anyway')
+        }
+
+        // Store only the reference in localStorage
+        const reference = `indexeddb:${imageId}`
+        localStorage.setItem(`${PERSON_IMAGE_PREFIX}${personId}`, reference)
+        logger.debug(`Saved reference to localStorage: ${PERSON_IMAGE_PREFIX}${personId}`)
+      } catch (indexedDBError) {
+        logger.error('Failed to store person image in IndexedDB:', indexedDBError)
+        // Try localStorage as fallback
+        try {
+          localStorage.setItem(`${PERSON_IMAGE_PREFIX}${personId}`, compressedImage)
+          logger.debug('Fallback: Saved to localStorage (may be too large)')
+        } catch (storageError) {
+          logger.error('Failed to save to localStorage:', storageError)
+          throw new Error('Image is too large to store. Please use a smaller image.')
+        }
+      }
+    } else {
+      // Small image - can store in localStorage
+      logger.debug('Person image is small, storing in localStorage...')
+      localStorage.setItem(`${PERSON_IMAGE_PREFIX}${personId}`, compressedImage)
+      logger.debug(`Saved to localStorage: ${PERSON_IMAGE_PREFIX}${personId}`)
+    }
+
+    // Verify it was saved
+    await new Promise(resolve => setTimeout(resolve, 200))
+    const verification = await getPersonImage(personId)
+    if (!verification) {
+      logger.warn('Person image saved but could not be verified immediately')
+    } else {
+      logger.debug('Person image verified after save')
+    }
+
+    // Dispatch event to notify other components
+    window.dispatchEvent(new CustomEvent('personImageUpdated', { detail: { personId } }))
+  } catch (error: any) {
+    logger.error('Failed to save person image:', error)
+    throw error
+  }
+}
+
+/**
+ * Remove person image
+ */
+export async function removePersonImage(personId: string): Promise<void> {
+  if (typeof window === 'undefined') return
+  try {
+    const stored = localStorage.getItem(`${PERSON_IMAGE_PREFIX}${personId}`)
+    if (stored && stored.startsWith('indexeddb:')) {
+      const imageId = stored.replace('indexeddb:', '')
+      try {
+        const { deleteImage } = await import('./indexedDB')
+        await deleteImage(imageId)
+      } catch (error) {
+        logger.error('Failed to delete person image from IndexedDB:', error)
+      }
+    }
+    localStorage.removeItem(`${PERSON_IMAGE_PREFIX}${personId}`)
+    window.dispatchEvent(new CustomEvent('personImageUpdated', { detail: { personId } }))
+  } catch (error) {
+    logger.error('Failed to remove person image:', error)
+    throw error
+  }
+}
+

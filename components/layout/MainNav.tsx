@@ -13,12 +13,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { 
+import {
   Home,
-  Map, 
-  Layers, 
-  Network, 
-  Settings, 
+  Map,
+  Layers,
+  Network,
+  Settings,
   Search,
   AlertTriangle,
   User,
@@ -26,7 +26,9 @@ import {
   HelpCircle,
   Menu,
   X,
-  Download
+  Download,
+  Users,
+  Boxes
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useRole } from '@/lib/auth'
@@ -44,16 +46,17 @@ const navGroups = [
     { href: '/lookup', label: 'Device Lookup', icon: Search },
     { href: '/map', label: 'Locations & Devices', icon: Map },
     { href: '/zones', label: 'Zones', icon: Layers },
+    { href: '/groups', label: 'Groups', icon: Boxes },
   ],
   // Group 3: Configuration & Management
   [
+    { href: '/people', label: 'People', icon: Users },
     { href: '/bacnet', label: 'BACnet Mapping', icon: Network },
     { href: '/rules', label: 'Rules & Overrides', icon: Workflow },
     { href: '/firmware', label: 'Firmware Updates', icon: Download },
     { href: '/faults', label: 'Faults / Health', icon: AlertTriangle },
   ],
 ]
-
 
 export function MainNav() {
   const pathname = usePathname()
@@ -85,7 +88,7 @@ export function MainNav() {
             {group.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
-              
+
               return (
                 <Link
                   key={item.href}
@@ -94,8 +97,8 @@ export function MainNav() {
                   className={`
                     w-14 h-14 flex items-center justify-center rounded-lg
                     transition-all duration-200
-                    ${isActive 
-                      ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)] shadow-[var(--shadow-glow-primary)]' 
+                    ${isActive
+                      ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)] shadow-[var(--shadow-glow-primary)]'
                       : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)]'
                     }
                   `}
@@ -123,7 +126,7 @@ export function MainNav() {
             w-14 h-14 flex items-center justify-center rounded-lg
             transition-all duration-200
             ${pathname === '/library' || pathname?.startsWith('/library')
-              ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)] shadow-[var(--shadow-glow-primary)]' 
+              ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)] shadow-[var(--shadow-glow-primary)]'
               : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-primary)] hover:shadow-[0_0_15px_rgba(0,217,255,0.3)]'
             }
           `}
@@ -172,40 +175,40 @@ export function MainNav() {
 
   return (
     <>
-    {/* Desktop Navigation - Always visible on md+ */}
-    <nav 
-      className="hidden md:flex flex-col w-20 bg-[var(--color-bg-elevated)] backdrop-blur-xl border-r border-[var(--color-border-subtle)]"
-      style={{ zIndex: 'var(--z-nav)' }}
-    >
-      <NavContent />
-    </nav>
+      {/* Desktop Navigation - Always visible on md+ */}
+      <nav
+        className="hidden md:flex flex-col w-20 bg-[var(--color-bg-elevated)] backdrop-blur-xl border-r border-[var(--color-border-subtle)]"
+        style={{ zIndex: 'var(--z-nav)' }}
+      >
+        <NavContent />
+      </nav>
 
-    {/* Mobile Hamburger Button - Visible on mobile */}
-    <button
-      onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-      className="md:hidden fixed top-4 left-4 z-[var(--z-nav)] w-12 h-12 flex items-center justify-center rounded-lg bg-[var(--color-surface)] backdrop-blur-xl border border-[var(--color-border-subtle)] text-[var(--color-text)] hover:bg-[var(--color-surface-subtle)] transition-all shadow-[var(--shadow-soft)]"
-      aria-label="Toggle menu"
-    >
-      {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-    </button>
+      {/* Mobile Hamburger Button - Visible on mobile */}
+      <button
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        className="md:hidden fixed top-4 left-4 z-[var(--z-nav)] w-12 h-12 flex items-center justify-center rounded-lg bg-[var(--color-surface)] backdrop-blur-xl border border-[var(--color-border-subtle)] text-[var(--color-text)] hover:bg-[var(--color-surface-subtle)] transition-all shadow-[var(--shadow-soft)]"
+        aria-label="Toggle menu"
+      >
+        {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
 
-    {/* Mobile Menu Overlay */}
-    {mobileMenuOpen && (
-      <>
-        {/* Backdrop */}
-        <div 
-          className="md:hidden fixed inset-0 backdrop-blur-sm z-[calc(var(--z-nav)-1)]"
-          style={{ backgroundColor: 'var(--color-backdrop)' }}
-          onClick={() => setMobileMenuOpen(false)}
-        />
-        {/* Mobile Menu */}
-        <nav 
-          className="md:hidden fixed top-0 left-0 h-full w-20 bg-[var(--color-bg-elevated)] backdrop-blur-xl border-r border-[var(--color-border-subtle)] z-[var(--z-nav)]"
-        >
-          <NavContent />
-        </nav>
-      </>
-    )}
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="md:hidden fixed inset-0 backdrop-blur-sm z-[calc(var(--z-nav)-1)]"
+            style={{ backgroundColor: 'var(--color-backdrop)' }}
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          {/* Mobile Menu */}
+          <nav
+            className="md:hidden fixed top-0 left-0 h-full w-20 bg-[var(--color-bg-elevated)] backdrop-blur-xl border-r border-[var(--color-border-subtle)] z-[var(--z-nav)]"
+          >
+            <NavContent />
+          </nav>
+        </>
+      )}
 
       {/* Modals */}
       <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} />

@@ -10,9 +10,11 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
+import { useToast } from '@/lib/ToastContext'
 
 export default function StorybookPage() {
   const router = useRouter()
+  const { addToast } = useToast()
 
   useEffect(() => {
     // In development, redirect to Storybook dev server
@@ -21,10 +23,14 @@ export default function StorybookPage() {
     } else {
       // In production, you could serve a built Storybook here
       // For now, show a message
-      alert('Storybook is only available in development mode. Run `npm run storybook` to start it.')
+      addToast({
+        type: 'info',
+        title: 'Development Only',
+        message: 'Storybook is only available in development mode. Run `npm run storybook` to start it.'
+      })
       router.push('/dashboard')
     }
-  }, [router])
+  }, [router, addToast])
 
   return (
     <div style={{

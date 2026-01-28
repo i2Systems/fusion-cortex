@@ -1,5 +1,7 @@
 # Shared Types Module
 
+> **AI Note**: Type system for device types. See [AI_NOTES.md](../../AI_NOTES.md) for usage patterns.
+
 Production-grade type definitions for device types across the entire application.
 
 ## Quick Start

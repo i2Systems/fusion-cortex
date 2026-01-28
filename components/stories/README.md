@@ -1,5 +1,7 @@
 # Storybook Component Stories
 
+> **AI Note**: Storybook documentation. See [README.md](../../README.md) for Storybook setup.
+
 This directory contains Storybook stories for all components in the Fusion/Cortex application.
 
 ## Organization

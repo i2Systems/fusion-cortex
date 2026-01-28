@@ -1,8 +1,20 @@
 # AI Assistant Notes
 
+> **Purpose**: Quick reference guide for AI assistants working on this codebase.  
+> **Last Updated**: Reflects current Zustand-based architecture (2025)  
+> **See Also**: [README.md](./README.md) | [ARCHITECTURE.md](./ARCHITECTURE.md)
+
 **Quick Context**: Fusion/Cortex - Commissioning & Configuration UI for retail lighting. Setup, mapping, and rules platform (NOT a dashboard or analytics tool). Next.js 14 App Router, React, tRPC, Prisma, PostgreSQL, Tailwind. Multi-site aware with site-scoped data isolation.
 
-**See [README.md](./README.md) for project overview and [ARCHITECTURE.md](./ARCHITECTURE.md) for system architecture.**
+## 📋 Table of Contents
+
+- [Critical Rules](#critical-rules)
+- [State Management (Current)](#state-management-current)
+- [Legacy Patterns (Deprecated)](#legacy-patterns-deprecated)
+- [Common Patterns](#common-patterns)
+- [File Structure](#file-structure)
+- [Design Tokens](#design-tokens)
+- [Common Issues](#common-issues--solutions)
 
 ## Critical Rules
 
@@ -12,12 +24,50 @@
 4. **Plain language** - No jargon, simple UX
 5. **Site-aware** - All data contexts use site-scoped localStorage keys: `fusion_[data]_site_{siteId}`
 
+## State Management (Current)
+
+**✅ USE THESE** (Zustand stores + hooks):
+
+- **Stores**: `lib/stores/*Store.ts` - Zustand stores for state
+- **Sync Hooks**: `lib/stores/use*Sync.ts` - Bridge tRPC ↔ stores
+- **Data Hooks**: `lib/hooks/use*.ts` - React hooks that use stores
+  - `useDevices()` - Device data (from `lib/hooks/useDevices.ts`)
+  - `useZones()` - Zone data (from `lib/hooks/useZones.ts`)
+  - `useRules()` - Rule data (from `lib/hooks/useRules.ts`)
+  - `useSite()` - Site data (from `lib/hooks/useSite.ts`)
+
+**Example:**
+```typescript
+import { useDevices } from '@/lib/hooks/useDevices'
+import { useDeviceStore } from '@/lib/stores/deviceStore'
+
+// ✅ Preferred: Use data hook
+const { devices, isLoading } = useDevices()
+
+// ✅ Or: Direct store access (for selective subscriptions)
+const devices = useDeviceStore(state => state.devices)
+```
+
+## Legacy Patterns (Deprecated)
+
+**⚠️ DO NOT USE** (kept for backward compatibility only):
+
+- `DeviceContext`, `ZoneContext`, `RuleContext`, `SiteContext` - Use Zustand stores instead
+- `useDomain()` - Use `useDevices()`, `useZones()`, `useRules()` directly
+- `MapContext` - Use `useMap()` hook or `mapStore` directly
+
+**Migration Path:**
+- Old: `const { devices } = useDevices()` from `DeviceContext`
+- New: `const { devices } = useDevices()` from `lib/hooks/useDevices.ts` (same API, different implementation)
+
 ## Multi-Site Architecture
 
-- **SiteContext**: Manages `activeSiteId`, `sites`, `setActiveSite`
+- **Site Store**: `lib/stores/siteStore.ts` - Zustand store for sites
+- **Site Sync**: `lib/stores/useSiteSync.ts` - Handles tRPC ↔ store sync
+- **Site Hook**: `lib/hooks/useSite.ts` - React hook (use this in components)
 - **Site-Scoped Keys**: `fusion_[data]_site_{siteId}` (devices, zones, rules, maps, BACnet)
-- **Auto-Reload**: Contexts reload when `activeSiteId` changes
-- **Site Switching**: Dropdown in `PageTitle` component
+- **Auto-Reload**: Stores reload when `activeSiteId` changes (via sync hooks)
+- **Site Switching**: Dropdown in `PageTitle` component (shows loading state + toast)
 
 ## Common Patterns
 
@@ -54,7 +104,8 @@ export const appRouter = router({
 ### Making a Component Site-Aware
 
 ```typescript
-import { useSite } from '@/lib/SiteContext'
+// ✅ Current pattern (Zustand)
+import { useSite } from '@/lib/hooks/useSite'
 
 export function MyComponent() {
   const { activeSiteId } = useSite()
@@ -68,6 +119,8 @@ export function MyComponent() {
   }, [activeSiteId])
 }
 ```
+
+**Note**: `useSite()` from `lib/hooks/useSite.ts` provides the same API as the old Context, but uses Zustand under the hood.
 
 ### Using tRPC in Components
 
@@ -188,15 +241,18 @@ These components follow a consistent pattern with Overview, Metrics, History, an
 ## File Structure
 
 - **Pages**: `app/(main)/[section]/page.tsx`
-- **Layout**: `components/layout/` (MainNav, TopBar, ContextPanel, etc.)
+- **Layout**: `components/layout/` (MainNav, PageTitle, ContextPanel, BottomDrawer, etc.)
 - **Features**: `components/[feature]/` (map, zones, rules, lookup, etc.)
 - **Shared Components**: `components/shared/` (FocusedObjectModal, ErrorBoundary, etc.)
 - **Focused Content**: `components/[feature]/[Feature]FocusedContent.tsx` (DeviceFocusedContent, ZoneFocusedContent, etc.)
-- **Contexts**: `lib/[Feature]Context.tsx` (DeviceContext, ZoneContext, RuleContext, SiteContext, ZoomContext, ToastContext)
-- **Hooks**: `lib/hooks/` (useErrorHandler, useDeviceMutations, useUndoable)
+- **Stores** (Current): `lib/stores/*Store.ts` - Zustand stores
+- **Sync Hooks**: `lib/stores/use*Sync.ts` - tRPC ↔ store bridges
+- **Data Hooks**: `lib/hooks/use*.ts` - React hooks using stores
+- **Legacy Contexts** (Deprecated): `lib/[Feature]Context.tsx` - Compatibility layer only
+- **Utilities**: `lib/hooks/` (useErrorHandler, useUndoable, useFocusTrap)
 - **tRPC**: `server/trpc/routers/[feature].ts` → `server/trpc/routers/_app.ts`
 - **Schema**: `prisma/schema.prisma`
-- **Tokens**: `app/globals.css` (`:root` section)
+- **Tokens**: `app/globals.css` and `app/styles/themes/*.css`
 
 ## Design Tokens (Quick Reference)
 
@@ -257,3 +313,11 @@ When adding features:
 - ✅ Uses `useErrorHandler` for error handling
 - ✅ Uses `FocusedObjectModal` for detailed entity views
 - ✅ Wrapped in `ErrorBoundary` for error recovery
+- ✅ Uses Zustand stores (not deprecated Context API)
+- ✅ Uses data hooks (`useDevices()`, `useZones()`, etc.)
+
+## Related Documentation
+
+- [README.md](./README.md) - Project overview
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture
+- [DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md) - All documentation navigation

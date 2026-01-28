@@ -15,7 +15,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, memo } from 'react'
-import { Layers, Edit2, Trash2, MapPin, X, Save, CheckSquare, Square, Maximize2 } from 'lucide-react'
+import { Layers, Edit2, Trash2, MapPin, X, Save, CheckSquare, Square, Maximize2, AlertCircle, Monitor, Wifi, WifiOff, Battery } from 'lucide-react'
+import { getStatusTokenClass, getSignalTokenClass, getBatteryTokenClass } from '@/lib/styleUtils'
 import { SelectSwitcher } from '@/components/shared/SelectSwitcher'
 import { PanelEmptyState } from '@/components/shared/PanelEmptyState'
 import { ZONE_COLORS, DEFAULT_ZONE_COLOR } from '@/lib/zoneColors'
@@ -24,6 +25,7 @@ import { ZoneFocusedModal } from './ZoneFocusedContent'
 import { Device } from '@/lib/mockData'
 import { Rule } from '@/lib/mockRules'
 import { ConfirmationModal } from '@/components/shared/ConfirmationModal'
+import { useToast } from '@/lib/ToastContext'
 
 interface Zone {
   id: string
@@ -32,6 +34,7 @@ interface Zone {
   description: string
   colorVar?: string // CSS variable name like '--color-primary'
   color?: string // Hex color (alternative to colorVar)
+  deviceIds?: string[] // Device IDs assigned to this zone
 }
 
 interface ZonesPanelProps {
@@ -45,6 +48,7 @@ interface ZonesPanelProps {
   selectionMode?: boolean // When true, hide details and show only zone list
   devices?: Device[] // For focused modal
   rules?: Rule[] // For focused modal
+  onDeviceMove?: (deviceId: string, fromZoneId: string | null, toZoneId: string) => void
 }
 
 // Memoized zone list item component
@@ -131,16 +135,144 @@ const ZoneListItem = memo(function ZoneListItem({
         </div>
       </div>
       <p className="text-xs text-[var(--color-text-muted)] mb-1">
-        {zone.deviceCount} devices
+        {zone.deviceCount} device{zone.deviceCount !== 1 ? 's' : ''}
       </p>
-      <p className="text-xs text-[var(--color-text-soft)]">
-        {zone.description}
-      </p>
+      {zone.description && (
+        <p className="text-xs text-[var(--color-text-soft)]">
+          {zone.description}
+        </p>
+      )}
     </div>
   )
 })
 
-export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, onDeleteZone, onDeleteZones, onEditZone, selectionMode = false, devices = [], rules = [] }: ZonesPanelProps) {
+// Ungrouped Devices Section Component
+function UngroupedDevicesSection({ devices, zones, onDeviceMove }: { devices: Device[]; zones: Zone[]; onDeviceMove?: (deviceId: string, fromZoneId: string | null, toZoneId: string) => void }) {
+  // Get all device IDs that are assigned to any zone
+  const allZonedDeviceIds = useMemo(() => {
+    const zonedIds = new Set<string>()
+    zones.forEach(zone => {
+      if (zone.deviceIds) {
+        zone.deviceIds.forEach(deviceId => zonedIds.add(deviceId))
+      }
+    })
+    return zonedIds
+  }, [zones])
+
+  // Calculate ungrouped devices - devices that are not in any zone's deviceIds array
+  const ungroupedDevices = useMemo(() => {
+    if (!devices || devices.length === 0) return []
+    if (!zones || zones.length === 0) return devices
+    
+    const ungrouped = devices.filter(device => {
+      // Device is "ungrouped" if it's not in any zone's deviceIds array
+      return !allZonedDeviceIds.has(device.id)
+    })
+    return ungrouped
+  }, [devices, allZonedDeviceIds, zones])
+
+  const unplacedCount = ungroupedDevices.filter(d => d.x === undefined || d.y === undefined).length
+  const placedButNoZoneCount = ungroupedDevices.filter(d => d.x !== undefined && d.y !== undefined).length
+
+  const handleDragStart = useCallback((e: React.DragEvent, device: Device) => {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('application/json', JSON.stringify({ type: 'device', deviceId: device.id, fromZoneId: null }))
+  }, [])
+
+  const handleDragEnd = useCallback(() => {
+    // Cleanup if needed
+  }, [])
+
+  if (ungroupedDevices.length === 0) {
+    return (
+      <div className="flex-1 min-h-0 flex flex-col">
+        <div className="p-3 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)]/50 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <CheckSquare size={14} className="text-[var(--color-success)]" />
+            <h4 className="text-sm font-semibold text-[var(--color-text)]">All Devices Zoned</h4>
+          </div>
+          <p className="text-xs text-[var(--color-text-muted)] mt-1">
+            All {devices.length} devices are assigned to zones
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col">
+      <div className="p-3 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)]/50 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <AlertCircle size={14} className="text-[var(--color-warning)]" />
+          <h4 className="text-sm font-semibold text-[var(--color-text)]">Unzoned Devices</h4>
+        </div>
+        <p className="text-xs text-[var(--color-text-muted)] mt-1">
+          {unplacedCount > 0 && `${unplacedCount} not placed`}
+          {unplacedCount > 0 && placedButNoZoneCount > 0 && ', '}
+          {placedButNoZoneCount > 0 && `${placedButNoZoneCount} placed but not in a zone`}
+        </p>
+      </div>
+      <div className="flex-1 overflow-auto p-2">
+        <div className="space-y-2">
+          {ungroupedDevices.slice(0, 30).map(device => (
+            <div
+              key={device.id}
+              draggable
+              onDragStart={(e) => handleDragStart(e, device)}
+              onDragEnd={handleDragEnd}
+              className="group p-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border-subtle)] hover:border-[var(--color-primary)]/50 cursor-move transition-all"
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-medium text-[var(--color-text)] truncate">
+                  {device.deviceId || device.serialNumber}
+                </span>
+                <span className={getStatusTokenClass(device.status)}>
+                  {device.status}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {device.signal > 0 ? (
+                  <div className={getSignalTokenClass(device.signal)}>
+                    <Wifi size={12} />
+                    <span className="text-xs">{device.signal}%</span>
+                  </div>
+                ) : (
+                  <div className="token token-data">
+                    <WifiOff size={12} />
+                    <span className="text-xs">—</span>
+                  </div>
+                )}
+                {device.battery !== undefined && (
+                  <div className={getBatteryTokenClass(device.battery)}>
+                    <Battery size={12} />
+                    <span className="text-xs">{device.battery}%</span>
+                  </div>
+                )}
+                <span className="text-xs text-[var(--color-text-muted)] capitalize">
+                  {device.type}
+                </span>
+                {(device.x === undefined || device.y === undefined) && (
+                  <span className="text-xs text-[var(--color-warning)] flex-shrink-0">Not placed</span>
+                )}
+                {device.x !== undefined && device.y !== undefined && (
+                  <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">No zone</span>
+                )}
+              </div>
+            </div>
+          ))}
+          {ungroupedDevices.length > 30 && (
+            <p className="text-xs text-[var(--color-text-muted)] text-center py-2">
+              +{ungroupedDevices.length - 30} more devices
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, onDeleteZone, onDeleteZones, onEditZone, selectionMode = false, devices = [], rules = [], onDeviceMove }: ZonesPanelProps) {
+  const { addToast } = useToast()
   const [colors, setColors] = useState<Record<string, string>>({})
   const [isEditing, setIsEditing] = useState(false)
   const [showFocusedModal, setShowFocusedModal] = useState(false)
@@ -240,7 +372,7 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
     if (!selectedZone) return
 
     if (!editFormData.name.trim()) {
-      alert('Zone name is required')
+      addToast({ type: 'warning', title: 'Required Field', message: 'Zone name is required' })
       return
     }
 
@@ -252,7 +384,7 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
       })
     }
     setIsEditing(false)
-  }, [selectedZone, editFormData, onEditZone])
+  }, [selectedZone, editFormData, onEditZone, addToast])
 
   const handleCancelEdit = useCallback(() => {
     setIsEditing(false)
@@ -580,9 +712,9 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
         </div>
       )}
 
-      {/* Zone List */}
+      {/* Zone List - Top Half */}
       <div
-        className="flex-1 overflow-auto pb-2"
+        className="flex-1 min-h-0 overflow-auto border-b border-[var(--color-border-subtle)]"
         onClick={handleContainerClick}
       >
         {zones.length === 0 ? (
@@ -617,6 +749,9 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
           </div>
         )}
       </div>
+
+      {/* Ungrouped Devices - Bottom Half */}
+      <UngroupedDevicesSection devices={devices} zones={zones} onDeviceMove={onDeviceMove} />
 
       {/* Actions Footer */}
       <div className="p-3 md:p-4 border-t border-[var(--color-border-subtle)] flex-shrink-0">

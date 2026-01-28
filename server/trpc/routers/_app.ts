@@ -17,6 +17,8 @@ import { imageRouter } from './image'
 import { notificationRouter } from './notification'
 import { locationRouter } from './location'
 import { firmwareRouter } from './firmware'
+import { groupRouter } from './group'
+import { personRouter } from './person'
 
 export const appRouter = router({
   device: deviceRouter,
@@ -29,6 +31,8 @@ export const appRouter = router({
   notification: notificationRouter,
   location: locationRouter,
   firmware: firmwareRouter,
+  group: groupRouter,
+  person: personRouter,
 })
 
 export type AppRouter = typeof appRouter

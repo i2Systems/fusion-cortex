@@ -12,6 +12,112 @@ import { randomUUID } from 'crypto'
 import { logger } from '@/lib/logger'
 import { withRetry, isConnectionError } from '../utils/withRetry'
 
+/**
+ * Parse manager name into firstName and lastName
+ * Handles various formats: "John Doe", "John", "Doe, John", etc.
+ */
+function parseManagerName(managerName: string): { firstName: string; lastName: string } {
+  const trimmed = managerName.trim()
+  
+  if (!trimmed) {
+    return {
+      firstName: 'Manager',
+      lastName: 'Manager'
+    }
+  }
+  
+  // Handle "Last, First" format
+  if (trimmed.includes(',')) {
+    const parts = trimmed.split(',').map(p => p.trim()).filter(p => p.length > 0)
+    if (parts.length >= 2) {
+      return {
+        firstName: parts[1],
+        lastName: parts[0]
+      }
+    }
+    // If comma but only one part, treat as single name
+    if (parts.length === 1) {
+      return {
+        firstName: parts[0],
+        lastName: 'Manager'
+      }
+    }
+  }
+  
+  // Handle "First Last" format - split on whitespace
+  const parts = trimmed.split(/\s+/).filter(p => p.length > 0)
+  if (parts.length >= 2) {
+    // First word is firstName, rest is lastName
+    return {
+      firstName: parts[0],
+      lastName: parts.slice(1).join(' ')
+    }
+  }
+  
+  // Single word - use as firstName, set lastName to "Manager"
+  if (parts.length === 1) {
+    return {
+      firstName: parts[0],
+      lastName: 'Manager'
+    }
+  }
+  
+  // Fallback (shouldn't happen)
+  return {
+    firstName: trimmed,
+    lastName: 'Manager'
+  }
+}
+
+/**
+ * Create or update person from site manager
+ * @param siteId - The site ID
+ * @param managerName - The person's name
+ * @param role - The role type (defaults to 'Manager' for backward compatibility)
+ */
+async function syncManagerToPerson(siteId: string, managerName: string | null | undefined, role: string = 'Manager') {
+  if (!managerName || !managerName.trim()) {
+    return null
+  }
+
+  const { firstName, lastName } = parseManagerName(managerName)
+  const finalRole = role || 'Manager'
+  
+  // Check if person already exists for this site with matching name
+  const existingPerson = await prisma.person.findFirst({
+    where: {
+      siteId,
+      firstName,
+      lastName,
+    },
+  })
+
+  if (existingPerson) {
+    // Update existing person if needed
+    return await prisma.person.update({
+      where: { id: existingPerson.id },
+      data: {
+        firstName,
+        lastName,
+        role: finalRole,
+        updatedAt: new Date(),
+      },
+    })
+  }
+
+  // Create new person
+  return await prisma.person.create({
+    data: {
+      id: randomUUID(),
+      siteId,
+      firstName,
+      lastName,
+      role: finalRole,
+      updatedAt: new Date(),
+    },
+  })
+}
+
 export const siteRouter = router({
   list: publicProcedure.query(async () => {
     try {
@@ -105,6 +211,7 @@ export const siteRouter = router({
       zipCode: z.string().optional(),
       phone: z.string().optional(),
       manager: z.string().optional(),
+      personRole: z.string().optional(), // Role type for the person
       squareFootage: z.number().optional(),
       openedDate: z.date().optional(),
       imageUrl: z.string().optional(),
@@ -127,6 +234,17 @@ export const siteRouter = router({
           updatedAt: new Date(),
         },
       })
+
+      // Create person from manager if provided
+      if (input.manager) {
+        try {
+          await syncManagerToPerson(site.id, input.manager, input.personRole)
+        } catch (error) {
+          // Log error but don't fail site creation
+          logger.error('Failed to create person from manager', { error, siteId: site.id, manager: input.manager, role: input.personRole })
+        }
+      }
+
       return site
     }),
 
@@ -141,22 +259,58 @@ export const siteRouter = router({
       zipCode: z.string().optional(),
       phone: z.string().optional(),
       manager: z.string().optional(),
+      personRole: z.string().optional(), // Role type for the person
       squareFootage: z.number().optional(),
       openedDate: z.date().optional(),
       imageUrl: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      const { id, ...updates } = input
+      const { id, personRole, ...updates } = input
 
       if (updates.imageUrl) {
         logger.debug('Updating site imageUrl length:', updates.imageUrl.length)
       }
 
+      // Get existing site to check if manager changed
+      let existingSite = null
+      if (updates.manager !== undefined) {
+        try {
+          existingSite = await prisma.site.findUnique({
+            where: { id },
+            select: { manager: true },
+          })
+        } catch (error) {
+          // Ignore errors, will handle in main update
+        }
+      }
+
       try {
-        return await withRetry(
+        const site = await withRetry(
           () => prisma.site.update({ where: { id }, data: updates }),
           { context: 'site.update' }
         )
+
+        // Create/update person from manager if manager was provided and changed
+        if (updates.manager !== undefined) {
+          const managerChanged = !existingSite || existingSite.manager !== updates.manager
+          if (managerChanged && updates.manager) {
+            try {
+              await syncManagerToPerson(id, updates.manager, personRole)
+            } catch (error) {
+              // Log error but don't fail site update
+              logger.error('Failed to sync manager to person', { error, siteId: id, manager: updates.manager, role: personRole })
+            }
+          } else if (personRole && updates.manager) {
+            // Manager name didn't change but role might have - update role
+            try {
+              await syncManagerToPerson(id, updates.manager, personRole)
+            } catch (error) {
+              logger.error('Failed to update person role', { error, siteId: id, manager: updates.manager, role: personRole })
+            }
+          }
+        }
+
+        return site
       } catch (error: any) {
         // Handle "record not found" errors
         if (error.code === 'P2025' || error.message?.includes('not found')) {
@@ -306,6 +460,17 @@ export const siteRouter = router({
               throw createError
             }
           }
+
+          // Create person from manager if provided (default to Manager role for ensureExists)
+          if (input.manager) {
+            try {
+              await syncManagerToPerson(site.id, input.manager, 'Manager')
+            } catch (error) {
+              // Log error but don't fail site creation
+              logger.error('Failed to create person from manager in ensureExists', { error, siteId: site.id, manager: input.manager })
+            }
+          }
+
           return site
         } catch (error: any) {
           // Log error for debugging with full details

@@ -178,6 +178,24 @@ export function ZonesListView({
 
   const handleDrop = useCallback((e: React.DragEvent, toZoneId: string) => {
     e.preventDefault()
+    
+    // Check if data came from panel (JSON format)
+    try {
+      const jsonData = e.dataTransfer.getData('application/json')
+      if (jsonData) {
+        const data = JSON.parse(jsonData)
+        if (data.type === 'device' && data.deviceId && onDeviceMove) {
+          onDeviceMove(data.deviceId, data.fromZoneId, toZoneId)
+          setDraggedDevice(null)
+          setDragOverZoneId(null)
+          return
+        }
+      }
+    } catch (err) {
+      // Not JSON data, continue with normal flow
+    }
+    
+    // Normal drag from within the list
     if (draggedDevice && onDeviceMove) {
       onDeviceMove(draggedDevice.device.id, draggedDevice.fromZoneId, toZoneId)
     }
@@ -194,7 +212,7 @@ export function ZonesListView({
     <div className="h-full flex flex-col">
       {/* Zones Grid */}
       <div className="flex-1 overflow-auto p-4">
-        <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${Math.max(1, zones.length + (unassignedDevices.length > 0 ? 1 : 0))}, minmax(200px, 1fr))` }}>
+        <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${Math.max(1, zones.length)}, minmax(200px, 1fr))` }}>
           {/* Zone Columns */}
           {zones.map((zone) => {
             const zoneDevices = zoneDevicesMap.get(zone.id) || []
@@ -260,55 +278,6 @@ export function ZonesListView({
               </div>
             )
           })}
-
-          {/* Unassigned Devices Column */}
-          {unassignedDevices.length > 0 && (
-            <div
-              className={`
-                flex flex-col rounded-lg border-2 transition-all
-                ${dragOverZoneId === 'unassigned'
-                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)]/30'
-                  : 'border-[var(--color-border-subtle)]'
-                }
-              `}
-              onDragOver={(e) => {
-                e.preventDefault()
-                e.dataTransfer.dropEffect = 'move'
-                setDragOverZoneId('unassigned')
-              }}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => {
-                e.preventDefault()
-                setDraggedDevice(null)
-                setDragOverZoneId(null)
-              }}
-            >
-              {/* Unassigned Header */}
-              <div className="p-3 rounded-t-lg border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)]">
-                <div className="flex items-center justify-between mb-1">
-                  <h4 className="font-semibold text-sm text-[var(--color-text)]">
-                    Unassigned
-                  </h4>
-                </div>
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  {unassignedDevices.length} device{unassignedDevices.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-
-              {/* Unassigned Devices List */}
-              <div className="flex-1 p-3 space-y-2 min-h-[200px] bg-[var(--color-surface-subtle)]/30 rounded-b-lg">
-                {unassignedDevices.map((device) => (
-                  <DeviceCard
-                    key={device.id}
-                    device={device}
-                    zoneId={null}
-                    onDragStart={handleDragStart}
-                    onDragEnd={handleDragEnd}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

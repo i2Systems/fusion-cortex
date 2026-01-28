@@ -21,6 +21,7 @@ import { getDeviceLibraryUrl, getDeviceImage, getDeviceImageAsync } from '@/lib/
 import { isFixtureType } from '@/lib/deviceUtils'
 import { Button } from '@/components/ui/Button'
 import { FaultFocusedModal } from './FaultFocusedContent'
+import { useConfirm } from '@/lib/hooks/useConfirm'
 
 interface Fault {
   id?: string // Database fault ID (if from database)
@@ -43,6 +44,7 @@ interface FaultDetailsPanelProps {
 
 export function FaultDetailsPanel({ fault, devices = [], allFaults = [], onAddNewFault, onDelete, onResolve, onUnresolve }: FaultDetailsPanelProps) {
   const router = useRouter()
+  const confirm = useConfirm()
   const [showAddForm, setShowAddForm] = useState(false)
   const [showFocusedModal, setShowFocusedModal] = useState(false)
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('')
@@ -867,19 +869,19 @@ export function FaultDetailsPanel({ fault, devices = [], allFaults = [], onAddNe
         {onDelete && (
           <div className={`pt-4 ${fault.id && (fault.resolved ? onUnresolve : onResolve) ? '' : 'mt-4 border-t border-[var(--color-border-subtle)]'}`}>
             <Button
-              onClick={() => {
+              onClick={async () => {
+                const title = fault.id ? 'Delete Fault' : 'Dismiss Fault'
                 const message = fault.id
                   ? 'Are you sure you want to permanently delete this fault? This cannot be undone.'
                   : 'Dismiss this fault from the list?'
 
-                if (confirm(message)) {
-                  // Pass fault ID if exists, otherwise pass a composite key or let parent handle it
-                  // Since the parent manages selection, passing the ID (if we have it) or the logic depends on parent
-                  // The parent passed the 'fault' object, so it knows what is selected.
-                  // But onDelete expects a string. We need to ensure we pass something valid.
-                  // Let's rely on the parent to handle the ID logic, but we need to pass a string ID.
-                  // If fault.id is missing, we should pass the generated ID if available, or just empty if handled by context.
-                  // See implementation plan: we will update FaultsPage to handle this.
+                const confirmed = await confirm({
+                  title,
+                  message,
+                  confirmLabel: fault.id ? 'Delete' : 'Dismiss',
+                  variant: 'danger'
+                })
+                if (confirmed) {
                   onDelete(fault.id || 'discovered')
                 }
               }}

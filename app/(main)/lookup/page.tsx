@@ -22,6 +22,8 @@ import { MapUpload } from '@/components/map/MapUpload'
 import { useDevices } from '@/lib/DomainContext'
 import { useZones } from '@/lib/DomainContext'
 import { useSite } from '@/lib/SiteContext'
+import { useToast } from '@/lib/ToastContext'
+import { useConfirm } from '@/lib/hooks/useConfirm'
 import { ComponentModal } from '@/components/shared/ComponentModal'
 import { ManualDeviceEntry } from '@/components/discovery/ManualDeviceEntry'
 import { EditDeviceModal } from '@/components/lookup/EditDeviceModal'
@@ -54,6 +56,8 @@ export default function LookupPage() {
   const { devices, addDevice, removeDevice, updateDevice } = useDevices()
   const { zones } = useZones()
   const { activeSiteId } = useSite()
+  const { addToast } = useToast()
+  const confirm = useConfirm()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
@@ -92,13 +96,18 @@ export default function LookupPage() {
   // Action handlers
   const handleManualEntry = useCallback(() => setShowManualEntry(true), [])
 
-  const handleQRScan = useCallback(() => {
+  const handleQRScan = useCallback(async () => {
     // Mock QR code scanning - simulate finding a device
     const mockDeviceId = `FLX-${Math.floor(Math.random() * 9000) + 1000}`
     const mockSerial = `SN-2024-${Math.floor(Math.random() * 9000) + 1000}-A${Math.floor(Math.random() * 9) + 1}`
 
     // Show a mock "scanning" message
-    const confirmed = confirm(`QR Code scanned!\n\nDevice ID: ${mockDeviceId}\nSerial: ${mockSerial}\n\nWould you like to add this device?`)
+    const confirmed = await confirm({
+      title: 'QR Code Scanned',
+      message: `Device ID: ${mockDeviceId}\nSerial: ${mockSerial}\n\nWould you like to add this device?`,
+      confirmLabel: 'Add Device',
+      cancelLabel: 'Cancel'
+    })
 
     if (confirmed) {
       const deviceId = `device-${Date.now()}`
@@ -120,8 +129,13 @@ export default function LookupPage() {
         warrantyExpiry,
       }
       addDevice(newDevice)
+      addToast({
+        type: 'success',
+        title: 'Device Added',
+        message: `Device ${newDevice.deviceId} added successfully`
+      })
     }
-  }, [addDevice])
+  }, [addDevice, confirm, addToast])
 
   const handleImport = useCallback(() => {
     // Create a hidden file input
@@ -187,9 +201,17 @@ export default function LookupPage() {
             })
           })
 
-          alert(`Successfully imported ${importedDevices.length} device(s)`)
+          addToast({
+            type: 'success',
+            title: 'Import Successful',
+            message: `Successfully imported ${importedDevices.length} device(s)`
+          })
         } catch (error) {
-          alert('Error importing file. Please check the format.')
+          addToast({
+            type: 'error',
+            title: 'Import Failed',
+            message: 'Error importing file. Please check the format.'
+          })
           console.error('Import error:', error)
         }
       }
@@ -200,7 +222,11 @@ export default function LookupPage() {
 
   const handleExport = useCallback(() => {
     if (devices.length === 0) {
-      alert('No devices to export')
+      addToast({
+        type: 'warning',
+        title: 'No Devices',
+        message: 'No devices to export'
+      })
       return
     }
 
@@ -237,7 +263,11 @@ export default function LookupPage() {
     // Ensure type is explicitly set
     if (!deviceData.type) {
       console.error('Device type is missing in deviceData:', deviceData)
-      alert('Device type is required')
+      addToast({
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Device type is required'
+      })
       return
     }
 
@@ -262,6 +292,11 @@ export default function LookupPage() {
 
     console.log('Creating device with type:', newDevice.type, 'Full device:', newDevice)
     addDevice(newDevice)
+    addToast({
+      type: 'success',
+      title: 'Device Added',
+      message: `Device ${newDevice.deviceId} added successfully`
+    })
     setShowManualEntry(false)
   }
 
@@ -275,7 +310,11 @@ export default function LookupPage() {
       // Refresh map data to show the new upload
       await refreshMapData()
     } catch (error: any) {
-      alert(error.message || 'Failed to upload map')
+      addToast({
+        type: 'error',
+        title: 'Upload Failed',
+        message: error.message || 'Failed to upload map'
+      })
     }
   }
 
@@ -285,7 +324,11 @@ export default function LookupPage() {
       // Refresh map data to show the new upload
       await refreshMapData()
     } catch (error: any) {
-      alert(error.message || 'Failed to upload vector data')
+      addToast({
+        type: 'error',
+        title: 'Upload Failed',
+        message: error.message || 'Failed to upload vector data'
+      })
     }
   }
 

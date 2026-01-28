@@ -21,5 +21,8 @@
 // Core device types and utilities
 export * from './device'
 
+// Rule types and schemas
+export * from './rule'
+
 // Zod schemas for validation
 export * from './schemas/device'

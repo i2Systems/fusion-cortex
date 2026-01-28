@@ -63,13 +63,13 @@ export function useFocusTrap({
   useEffect(() => {
     if (containerRef?.current) {
       containerElementRef.current = containerRef.current
-      
+
       // If modal is open and we just got the container, try to focus immediately
       if (isOpen && enabled && document.body.contains(containerRef.current)) {
         const container = containerRef.current
         const focusableElements = getFocusableElements(container)
         const firstElement = focusableElements[0]
-        
+
         if (firstElement) {
           // Use requestAnimationFrame to ensure element is ready
           requestAnimationFrame(() => {
@@ -106,12 +106,12 @@ export function useFocusTrap({
     const focusModal = (retryCount = 0) => {
       // Try containerRef first (most reliable)
       let container = containerRef?.current
-      
+
       // If not found, try the stored ref
       if (!container) {
         container = containerElementRef.current
       }
-      
+
       // If still not found, search for it (for portals that render asynchronously)
       if (!container) {
         const dialog = document.querySelector<HTMLElement>('[role="dialog"]')
@@ -135,6 +135,12 @@ export function useFocusTrap({
         if (retryCount < 10) {
           setTimeout(() => focusModal(retryCount + 1), 30 * (retryCount + 1))
         }
+        return
+      }
+
+      // CRITICAL FIX: If focus is already inside the modal, do NOT move it.
+      // This prevents focus jumping when the component re-renders or when validation runs.
+      if (container.contains(document.activeElement)) {
         return
       }
 
@@ -189,10 +195,10 @@ export function useFocusTrap({
         }
       }
     }
-    
+
     // Strategy 2: Retry with delays (for portals/async rendering)
     const immediateCheck = setTimeout(() => focusModal(), 0)
-    
+
     // Strategy 3: After animation frame (for portals with animations)
     requestAnimationFrame(() => {
       setTimeout(() => focusModal(), 50)
@@ -206,7 +212,7 @@ export function useFocusTrap({
   // Reset previous active element when modal closes
   useEffect(() => {
     if (isOpen) return // Don't reset while open
-    
+
     // Restore focus to trigger element or previously focused element
     const restoreFocus = () => {
       const trigger = triggerRef?.current
@@ -217,7 +223,7 @@ export function useFocusTrap({
       } else if (previous && document.contains(previous)) {
         previous.focus()
       }
-      
+
       // Clear the stored element after restoring
       previousActiveElementRef.current = null
     }

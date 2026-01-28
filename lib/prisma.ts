@@ -19,9 +19,15 @@ const globalForPrisma = globalThis as unknown as {
 // Add ?pgbouncer=true to disable prepared statements when using pooler
 // Also add SSL mode and connection limit for serverless environments
 const databaseUrl = process.env.DATABASE_URL
-const poolerUrl = databaseUrl?.includes('pooler.supabase.com') 
-  ? `${databaseUrl}${databaseUrl.includes('?') ? '&' : '?'}pgbouncer=true&sslmode=require&connection_limit=1&connect_timeout=10&pool_timeout=10`
-  : databaseUrl
+let poolerUrl = databaseUrl
+
+if (databaseUrl?.includes('pooler.supabase.com')) {
+  // Supabase pooler configuration
+  poolerUrl = `${databaseUrl}${databaseUrl.includes('?') ? '&' : '?'}pgbouncer=true&sslmode=require&connection_limit=1&connect_timeout=10&pool_timeout=10`
+} else if (databaseUrl && !databaseUrl.includes('connect_timeout')) {
+  // Add connection timeout for local/docker databases to prevent hanging
+  poolerUrl = `${databaseUrl}${databaseUrl.includes('?') ? '&' : '?'}connect_timeout=10`
+}
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],

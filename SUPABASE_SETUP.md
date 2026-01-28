@@ -1,5 +1,7 @@
 # Supabase Setup Guide
 
+> **AI Note**: Complete Supabase setup for production. See [DEPLOYMENT.md](./DEPLOYMENT.md) for deployment context.
+
 **Complete guide for Supabase Storage and database setup (free tier).**
 
 This project uses Supabase for:

@@ -10,6 +10,7 @@ import { useState, useRef } from 'react'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { useToast } from '@/lib/ToastContext'
 import { trpc } from '@/lib/trpc/client'
 import { useSite } from '@/lib/SiteContext'
 import { ALL_DISPLAY_DEVICE_TYPES, getDisplayTypeLabel } from '@/lib/types'
@@ -27,6 +28,7 @@ export function CreateFirmwareCampaignModal({
   onSuccess,
 }: CreateFirmwareCampaignModalProps) {
   const { activeSiteId } = useSite()
+  const { addToast } = useToast()
   const modalRef = useRef<HTMLDivElement>(null)
   const titleId = `firmware-campaign-modal-title-${Math.random().toString(36).substr(2, 9)}`
   const [formData, setFormData] = useState({
@@ -65,9 +67,13 @@ export function CreateFirmwareCampaignModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!formData.name || !formData.version || formData.deviceTypes.length === 0) {
-      alert('Please fill in all required fields')
+      addToast({
+        type: 'warning',
+        title: 'Missing Fields',
+        message: 'Please fill in all required fields'
+      })
       return
     }
 
@@ -82,7 +88,11 @@ export function CreateFirmwareCampaignModal({
         scheduledAt: formData.scheduledAt ? new Date(formData.scheduledAt) : undefined,
       })
     } catch (error: any) {
-      alert(error.message || 'Failed to create campaign')
+      addToast({
+        type: 'error',
+        title: 'Creation Failed',
+        message: error.message || 'Failed to create campaign'
+      })
     }
   }
 

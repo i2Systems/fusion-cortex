@@ -1,6 +1,23 @@
 # Fusion / Cortex — Commissioning & Configuration UI
 
+> **📚 Documentation**: See [DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md) for complete documentation navigation.  
+> **🤖 AI Assistants**: Start with [AI_NOTES.md](./AI_NOTES.md) for patterns and quick reference.
+
 A web-based commissioning & configuration UI for large-scale retail lighting deployments (e.g., Walmart, American Eagle).
+
+**Current Architecture (2025)**: Zustand stores + tRPC + Next.js 14 App Router. Legacy Context API files exist for compatibility but are deprecated.
+
+## 📋 Table of Contents
+
+- [Purpose](#-purpose)
+- [Architecture](#-architecture)
+- [Design System](#-design-system)
+- [Core Features](#-core-features)
+- [Multi-Site Architecture](#-multi-site-architecture)
+- [Getting Started](#-getting-started)
+- [Development](#-development)
+- [Deployment](#-deployment)
+- [Additional Documentation](#-additional-documentation)
 
 ## 🎯 Purpose
 
@@ -25,7 +42,8 @@ Fusion/Cortex is **not**:
 - **Canvas Rendering**: react-konva for map/blueprint visualization
 - **API**: tRPC for type-safe API calls
 - **Database**: PostgreSQL with Prisma ORM
-- **State Management**: React Context (DeviceContext, ZoneContext, RuleContext, SiteContext)
+- **State Management**: Zustand stores (`lib/stores/`) + Sync hooks (`lib/stores/use*Sync.ts`)
+  - ⚠️ **Note**: Legacy Context API files exist for compatibility but are deprecated. New code should use Zustand stores.
 - **Data Persistence**: localStorage (client-side, site-scoped) + IndexedDB (for future image storage)
 - **Caching**: Redis (for future use)
 - **Auth**: Auth.js (NextAuth) (to be configured)
@@ -75,19 +93,26 @@ Fusion/Cortex is **not**:
 │       └── trpc.ts        # Base tRPC config
 ├── prisma/
 │   └── schema.prisma      # Database schema
-└── lib/                   # Shared utilities & contexts
-    ├── DeviceContext.tsx  # Device state management
-    ├── ZoneContext.tsx    # Zone state management
-    ├── RuleContext.tsx    # Rule state management
-    ├── SiteContext.tsx   # Multi-site management
-    ├── ZoomContext.tsx   # Zoom state and interaction hints
+└── lib/                   # Shared utilities & stores
+    ├── stores/            # Zustand stores (current state management)
+    │   ├── deviceStore.ts
+    │   ├── zoneStore.ts
+    │   ├── ruleStore.ts
+    │   ├── siteStore.ts
+    │   ├── mapStore.ts
+    │   └── use*Sync.ts    # Sync hooks bridge tRPC ↔ stores
+    ├── hooks/             # React hooks
+    │   ├── useDevices.ts  # Device data hook (uses store)
+    │   ├── useZones.ts    # Zone data hook (uses store)
+    │   ├── useRules.ts    # Rule data hook (uses store)
+    │   ├── useSite.ts     # Site data hook (uses store)
+    │   ├── useErrorHandler.ts  # Centralized error handling
+    │   └── useUndoable.ts      # Undo/redo functionality
+    ├── [Feature]Context.tsx  # ⚠️ DEPRECATED - Compatibility layer only
     ├── ToastContext.tsx  # Toast notification system
+    ├── ZoomContext.tsx   # Zoom state and interaction hints
     ├── mockData.ts        # Mock data generators
-    ├── siteData.ts       # Site-specific data generation
-    └── hooks/
-        ├── useErrorHandler.ts  # Centralized error handling
-        ├── useDeviceMutations.ts  # Device mutation helpers
-        └── useUndoable.ts        # Undo/redo functionality
+    └── siteData.ts       # Site-specific data generation
 ```
 
 ## 🎨 Design System
@@ -236,10 +261,12 @@ The app uses a **main + panel** system:
 
 The app supports managing multiple sites with isolated data:
 
-- **Site Context**: Manages active site selection and site metadata
+- **Site Store**: Zustand store (`lib/stores/siteStore.ts`) manages active site selection and site metadata
+- **Site Sync**: `lib/stores/useSiteSync.ts` handles tRPC ↔ store synchronization
 - **Site-Scoped Data**: All data (devices, zones, rules, maps, BACnet mappings) is namespaced by site ID in localStorage
-- **Site Switching**: Dropdown in PageTitle allows switching between sites
+- **Site Switching**: Dropdown in `PageTitle` component allows switching between sites (shows loading state + toast notification)
 - **Data Isolation**: Each site has its own device list, zones, rules, and map images
+- **State Hydration**: `StateHydration` component initializes stores from database on app load
 - **Dashboard**: Shows overview of all sites, with detailed panel for selected site
 
 **Storage Keys Format:**
@@ -248,6 +275,10 @@ The app supports managing multiple sites with isolated data:
 - Rules: `fusion_rules_site_{siteId}`
 - Map Images: `fusion_map-image-url_site_{siteId}`
 - BACnet Mappings: `fusion_bacnet_mappings_site_{siteId}`
+
+**⚠️ Migration Note**: The app has migrated from React Context API to Zustand stores. Legacy Context files (`*Context.tsx`) exist for backward compatibility but are deprecated. New code should use:
+- `useDevices()`, `useZones()`, `useRules()`, `useSite()` hooks (from `lib/hooks/`)
+- Direct store access: `useDeviceStore()`, `useZoneStore()`, etc. (from `lib/stores/`)
 
 ## 🚀 Getting Started
 
@@ -413,13 +444,25 @@ See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for complete deployment guide to Vercel
 
 ## 📚 Additional Documentation
 
-- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Complete deployment guide (Vercel, GitHub, checklists)
-- **[AI_NOTES.md](./AI_NOTES.md)** - Comprehensive guide for AI assistants
+**📖 [DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md)** - Complete documentation navigation hub  
+**⚡ [CODEBASE_QUICK_REFERENCE.md](./CODEBASE_QUICK_REFERENCE.md)** - Quick file location reference
+
+### Core Docs
+- **[AI_NOTES.md](./AI_NOTES.md)** - Comprehensive guide for AI assistants (patterns, examples)
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System architecture and data flow
-- **[LOCAL_DB_SETUP.md](./LOCAL_DB_SETUP.md)** - Local PostgreSQL setup
-- **[SEEDING.md](./SEEDING.md)** - Database seeding guide
+
+### Setup & Configuration
+- **[LOCAL_DB_SETUP.md](./LOCAL_DB_SETUP.md)** - Local Docker PostgreSQL setup
 - **[SUPABASE_SETUP.md](./SUPABASE_SETUP.md)** - Supabase storage and database setup
+- **[SEEDING.md](./SEEDING.md)** - Database seeding guide
 - **[EXPORT_DATA.md](./EXPORT_DATA.md)** - Exporting zones and device positions
+
+### Deployment
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Complete deployment guide (Vercel, GitHub, checklists)
+
+### UX & Design
+- **[UX_IMPROVEMENTS.md](./UX_IMPROVEMENTS.md)** - First UX review (10 improvements)
+- **[UX_IMPROVEMENTS_V2.md](./UX_IMPROVEMENTS_V2.md)** - Second UX review (10 more improvements)
 
 ## 🎨 UI Components & Patterns
 

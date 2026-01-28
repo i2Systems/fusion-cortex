@@ -16,8 +16,11 @@ import { Site } from '@/lib/SiteContext'
 import { trpc } from '@/lib/trpc/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Select, type SelectOption } from '@/components/ui/Select'
 import { useToast } from '@/lib/ToastContext'
+import { useConfirm } from '@/lib/hooks/useConfirm'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
+import { SITE_ROLE_TYPES } from '@/lib/constants/roleTypes'
 
 interface AddSiteModalProps {
   isOpen: boolean
@@ -29,6 +32,7 @@ interface AddSiteModalProps {
 
 export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: AddSiteModalProps) {
   const { addToast } = useToast()
+  const confirm = useConfirm()
   const [formData, setFormData] = useState({
     name: '',
     siteNumber: '',
@@ -41,6 +45,9 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
     squareFootage: '',
     imageUrl: '',
   })
+  const [selectedRole, setSelectedRole] = useState<string>('')
+  const [customRole, setCustomRole] = useState<string>('')
+  const [personName, setPersonName] = useState<string>('')
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [currentImage, setCurrentImage] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -59,6 +66,10 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
 
   // tRPC hooks for image operations
   const utils = trpc.useUtils()
+  
+  // tRPC mutations for site operations (with personRole support)
+  const createSiteMutation = trpc.site.create.useMutation()
+  const updateSiteMutation = trpc.site.update.useMutation()
 
   // Validate siteId before querying - use skipToken to completely skip query if invalid
   // Accept both 'site-*' and 'store-*' prefixes for backward compatibility with database
@@ -198,6 +209,12 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
     return () => window.removeEventListener('siteImageUpdated', handleSiteImageUpdate)
   }, [editingSite, isOpen, dbImage, refetchSiteImage])
 
+  // Query people for the site to get role information
+  const { data: sitePeople } = trpc.person.list.useQuery(
+    { siteId: editingSite?.id || '' },
+    { enabled: !!editingSite?.id && isOpen }
+  )
+
   // Populate form when editing
   useEffect(() => {
     if (editingSite) {
@@ -213,6 +230,37 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
         squareFootage: editingSite.squareFootage?.toString() || '',
         imageUrl: '', // Don't use imageUrl from store - load from client storage
       })
+      
+      // Try to find matching person and extract role
+      const managerName = editingSite.manager || ''
+      if (managerName && sitePeople) {
+        const matchingPerson = sitePeople.find(p => {
+          const fullName = `${p.firstName} ${p.lastName}`.trim()
+          return fullName === managerName || p.firstName === managerName || p.lastName === managerName
+        })
+        
+        if (matchingPerson?.role) {
+          const roleValue = matchingPerson.role
+          if (SITE_ROLE_TYPES.some(r => r.value === roleValue)) {
+            setSelectedRole(roleValue)
+            setCustomRole('')
+          } else {
+            setSelectedRole('Other')
+            setCustomRole(roleValue)
+          }
+          setPersonName(managerName)
+        } else {
+          // Default to Manager if person exists but no role
+          setSelectedRole(managerName ? 'Manager' : '')
+          setCustomRole('')
+          setPersonName(managerName)
+        }
+      } else {
+        setSelectedRole('')
+        setCustomRole('')
+        setPersonName(managerName)
+      }
+      
       setPreviewImage(null) // Reset preview when editing
     } else {
       // Reset form for new site
@@ -228,23 +276,26 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
         squareFootage: '',
         imageUrl: '',
       })
+      setSelectedRole('')
+      setCustomRole('')
+      setPersonName('')
       setPreviewImage(null)
       setCurrentImage(null)
     }
-  }, [editingSite, isOpen])
+  }, [editingSite, isOpen, sitePeople])
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     if (!file.type.startsWith('image/')) {
-      alert('Please select a valid image file')
+      addToast({ type: 'error', title: 'Invalid File', message: 'Please select a valid image file' })
       return
     }
 
     const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
-      alert('Image size must be less than 10MB')
+      addToast({ type: 'error', title: 'File Too Large', message: 'Image size must be less than 10MB' })
       return
     }
 
@@ -263,13 +314,13 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
         }
       }
       reader.onerror = () => {
-        alert('Failed to read image file')
+        addToast({ type: 'error', title: 'Read Error', message: 'Failed to read image file' })
         setIsUploading(false)
       }
       reader.readAsDataURL(file)
     } catch (error) {
       console.error('Error processing image:', error)
-      alert('Failed to process image')
+      addToast({ type: 'error', title: 'Processing Error', message: 'Failed to process image' })
       setIsUploading(false)
     }
 
@@ -285,7 +336,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
 
     if (!previewImage) {
       console.warn('⚠️ No preview image to save')
-      alert('Please select an image first')
+      addToast({ type: 'warning', title: 'No Image', message: 'Please select an image first' })
       return
     }
 
@@ -352,7 +403,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
           console.log('✅ Image also saved to client storage as backup')
         } catch (saveError: any) {
           console.error('❌ Failed to save image:', saveError)
-          alert(`Failed to save image: ${saveError.message || 'Unknown error'}`)
+          addToast({ type: 'error', title: 'Save Failed', message: saveError.message || 'Failed to save image' })
           setIsUploading(false)
           return
         }
@@ -394,7 +445,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
       }
     } catch (error) {
       console.error('❌ Failed to save site image:', error)
-      alert(`Failed to save image: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      addToast({ type: 'error', title: 'Save Failed', message: error instanceof Error ? error.message : 'Failed to save image' })
     } finally {
       setIsUploading(false)
     }
@@ -408,7 +459,13 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
   }
 
   const handleRemoveImage = async () => {
-    if (!confirm('Remove image?')) return
+    const confirmed = await confirm({
+      title: 'Remove Image',
+      message: 'Are you sure you want to remove this image?',
+      confirmLabel: 'Remove',
+      variant: 'danger'
+    })
+    if (!confirmed) return
 
     if (editingSite) {
       try {
@@ -417,7 +474,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
         setCurrentImage(null)
       } catch (error) {
         console.error('Failed to remove site image:', error)
-        alert('Failed to remove image.')
+        addToast({ type: 'error', title: 'Error', message: 'Failed to remove image' })
       }
     }
 
@@ -432,11 +489,13 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
 
     // Check if there's an unsaved preview image (only for existing sites)
     if (previewImage && editingSite?.id) {
-      const shouldSaveImage = confirm(
-        '⚠️ You have an unsaved image preview!\n\n' +
-        'Would you like to save the image now before saving the site changes?\n\n' +
-        'Click OK to save the image first, or Cancel to proceed without saving the image.'
-      )
+      const shouldSaveImage = await confirm({
+        title: 'Unsaved Image',
+        message: 'You have an unsaved image preview. Would you like to save the image before saving the site changes?',
+        confirmLabel: 'Save Image',
+        cancelLabel: 'Skip',
+        variant: 'primary'
+      })
 
       if (shouldSaveImage) {
         console.log('💾 User chose to save image before submitting form')
@@ -448,9 +507,13 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
           console.log('✅ Image saved, proceeding with form submission')
         } catch (error) {
           console.error('❌ Failed to save image:', error)
-          const proceed = confirm(
-            'Failed to save the image. Would you like to proceed with saving the site anyway?'
-          )
+          const proceed = await confirm({
+            title: 'Image Save Failed',
+            message: 'Failed to save the image. Would you like to proceed with saving the site anyway?',
+            confirmLabel: 'Continue',
+            cancelLabel: 'Cancel',
+            variant: 'primary'
+          })
           if (!proceed) {
             return // User cancelled, don't submit the form
           }
@@ -463,15 +526,23 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
     }
 
     if (!formData.name.trim()) {
-      alert('Site name is required')
+      addToast({ type: 'warning', title: 'Required Field', message: 'Site name is required' })
       return
     }
 
     if (!formData.siteNumber.trim()) {
-      alert('Site number is required')
+      addToast({ type: 'warning', title: 'Required Field', message: 'Site number is required' })
       return
     }
 
+    // Determine the role to use
+    // If person name is provided but no role selected, default to Manager
+    const finalRole = personName && !selectedRole 
+      ? 'Manager' 
+      : selectedRole === 'Other' 
+        ? customRole 
+        : selectedRole
+    
     // Site images are stored client-side (localStorage/IndexedDB), NOT in database
     // So we don't pass imageUrl to the database
     const siteData: Omit<Site, 'id'> = {
@@ -482,7 +553,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
       state: formData.state.trim(),
       zipCode: formData.zipCode.trim(),
       phone: formData.phone.trim() || undefined,
-      manager: formData.manager.trim() || undefined,
+      manager: personName.trim() || undefined,
       squareFootage: formData.squareFootage ? parseInt(formData.squareFootage) : undefined,
       openedDate: new Date(),
       // Don't save imageUrl to database - it's stored client-side
@@ -503,14 +574,35 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
 
     try {
       if (editingSite && onEdit) {
-        await onEdit(editingSite.id, siteData)
+        // For updates, use the mutation directly if we have a role
+        if (finalRole && personName) {
+          await updateSiteMutation.mutateAsync({
+            id: editingSite.id,
+            ...siteData,
+            personRole: finalRole,
+          })
+          // Also call onEdit for optimistic update
+          await onEdit(editingSite.id, siteData)
+        } else {
+          await onEdit(editingSite.id, siteData)
+        }
         addToast({
           type: 'success',
           title: 'Site Updated',
           message: `${siteData.name} has been successfully updated.`
         })
       } else {
-        await onAdd(siteData)
+        // For creates, use the mutation directly if we have a role
+        if (finalRole && personName) {
+          await createSiteMutation.mutateAsync({
+            ...siteData,
+            personRole: finalRole,
+          })
+          // Still call onAdd for optimistic update
+          await onAdd(siteData)
+        } else {
+          await onAdd(siteData)
+        }
         addToast({
           type: 'success',
           title: 'Site Created',
@@ -683,19 +775,61 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
             />
           </div>
 
-          {/* Manager */}
+          {/* Role & Personnel */}
           <div>
-            <label htmlFor="site-manager" className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
-              Site Manager
+            <label htmlFor="site-role" className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
+              Go-To Site Personnel
             </label>
-            <Input
-              id="site-manager"
-              value={formData.manager}
-              onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
-              placeholder="e.g., John Smith"
-              fullWidth
-              icon={<User size={16} className="text-[var(--color-text-muted)]" />}
-            />
+            <div className="space-y-3">
+              {/* Role Type Dropdown */}
+              <Select
+                id="site-role"
+                value={selectedRole}
+                onChange={(e) => {
+                  const newRole = e.target.value
+                  setSelectedRole(newRole)
+                  if (newRole !== 'Other') {
+                    setCustomRole('')
+                  }
+                  // Clear person name if role is cleared
+                  if (!newRole) {
+                    setPersonName('')
+                    setFormData({ ...formData, manager: '' })
+                  }
+                }}
+                options={SITE_ROLE_TYPES as SelectOption[]}
+                placeholder="Select role type..."
+                fullWidth
+              />
+              
+              {/* Custom Role Input (shown when "Other" is selected) */}
+              {selectedRole === 'Other' && (
+                <Input
+                  id="site-custom-role"
+                  value={customRole}
+                  onChange={(e) => setCustomRole(e.target.value)}
+                  placeholder="Enter custom role..."
+                  fullWidth
+                />
+              )}
+              
+              {/* Person Name Input (shown when any role is selected) */}
+              {selectedRole && (
+                <Input
+                  id="site-person-name"
+                  value={personName}
+                  onChange={(e) => {
+                    const name = e.target.value
+                    setPersonName(name)
+                    // Update manager field for backward compatibility
+                    setFormData({ ...formData, manager: name })
+                  }}
+                  placeholder="e.g., John Smith"
+                  fullWidth
+                  icon={<User size={16} className="text-[var(--color-text-muted)]" />}
+                />
+              )}
+            </div>
           </div>
 
           {/* Square Footage */}

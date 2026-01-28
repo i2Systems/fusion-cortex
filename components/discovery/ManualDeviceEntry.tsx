@@ -61,12 +61,12 @@ export function ManualDeviceEntry({ isOpen, onClose, onAdd }: ManualDeviceEntryP
       />
 
       {/* Modal */}
-      <div 
+      <div
         ref={modalRef}
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
-        className="relative w-full max-w-md bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] shadow-[var(--shadow-strong)] p-6" 
+        className="relative w-full max-w-md bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl border border-[var(--color-border-subtle)] shadow-[var(--shadow-strong)] p-6"
         style={{ boxShadow: 'var(--glow-modal)' }}
       >
         <div className="flex items-center justify-between mb-4">
@@ -94,6 +94,7 @@ export function ManualDeviceEntry({ isOpen, onClose, onAdd }: ManualDeviceEntryP
               placeholder="e.g., FLX-1234"
               className="w-full px-3 py-2 bg-[var(--color-bg-elevated)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:shadow-[var(--shadow-glow-primary)]"
               required
+              autoFocus
             />
           </div>
 

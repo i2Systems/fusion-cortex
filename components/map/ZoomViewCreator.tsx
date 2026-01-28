@@ -17,6 +17,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { X, Check, Square } from 'lucide-react'
 import type { Location } from '@/lib/locationStorage'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
+import { useToast } from '@/lib/ToastContext'
 
 interface ZoomViewCreatorProps {
   isOpen: boolean
@@ -45,6 +46,7 @@ export function ZoomViewCreator({
   imageBounds,
   mapImageUrl,
 }: ZoomViewCreatorProps) {
+  const { addToast } = useToast()
   const [isSelecting, setIsSelecting] = useState(false)
   const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null)
   const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null)
@@ -219,7 +221,11 @@ export function ZoomViewCreator({
 
     // Ensure minimum size
     if (bounds.maxX - bounds.minX < 0.05 || bounds.maxY - bounds.minY < 0.05) {
-      alert('Selection area is too small. Please select a larger area.')
+      addToast({
+        type: 'warning',
+        title: 'Selection Too Small',
+        message: 'Selection area is too small. Please select a larger area.'
+      })
       return
     }
 
@@ -255,13 +261,13 @@ export function ZoomViewCreator({
   ) : null
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
       style={{ backgroundColor: 'var(--color-backdrop)' }}
       role="dialog"
       aria-modal="true"
     >
-      <div 
+      <div
         ref={modalRef}
         tabIndex={-1}
         className="bg-[var(--color-surface)] border border-[var(--color-border-subtle)] rounded-xl shadow-[var(--shadow-strong)] w-full max-w-4xl max-h-[90vh] flex flex-col"

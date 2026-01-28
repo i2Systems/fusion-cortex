@@ -1,6 +1,19 @@
 # Architecture Overview
 
+> **AI Note**: This document describes the current system architecture. For AI-specific patterns, see [AI_NOTES.md](./AI_NOTES.md). For deployment, see [DEPLOYMENT.md](./DEPLOYMENT.md).
+
 **System architecture, data flow, and design patterns documentation.**
+
+## 📋 Table of Contents
+
+- [System Architecture](#system-architecture)
+- [Data Flow](#data-flow)
+- [Component Hierarchy](#component-hierarchy)
+- [State Management](#state-management)
+- [Design Token System](#design-token-system)
+- [File Organization](#file-organization-principles)
+- [Type Safety](#type-safety)
+- [Performance](#performance-considerations)
 
 ## System Architecture
 
@@ -63,15 +76,23 @@
 ```
 RootLayout (app/layout.tsx)
   └─ TRPCProvider
-     └─ MainLayout (app/(main)/layout.tsx)
-        ├─ MainNav (left, 80px)
-        └─ Content Area
-           ├─ TopBar (top, 64px)
-           ├─ Main Content (center, flexible)
-           │  └─ Section Pages (dashboard, map, zones, lookup, etc.)
-           ├─ ContextPanel (right, 384px, slide-in)
-           └─ BottomDrawer (bottom, collapsible)
+     └─ StateHydration (initializes Zustand stores from tRPC)
+        └─ MainLayout (app/(main)/layout.tsx)
+           ├─ MainNav (left, 80px)
+           └─ Content Area
+              ├─ PageTitle (top, site selector + breadcrumbs)
+              ├─ Main Content (center, flexible)
+              │  └─ Section Pages (dashboard, map, zones, lookup, etc.)
+              ├─ ContextPanel (right, 384px, slide-in)
+              └─ BottomDrawer (bottom, collapsible)
 ```
+
+**Key Components:**
+- `StateHydration` - Initializes Zustand stores from database (replaces Context Provider data fetching)
+- `MainLayout` - Main app layout with navigation and panels
+- `PageTitle` - Site selector and breadcrumbs
+- `ContextPanel` - Right-side panel for details (resizable, collapsible)
+- `BottomDrawer` - Status bar and notifications
 
 ## Design Token System
 
@@ -108,9 +129,38 @@ Components use tokens:
 
 ## State Management
 
+**Current Architecture (2025):**
+
+- **Client State**: Zustand stores (`lib/stores/*Store.ts`) - Global application state
+  - `deviceStore`, `zoneStore`, `ruleStore`, `siteStore`, `mapStore`
+  - Selective subscriptions (components only re-render for data they use)
+  - Built-in undo/redo via immer middleware
 - **Server State**: React Query (via tRPC) - handles API data, caching, refetching
+- **Sync Layer**: `use*Sync` hooks (`lib/stores/use*Sync.ts`) - Bridge tRPC ↔ Zustand stores
+- **Data Hooks**: `use*()` hooks (`lib/hooks/use*.ts`) - React hooks that use stores
 - **UI State**: React useState/useReducer - local component state
-- **Global UI State**: Context API (for panels, drawers) - to be implemented as needed
+- **Legacy**: Context API files exist for backward compatibility but are deprecated
+
+**Data Flow:**
+```
+tRPC Query → use*Sync hook → Zustand Store → use*() hook → Component
+```
+
+**Example:**
+```typescript
+// Component uses data hook
+const { devices } = useDevices()
+
+// Hook uses store
+export function useDevices() {
+  const devices = useDeviceStore(state => state.devices)
+  // ... sync logic
+  return { devices }
+}
+
+// Store is hydrated by sync hook
+useDeviceSync() // Runs in StateHydration component
+```
 
 ## Type Safety
 
@@ -125,6 +175,13 @@ Components use tokens:
 - **Code Splitting**: Automatic via Next.js route-based splitting
 - **Caching**: React Query handles API response caching
 - **Database**: Prisma connection pooling (configure in DATABASE_URL)
+- **State Management**: Zustand stores provide selective subscriptions (components only re-render for data they use)
+
+## Related Documentation
+
+- [README.md](./README.md) - Project overview and features
+- [AI_NOTES.md](./AI_NOTES.md) - AI-specific patterns and examples
+- [DOCUMENTATION_INDEX.md](./DOCUMENTATION_INDEX.md) - Complete documentation navigation
 
 ## Security
 
@@ -143,7 +200,18 @@ Components use tokens:
 ## Development Workflow
 
 1. **Add Feature**: Create route → Add nav → Create router → Update schema
-2. **Modify Design**: Update tokens in `globals.css`
-3. **Add API**: Create procedure in router → Use in component
+2. **Modify Design**: Update tokens in `app/styles/themes/*.css`
+3. **Add API**: Create procedure in router → Use sync hook → Update store
 4. **Database Changes**: Update schema → Generate client → Push/migrate
+
+## Migration Notes
+
+**⚠️ Important**: The codebase has migrated from React Context API to Zustand stores:
+
+- **Old Pattern** (Deprecated): `DeviceContext`, `ZoneContext`, etc.
+- **New Pattern** (Current): Zustand stores + sync hooks + data hooks
+- **Compatibility**: Legacy Context files exist but are pass-through wrappers
+- **When to Use**: Always use the new pattern (`useDevices()`, `useZones()`, etc. from `lib/hooks/`)
+
+See [AI_NOTES.md](./AI_NOTES.md) for detailed migration patterns.
 

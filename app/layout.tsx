@@ -14,13 +14,12 @@ import './globals.css'
 import { TRPCProvider } from '@/lib/trpc/Provider'
 import { AuthProvider } from '@/lib/auth'
 import { AppearanceProvider } from '@/lib/AppearanceContext'
-import { SiteProvider } from '@/lib/SiteContext'
-import { DomainProvider } from '@/lib/DomainContext'
 import { NotificationProvider } from '@/lib/NotificationContext'
-import { MapProvider } from '@/lib/MapContext'
+import { ConfirmProvider } from '@/lib/hooks/useConfirm'
 import { ToastProvider } from '@/lib/ToastContext'
 import { ToastContainer } from '@/components/ui/Toast'
 import { ComposeProviders } from '@/components/shared/ComposeProviders'
+import { StateHydration } from '@/components/StateHydration'
 // Import exportData to make exportFusionData() available in browser console
 import '@/lib/exportData'
 
@@ -53,14 +52,14 @@ export default function RootLayout({
             TRPCProvider,
             AppearanceProvider,  // Theme + Font + I18n + AdvancedSettings
             AuthProvider,        // Auth + Role
-            SiteProvider,
-            MapProvider,         // Map + Zoom
             ToastProvider,
-            DomainProvider,
             NotificationProvider,
+            ConfirmProvider,
           ]}
         >
-          {children}
+          <StateHydration>
+            {children}
+          </StateHydration>
           <ToastContainer />
         </ComposeProviders>
       </body>

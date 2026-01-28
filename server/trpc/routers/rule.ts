@@ -1,6 +1,6 @@
 /**
  * Rule Router
- * 
+ *
  * tRPC procedures for rules and overrides.
  * Supports site-scoped rules that can target both zones and devices.
  */
@@ -9,30 +9,49 @@ import { z } from 'zod'
 import { router, publicProcedure } from '../trpc'
 import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
+import { Prisma } from '@prisma/client'
+import type { Rule, Zone, Device } from '@prisma/client'
+import {
+  FlexibleConditionSchema,
+  FlexibleActionSchema,
+  type RuleCondition,
+  type RuleAction,
+  type RuleOutput,
+  type RuleType,
+  type TargetType,
+  type TriggerType,
+} from '@/lib/types'
+
+// Type for Rule with Zone and Device relations included
+type RuleWithRelations = Rule & {
+  Zone?: Pick<Zone, 'id' | 'name'> | null
+  Device?: Pick<Device, 'id' | 'deviceId'> | null
+}
 
 // Helper to transform database rule to frontend format
-function transformRule(rule: any) {
+// Converts null → undefined and casts string enums to match the frontend Rule interface
+function transformRule(rule: RuleWithRelations): RuleOutput {
   return {
     id: rule.id,
     name: rule.name,
-    description: rule.description,
-    ruleType: rule.ruleType,
-    targetType: rule.targetType,
-    targetId: rule.targetId,
-    targetName: rule.targetName,
-    trigger: rule.trigger,
-    condition: rule.condition as any,
-    action: rule.action as any,
+    description: rule.description ?? undefined,
+    ruleType: rule.ruleType as RuleType,
+    targetType: rule.targetType as TargetType,
+    targetId: rule.targetId ?? undefined,
+    targetName: rule.targetName ?? undefined,
+    trigger: rule.trigger as TriggerType,
+    condition: rule.condition as RuleCondition | Record<string, Prisma.JsonValue>,
+    action: rule.action as RuleAction | Record<string, Prisma.JsonValue>,
     overrideBMS: rule.overrideBMS,
-    duration: rule.duration,
+    duration: rule.duration ?? undefined,
     siteId: rule.siteId,
-    zoneId: rule.zoneId,
+    zoneId: rule.zoneId ?? undefined,
     zoneName: rule.Zone?.name,
-    deviceId: rule.deviceId,
-    deviceName: rule.Device?.deviceId, // Use deviceId field as display name
+    deviceId: rule.deviceId ?? undefined,
+    deviceName: rule.Device?.deviceId,
     targetZones: rule.targetZones,
     enabled: rule.enabled,
-    lastTriggered: rule.lastTriggered,
+    lastTriggered: rule.lastTriggered ?? undefined,
     createdAt: rule.createdAt,
     updatedAt: rule.updatedAt,
   }
@@ -46,7 +65,7 @@ export const ruleRouter = router({
       deviceId: z.string().optional(),
     }))
     .query(async ({ input }) => {
-      const where: any = {}
+      const where: Prisma.RuleWhereInput = {}
 
       // Primary filter: by siteId
       if (input.siteId) {
@@ -131,8 +150,8 @@ export const ruleRouter = router({
       targetId: z.string().optional(),
       targetName: z.string().optional(),
       trigger: z.string(),
-      condition: z.any(),
-      action: z.any(),
+      condition: FlexibleConditionSchema,
+      action: FlexibleActionSchema,
       overrideBMS: z.boolean().default(false),
       duration: z.number().optional(),
       siteId: z.string(),
@@ -153,8 +172,8 @@ export const ruleRouter = router({
             targetId: input.targetId,
             targetName: input.targetName,
             trigger: input.trigger,
-            condition: input.condition,
-            action: input.action,
+            condition: input.condition as Prisma.InputJsonValue,
+            action: input.action as Prisma.InputJsonValue,
             overrideBMS: input.overrideBMS,
             duration: input.duration,
             siteId: input.siteId,
@@ -197,8 +216,8 @@ export const ruleRouter = router({
       targetId: z.string().optional(),
       targetName: z.string().optional(),
       trigger: z.string().optional(),
-      condition: z.any().optional(),
-      action: z.any().optional(),
+      condition: FlexibleConditionSchema.optional(),
+      action: FlexibleActionSchema.optional(),
       overrideBMS: z.boolean().optional(),
       duration: z.number().optional(),
       zoneId: z.string().optional(),
@@ -211,7 +230,8 @@ export const ruleRouter = router({
       const { id, ...updates } = input
 
       // Build update data object with only defined fields
-      const updateData: any = {}
+      // Using UncheckedUpdateInput to allow direct assignment of foreign keys
+      const updateData: Prisma.RuleUncheckedUpdateInput = {}
       if (updates.name !== undefined) updateData.name = updates.name
       if (updates.description !== undefined) updateData.description = updates.description
       if (updates.ruleType !== undefined) updateData.ruleType = updates.ruleType
@@ -219,8 +239,8 @@ export const ruleRouter = router({
       if (updates.targetId !== undefined) updateData.targetId = updates.targetId
       if (updates.targetName !== undefined) updateData.targetName = updates.targetName
       if (updates.trigger !== undefined) updateData.trigger = updates.trigger
-      if (updates.condition !== undefined) updateData.condition = updates.condition
-      if (updates.action !== undefined) updateData.action = updates.action
+      if (updates.condition !== undefined) updateData.condition = updates.condition as Prisma.InputJsonValue
+      if (updates.action !== undefined) updateData.action = updates.action as Prisma.InputJsonValue
       if (updates.overrideBMS !== undefined) updateData.overrideBMS = updates.overrideBMS
       if (updates.duration !== undefined) updateData.duration = updates.duration
       if (updates.zoneId !== undefined) updateData.zoneId = updates.zoneId

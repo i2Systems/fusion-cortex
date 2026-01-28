@@ -16,7 +16,7 @@ import { useSite } from '@/lib/SiteContext'
 import { pdfToImage, isPdfFile } from '@/lib/pdfUtils'
 import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 import { storeVectorData, storeImage } from '@/lib/indexedDB'
-import { useAdvancedSettings } from '@/lib/AdvancedSettingsContext'
+import { useAdvancedSettings } from '@/lib/AppearanceContext'
 import { Button } from '@/components/ui/Button'
 
 interface MapUploadProps {

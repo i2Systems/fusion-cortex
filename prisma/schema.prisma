@@ -50,6 +50,7 @@ model Device {
   Site                  Site                   @relation(fields: [siteId], references: [id], onDelete: Cascade)
   Fault                 Fault[]
   FirmwareDeviceUpdate  FirmwareDeviceUpdate[]
+  GroupDevice           GroupDevice[]
   Rule                  Rule[]
   ZoneDevice            ZoneDevice[]
 
@@ -189,6 +190,7 @@ model Rule {
   @@index([siteId])
   @@index([zoneId])
   @@index([deviceId])
+  @@index([siteId, enabled])
 }
 
 model Site {
@@ -208,7 +210,9 @@ model Site {
   updatedAt      DateTime
   Device         Device[]
   FirmwareUpdate FirmwareUpdate[]
+  Group          Group[]
   Location       Location[]
+  Person         Person[]
   Rule           Rule[]
   Zone           Zone[]
 }
@@ -230,6 +234,7 @@ model Zone {
   ZoneDevice      ZoneDevice[]
 
   @@index([siteId])
+  @@index([siteId, daylightEnabled])
 }
 
 model ZoneDevice {
@@ -242,6 +247,64 @@ model ZoneDevice {
   @@unique([zoneId, deviceId])
   @@index([deviceId])
   @@index([zoneId])
+}
+
+
+model Group {
+  id          String        @id
+  name        String
+  description String?
+  color       String        @default("#4c7dff")
+  siteId      String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime
+  Site        Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  GroupDevice GroupDevice[]
+  GroupPerson GroupPerson[]
+
+  @@index([siteId])
+}
+
+model GroupDevice {
+  id       String @id
+  groupId  String
+  deviceId String
+  Device   Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  Group    Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, deviceId])
+  @@index([deviceId])
+  @@index([groupId])
+}
+
+model GroupPerson {
+  id       String @id
+  groupId  String
+  personId String
+  Person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  Group    Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, personId])
+  @@index([personId])
+  @@index([groupId])
+}
+
+model Person {
+  id          String       @id
+  firstName   String
+  lastName    String
+  email       String?
+  role        String?
+  imageUrl    String?
+  x           Float?
+  y           Float?
+  siteId      String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime
+  Site        Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  GroupPerson GroupPerson[]
+
+  @@index([siteId])
 }
 
 enum BACnetStatus {

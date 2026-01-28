@@ -51,10 +51,18 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
   const [width, setWidth] = useState(defaultWidth)
   // Always start collapsed to match SSR - will be updated in useEffect
   const [isCollapsed, setIsCollapsed] = useState(true)
+  // Delayed panel collapse - controls actual panel width/visibility
+  // This lags behind isCollapsed to allow content to fade first when closing
+  const [panelCollapsed, setPanelCollapsed] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
   const [isTouchDragging, setIsTouchDragging] = useState(false)
   const [lastOpenWidth, setLastOpenWidth] = useState(defaultWidth)
   const [isMobile, setIsMobile] = useState(false) // Track if we're on mobile/tablet
+  // Skip animations on initial hydration to prevent slide-in on page load
+  const [hasHydrated, setHasHydrated] = useState(false)
+  // Staggered content visibility for smoother animations
+  // Content fades out before panel closes, fades in after panel opens
+  const [contentVisible, setContentVisible] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const handleRef = useRef<HTMLDivElement>(null)
   const dragStartX = useRef(0)
@@ -119,7 +127,43 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
       // No storage key - default based on screen size
       setIsCollapsed(isTabletOrMobile)
     }
+
+    // Enable animations after initial state is set (next frame)
+    // Also set initial content/panel visibility based on collapsed state
+    requestAnimationFrame(() => {
+      setHasHydrated(true)
+      // If panel is open on load, show everything immediately (no animation needed)
+      if (!isTabletOrMobile || (storageKey && localStorage.getItem(`panel_${storageKey}`))) {
+        const saved = storageKey ? localStorage.getItem(`panel_${storageKey}`) : null
+        const savedCollapsed = saved ? JSON.parse(saved).isCollapsed : true
+        if (!isTabletOrMobile || savedCollapsed === false) {
+          setPanelCollapsed(false)
+          setContentVisible(true)
+        }
+      }
+    })
   }, [storageKey])
+
+  // Staggered animation: content fades out THEN panel closes, panel opens THEN content fades in
+  useEffect(() => {
+    if (!hasHydrated) return
+
+    if (isCollapsed) {
+      // Closing sequence: fade content first, then collapse panel
+      setContentVisible(false)
+      const timer = setTimeout(() => {
+        setPanelCollapsed(true)
+      }, 150) // Wait for content fade (150ms) before collapsing panel
+      return () => clearTimeout(timer)
+    } else {
+      // Opening sequence: expand panel first, then fade in content
+      setPanelCollapsed(false)
+      const timer = setTimeout(() => {
+        setContentVisible(true)
+      }, 250) // Wait for panel slide before fading in content
+      return () => clearTimeout(timer)
+    }
+  }, [isCollapsed, hasHydrated])
 
   // Handle window resize - collapse on tablet/mobile, allow open on desktop
   useEffect(() => {
@@ -383,9 +427,13 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
   return (
     <>
       {/* Mobile/Tablet Backdrop - Only show when panel is open on mobile/tablet */}
-      {!isCollapsed && (
+      {!panelCollapsed && (
         <div
-          className="lg:hidden fixed inset-0 backdrop-blur-sm z-[calc(var(--z-panel)-1)]"
+          className={`
+            lg:hidden fixed inset-0 backdrop-blur-sm z-[calc(var(--z-panel)-1)]
+            transition-opacity duration-200
+            ${contentVisible ? 'opacity-100' : 'opacity-0'}
+          `}
           style={{ backgroundColor: 'var(--color-backdrop)' }}
           onClick={handleClose}
           onTouchStart={(e) => {
@@ -494,37 +542,41 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
         <div
           ref={panelRef}
           style={{
-            width: isCollapsed ? 0 : width,
-            minWidth: isCollapsed ? 0 : minWidth,
+            width: panelCollapsed ? 0 : width,
+            minWidth: panelCollapsed ? 0 : minWidth,
             maxWidth: maxWidth,
           }}
           className={`
           relative overflow-hidden flex-shrink-0
-          transition-all duration-300 ease-out
+          ${hasHydrated ? 'transition-all duration-300 ease-out' : ''}
           ${isDragging ? 'transition-none' : ''}
-          ${isCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}
+          ${panelCollapsed ? 'pointer-events-none' : ''}
           ${className}
         `}
         >
           <div
             className={`
             w-full h-full bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl
-            border border-[var(--color-border-subtle)] 
+            border border-[var(--color-border-subtle)]
             shadow-[var(--shadow-strong)] overflow-hidden
-            transition-transform duration-300
-            ${isCollapsed ? 'translate-x-full' : 'translate-x-0'}
+            ${hasHydrated ? 'transition-transform duration-300' : ''}
+            ${panelCollapsed ? 'translate-x-full' : 'translate-x-0'}
             flex flex-col
             lg:relative
-            ${!isCollapsed ? 'fixed lg:relative right-0 top-0 bottom-0 z-[var(--z-panel)]' : ''}
+            ${!panelCollapsed ? 'fixed lg:relative right-0 top-0 bottom-0 z-[var(--z-panel)]' : ''}
           `}
             style={{
-              width: isCollapsed ? undefined : (isMobile ? '100%' : undefined),
+              width: panelCollapsed ? undefined : (isMobile ? '100%' : undefined),
               maxWidth: isMobile ? '100%' : undefined,
             }}
           >
             {/* Close button - visible on mobile/tablet */}
-            {!isCollapsed && (
-              <div className="lg:hidden flex items-center justify-between p-3 md:p-4 border-b border-[var(--color-border-subtle)] flex-shrink-0">
+            {!panelCollapsed && (
+              <div className={`
+                lg:hidden flex items-center justify-between p-3 md:p-4 border-b border-[var(--color-border-subtle)] flex-shrink-0
+                transition-opacity duration-150
+                ${contentVisible ? 'opacity-100' : 'opacity-0'}
+              `}>
                 <span className="text-sm md:text-base font-semibold text-[var(--color-text)]">Details</span>
                 <button
                   onClick={handleClose}
@@ -535,7 +587,12 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
                 </button>
               </div>
             )}
-            <div className="flex-1 overflow-auto">
+            {/* Content wrapper with staggered fade animation */}
+            <div className={`
+              flex-1 overflow-auto
+              transition-opacity duration-150
+              ${contentVisible ? 'opacity-100' : 'opacity-0'}
+            `}>
               {children}
             </div>
           </div>

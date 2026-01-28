@@ -76,7 +76,9 @@ export function useZoneSync() {
                 createdAt: new Date(zone.createdAt),
                 updatedAt: new Date(zone.updatedAt),
             }))
-            store.setZones(transformed)
+            queueMicrotask(() => {
+                store.setZones(transformed)
+            })
         }
     }, [zonesData])
 
