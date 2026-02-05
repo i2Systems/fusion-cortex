@@ -9,8 +9,8 @@
 import { useState, useEffect } from 'react'
 import { X, MapPin } from 'lucide-react'
 import { Rule, RuleType, TriggerType, ScheduleFrequency } from '@/lib/mockRules'
-import { useZones } from '@/lib/DomainContext'
-import { useDevices } from '@/lib/DomainContext'
+import { useZones } from '@/lib/hooks/useZones'
+import { useDevices } from '@/lib/hooks/useDevices'
 
 interface ConditionEditorProps {
   trigger: TriggerType

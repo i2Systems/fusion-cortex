@@ -50,8 +50,10 @@ export default function MainLayout({
             <ContextPanel />
           </div>
 
-          {/* Bottom Drawer - Status, faults, background tasks */}
-          <BottomDrawer />
+          {/* Bottom Drawer - Status, faults, background tasks (wrapped to prevent full app crash) */}
+          <ErrorBoundary section="Bottom drawer" fallback={null}>
+            <BottomDrawer />
+          </ErrorBoundary>
         </div>
       </div>
     </SearchProvider>

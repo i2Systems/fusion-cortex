@@ -10,6 +10,7 @@
 
 import { useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { httpBatchLink } from '@trpc/client'
 import superjson from 'superjson'
 import { trpc } from './client'
@@ -48,7 +49,7 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
           fetch: (url, options) => {
             // Add timeout to prevent hanging requests
             const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s - fail fast if API unreachable
             
             return fetch(url, {
               ...options,
@@ -66,6 +67,9 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         {children}
+        {process.env.NODE_ENV === 'development' && (
+          <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+        )}
       </QueryClientProvider>
     </trpc.Provider>
   )

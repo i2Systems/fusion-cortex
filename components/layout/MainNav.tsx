@@ -93,6 +93,7 @@ export function MainNav() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={false}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`
                     w-14 h-14 flex items-center justify-center rounded-lg
@@ -121,13 +122,14 @@ export function MainNav() {
         {/* Library Icon */}
         <Link
           href="/library"
+          prefetch={false}
           onClick={() => setMobileMenuOpen(false)}
           className={`
             w-14 h-14 flex items-center justify-center rounded-lg
             transition-all duration-200
             ${pathname === '/library' || pathname?.startsWith('/library')
               ? 'bg-[var(--color-primary-soft)] text-[var(--color-primary)] shadow-[var(--shadow-glow-primary)]'
-              : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-primary)] hover:shadow-[0_0_15px_rgba(0,217,255,0.3)]'
+              : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-subtle)] hover:text-[var(--color-primary)] hover:shadow-[var(--shadow-glow-primary)]'
             }
           `}
           title="Library"

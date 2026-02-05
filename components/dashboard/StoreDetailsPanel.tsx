@@ -9,13 +9,14 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { skipToken } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/Badge'
-import { Site, useSite } from '@/lib/SiteContext'
+import { useSite } from '@/lib/hooks/useSite'
 import { Device } from '@/lib/mockData'
-import { Zone } from '@/lib/DomainContext'
+import type { Zone } from '@/lib/stores/zoneStore'
+import type { Site } from '@/lib/stores/siteStore'
 import { Rule } from '@/lib/mockRules'
 import { FaultCategory } from '@/lib/faultDefinitions'
 import { calculateWarrantyStatus } from '@/lib/warranty'
@@ -138,93 +139,95 @@ export function SiteDetailsPanel({
   // Also use enabled to prevent query execution if siteId is invalid
   // Ensure input is always a proper object, never undefined
   const queryInput = isValidSiteId && site?.id ? { siteId: String(site.id).trim() } : skipToken
-  const { data: dbImage, isLoading: isDbLoading, refetch: refetchSiteImage } = trpc.image.getSiteImage.useQuery(
+  const { data: dbImage, isLoading: isDbLoading, isError: isDbError, refetch: refetchSiteImage } = trpc.image.getSiteImage.useQuery(
     queryInput,
     {
-      // Double protection: enabled flag prevents query execution
       enabled: isValidSiteId && !!site?.id && site.id.trim().length > 0,
-      // Skip if siteId is invalid to avoid validation errors
       retry: false,
-      // Refetch on mount to ensure fresh data
       refetchOnMount: true,
       refetchOnWindowFocus: false,
-      // Don't use stale data
-      staleTime: 0,
+      staleTime: 60 * 1000,
     }
   )
 
-  // Load site image (database first, then client storage fallback)
+  const dbLoadTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Load site image: DB first when ready, client storage fallback. Don't block forever on DB.
   useEffect(() => {
+    if (!site?.id) {
+      setSiteImageUrl(null)
+      return
+    }
+
     const loadSiteImage = async () => {
-      if (!site?.id) {
-        setSiteImageUrl(null)
-        return
-      }
-
-      console.log(`🖼️ Loading image for site: ${site.id}`)
       try {
-        // Wait for database query to complete before checking
-        if (isDbLoading) {
-          console.log(`⏳ Database query still loading for site ${site.id}, waiting...`)
-          return
-        }
-
-        // First try database (from tRPC query)
+        // Use DB image if we have it
         if (dbImage) {
-          console.log(`✅ Loaded image from database for site ${site.id}`)
           setSiteImageUrl(dbImage)
           return
         }
 
-        // Only fallback to client storage if database query completed and returned null
-        console.log(`ℹ️ No database image found for site ${site.id}, checking client storage...`)
+        // If DB query finished (not loading) and returned nothing, try client storage
+        if (!isDbLoading || isDbError) {
+          const { getSiteImage } = await import('@/lib/libraryUtils')
+          const image = await getSiteImage(site.id)
+          setSiteImageUrl(image ?? null)
+          return
+        }
+
+        // DB still loading: try client storage immediately (don't block)
         const { getSiteImage } = await import('@/lib/libraryUtils')
         const image = await getSiteImage(site.id)
         if (image) {
-          console.log(`✅ Loaded image from client storage for site ${site.id}`)
           setSiteImageUrl(image)
-        } else {
-          console.log(`📷 No image found for site ${site.id}, using default`)
-          setSiteImageUrl(null)
         }
+        // DB may still return later and overwrite via effect re-run
       } catch (error) {
-        console.error(`❌ Failed to load site image for ${site.id}:`, error)
+        console.error(`Failed to load site image for ${site.id}:`, error)
         setSiteImageUrl(null)
       }
     }
 
     loadSiteImage()
 
-    // Listen for site image updates
+    // If DB is loading, set a 4s timeout - force client-storage fallback if DB is slow/stuck
+    if (isDbLoading && !isDbError) {
+      const siteId = site.id
+      dbLoadTimeoutRef.current = setTimeout(() => {
+        import('@/lib/libraryUtils').then(({ getSiteImage }) =>
+          getSiteImage(siteId).then((img) => img && setSiteImageUrl(img))
+        )
+      }, 4000)
+    }
+
+    return () => {
+      if (dbLoadTimeoutRef.current) {
+        clearTimeout(dbLoadTimeoutRef.current)
+        dbLoadTimeoutRef.current = null
+      }
+    }
+  }, [site?.id, dbImage, isDbLoading, isDbError])
+
+  // Listen for site image updates
+  useEffect(() => {
     const handleSiteImageUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ siteId: string }>
-      // Handle both specific siteId events and general events
       if (!customEvent.detail || customEvent.detail?.siteId === site?.id) {
-        console.log(`🔄 Site image updated event received for ${site?.id}`)
-        setImageKey(prev => prev + 1) // Force re-render
-
-        // Only refetch if we have a valid, non-temporary site ID
-        // Check site?.id directly here to avoid stale closure issues
+        setImageKey((prev) => prev + 1)
         const currentSiteId = site?.id
         if (currentSiteId) {
-          // Temporary IDs are: "site-" followed only by digits (timestamp), or "temp-"
           const isTempId = /^site-\d+$/.test(currentSiteId) || currentSiteId.startsWith('temp-')
-          // Also check that the query wasn't configured with skipToken by verifying we have a real database ID format
-          const isRealDbId = currentSiteId.length > 15 && !isTempId // Database CUIDs are longer
-
-          if (!isTempId && isRealDbId) {
-            console.log(`✅ Refetching image for valid site ID: ${currentSiteId}`)
-            refetchSiteImage() // Refetch from database
-          } else {
-            console.log(`⏭️ Skipping refetch for temporary site ID: ${currentSiteId}`)
-          }
+          const isRealDbId = currentSiteId.length > 15 && !isTempId
+          if (!isTempId && isRealDbId) refetchSiteImage()
+          import('@/lib/libraryUtils')
+            .then(({ getSiteImage }) => getSiteImage(currentSiteId))
+            .then((img) => img && setSiteImageUrl(img))
         }
-        loadSiteImage() // Reload from client storage
       }
     }
     window.addEventListener('siteImageUpdated', handleSiteImageUpdate)
     return () => window.removeEventListener('siteImageUpdated', handleSiteImageUpdate)
-  }, [site?.id, dbImage, isDbLoading, refetchSiteImage])
+  }, [site?.id, refetchSiteImage])
 
   if (!site) {
     return (
@@ -281,13 +284,16 @@ export function SiteDetailsPanel({
     router.push(path)
   }
 
+  const totalDevices = devices.length
   const getHealthColor = (percentage: number) => {
+    if (totalDevices === 0) return 'var(--color-text-muted)'
     if (percentage >= 95) return 'var(--color-success)'
     if (percentage >= 85) return 'var(--color-warning)'
     return 'var(--color-danger)'
   }
 
   const getHealthIcon = (percentage: number) => {
+    if (totalDevices === 0) return <Activity size={16} className="text-[var(--color-text-muted)]" />
     if (percentage >= 95) return <CheckCircle2 size={16} className="text-[var(--color-success)]" />
     if (percentage >= 85) return <AlertCircle size={16} className="text-[var(--color-warning)]" />
     return <XCircle size={16} className="text-[var(--color-danger)]" />
@@ -472,7 +478,7 @@ export function SiteDetailsPanel({
             {getHealthIcon(healthPercentage)}
           </div>
           <div className="text-2xl md:text-3xl font-bold mb-2" style={{ color: getHealthColor(healthPercentage) }}>
-            {healthPercentage}%
+            {totalDevices === 0 ? '—' : `${healthPercentage}%`}
           </div>
           <div className="grid grid-cols-3 gap-1.5 md:gap-2 text-xs">
             <div>

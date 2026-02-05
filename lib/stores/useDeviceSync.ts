@@ -4,7 +4,7 @@
  * Bridges tRPC data fetching with the Zustand device store.
  * Handles server data hydration and exposes mutation functions.
  * 
- * Usage: Call useDeviceSync() once in a parent component (e.g., DomainProvider).
+ * Usage: Call useDeviceSync() once in a parent component (e.g., StateHydration).
  * Then use useDeviceStore() or useDevices() anywhere for state access.
  */
 
@@ -12,16 +12,18 @@
 
 import { useEffect, useRef, useCallback } from 'react'
 import { trpc } from '@/lib/trpc/client'
-import { useSite } from '@/lib/SiteContext'
+import { useSiteStore } from '@/lib/stores/siteStore'
 import { useErrorHandler } from '@/lib/hooks/useErrorHandler'
 import { useDeviceStore } from '@/lib/stores/deviceStore'
 import type { Device } from '@/lib/mockData'
 
 export function useDeviceSync() {
-    const { activeSiteId, activeSite } = useSite()
+    const activeSiteId = useSiteStore((s) => s.activeSiteId)
+    const activeSite = useSiteStore((s) =>
+        s.activeSiteId ? s.sites.find((site) => site.id === s.activeSiteId) ?? null : null
+    )
     const { handleError } = useErrorHandler()
-    const store = useDeviceStore()
-    const utils = trpc.useContext()
+    const utils = trpc.useUtils()
 
     // Debounce timer for position updates
     const positionUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -40,7 +42,7 @@ export function useDeviceSync() {
             refetchOnMount: false,
             staleTime: 5 * 60 * 1000,
             gcTime: 10 * 60 * 1000,
-            retry: 2,
+            retry: 0,
             retryDelay: 1000,
         }
     )
@@ -67,13 +69,13 @@ export function useDeviceSync() {
     // Sync loading/error state to store
     useEffect(() => {
         queueMicrotask(() => {
-            store.setLoading(isLoading)
+            useDeviceStore.getState().setLoading(isLoading)
         })
     }, [isLoading])
 
     useEffect(() => {
         if (error) {
-            store.setError(error)
+            useDeviceStore.getState().setError(error)
             handleError(error, { title: 'Failed to load devices' })
         }
     }, [error])
@@ -106,7 +108,7 @@ export function useDeviceSync() {
     useEffect(() => {
         if (activeSiteId !== previousSiteIdRef.current && previousSiteIdRef.current !== null) {
             queueMicrotask(() => {
-                store.setDevices([])
+                useDeviceStore.getState().setDevices([])
             })
         }
         previousSiteIdRef.current = activeSiteId
@@ -116,7 +118,7 @@ export function useDeviceSync() {
     useEffect(() => {
         if (devicesData !== undefined) {
             queueMicrotask(() => {
-                store.setDevices(devicesData)
+                useDeviceStore.getState().setDevices(devicesData)
             })
         }
     }, [devicesData])
@@ -126,7 +128,7 @@ export function useDeviceSync() {
         async (device: Device) => {
             if (!activeSiteId || !device.type) return
 
-            store.addDevice(device)
+            useDeviceStore.getState().addDevice(device)
 
             try {
                 await createMutation.mutateAsync({
@@ -152,7 +154,7 @@ export function useDeviceSync() {
                 })
             } catch (err) {
                 handleError(err, { title: 'Failed to add device' })
-                store.removeDevice(device.id)
+                useDeviceStore.getState().removeDevice(device.id)
             }
         },
         [activeSiteId, createMutation, handleError]
@@ -160,7 +162,7 @@ export function useDeviceSync() {
 
     const updateDevice = useCallback(
         async (deviceId: string, updates: Partial<Device>) => {
-            store.updateDevice(deviceId, updates)
+            useDeviceStore.getState().updateDevice(deviceId, updates)
 
             try {
                 const dbUpdates: Record<string, unknown> = {}
@@ -187,7 +189,7 @@ export function useDeviceSync() {
 
     const updateDevicePosition = useCallback(
         (deviceId: string, x: number, y: number) => {
-            store.updateDevicePosition(deviceId, x, y)
+            useDeviceStore.getState().updateDevicePosition(deviceId, x, y)
 
             if (positionUpdateTimeoutRef.current) {
                 clearTimeout(positionUpdateTimeoutRef.current)
@@ -207,7 +209,7 @@ export function useDeviceSync() {
 
     const updateMultipleDevices = useCallback(
         async (updates: Array<{ deviceId: string; updates: Partial<Device> }>) => {
-            store.updateMultipleDevices(updates)
+            useDeviceStore.getState().updateMultipleDevices(updates)
 
             try {
                 await Promise.all(
@@ -232,7 +234,7 @@ export function useDeviceSync() {
 
     const removeDevice = useCallback(
         async (deviceId: string) => {
-            store.removeDevice(deviceId)
+            useDeviceStore.getState().removeDevice(deviceId)
 
             try {
                 await deleteMutation.mutateAsync({ id: deviceId })
@@ -248,7 +250,7 @@ export function useDeviceSync() {
         async (deviceIds: string[]) => {
             if (!deviceIds.length) return
 
-            store.removeMultipleDevices(deviceIds)
+            useDeviceStore.getState().removeMultipleDevices(deviceIds)
 
             try {
                 await deleteManyMutation.mutateAsync({ ids: deviceIds })
@@ -264,6 +266,7 @@ export function useDeviceSync() {
         refetch()
     }, [refetch])
 
+    const store = useDeviceStore.getState()
     return {
         // Mutations
         addDevice,

@@ -20,7 +20,12 @@ export function useMapSync() {
     // Load locations from database via tRPC
     const { data: dbLocationsData, isLoading: dbLocationsLoading } = trpc.location.list.useQuery(
         { siteId: activeSiteId || '' },
-        { enabled: !!activeSiteId }
+        {
+            enabled: !!activeSiteId,
+            refetchOnWindowFocus: false,
+            staleTime: 5 * 60 * 1000,
+            gcTime: 10 * 60 * 1000,
+        }
     )
 
     // Stable reference for dbLocations
@@ -161,11 +166,14 @@ export function useMapSync() {
 
     }, []) // No dependencies - completely stable
 
-    // Effect to load data - pass dbLocations as parameter
+    // Effect to load data - defer to avoid blocking main thread during initial hydration
     useEffect(() => {
-        if (activeSiteId && !dbLocationsLoading) {
+        if (!activeSiteId || dbLocationsLoading) return
+        // Defer map load so it doesn't compete with site/device/zone queries on first paint
+        const id = setTimeout(() => {
             loadMapData(activeSiteId, true, dbLocations)
-        }
+        }, 100)
+        return () => clearTimeout(id)
     }, [activeSiteId, dbLocations, dbLocationsLoading, loadMapData])
 
     // Helper Wrappers

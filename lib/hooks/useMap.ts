@@ -60,3 +60,29 @@ export function useMap() {
         setModeHint: store.setModeHint,
     }
 }
+
+/**
+ * Zoom-only hook for components that only need zoom state.
+ * Replaces useZoomContext from deprecated MapContext.
+ */
+export function useZoomContext() {
+    const store = useMapStore()
+    const { loadMapData } = useMapDataSync()
+    const activeSiteId = useSiteStore((s) => s.activeSiteId)
+    const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const triggerZoomIndicator = useCallback(() => {
+        store.setIsZooming(true)
+        if (zoomTimeoutRef.current) clearTimeout(zoomTimeoutRef.current)
+        zoomTimeoutRef.current = setTimeout(() => store.setIsZooming(false), 2000)
+    }, [store])
+    return {
+        zoomLevel: store.zoomLevel,
+        isZooming: store.isZooming,
+        setZoomLevel: store.setZoomLevel,
+        triggerZoomIndicator,
+        interactionHint: store.interactionHint,
+        setInteractionHint: store.setInteractionHint,
+        modeHint: store.modeHint,
+        setModeHint: store.setModeHint,
+    }
+}

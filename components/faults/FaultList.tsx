@@ -19,7 +19,7 @@ import { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react'
 import { AlertCircle, Droplets, Zap, Thermometer, Plug, Settings, Package, Wrench, Lightbulb, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react'
 import { Device, DeviceStatus } from '@/lib/mockData'
 import { FaultCategory, faultCategories } from '@/lib/faultDefinitions'
-import { useDevices } from '@/lib/DomainContext'
+import { useDevices } from '@/lib/hooks/useDevices'
 import { useToast } from '@/lib/ToastContext'
 import { Button } from '@/components/ui/Button'
 

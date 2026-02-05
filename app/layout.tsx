@@ -20,6 +20,7 @@ import { ToastProvider } from '@/lib/ToastContext'
 import { ToastContainer } from '@/components/ui/Toast'
 import { ComposeProviders } from '@/components/shared/ComposeProviders'
 import { StateHydration } from '@/components/StateHydration'
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
 // Import exportData to make exportFusionData() available in browser console
 import '@/lib/exportData'
 
@@ -39,29 +40,36 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Google Fonts */}
+        {/* Fonts: single Google Fonts request (preconnect + one stylesheet) */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet" />
-        {/* Atkinson Hyperlegible - self-hosted from Braille Institute */}
-        <link href="https://fonts.bunny.net/css?family=atkinson-hyperlegible:400,700" rel="stylesheet" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body>
-        <ComposeProviders
-          components={[
-            TRPCProvider,
-            AppearanceProvider,  // Theme + Font + I18n + AdvancedSettings
-            AuthProvider,        // Auth + Role
-            ToastProvider,
-            NotificationProvider,
-            ConfirmProvider,
-          ]}
-        >
-          <StateHydration>
-            {children}
-          </StateHydration>
-          <ToastContainer />
-        </ComposeProviders>
+        <ErrorBoundary section="App">
+          <ComposeProviders
+            components={[
+              TRPCProvider,
+              AppearanceProvider,  // Theme + Font + I18n + AdvancedSettings
+              AuthProvider,        // Auth + Role
+              ToastProvider,
+              NotificationProvider,
+              ConfirmProvider,
+            ]}
+          >
+            {process.env.NEXT_PUBLIC_SKIP_HYDRATION === '1' ? (
+              <>{children}</>
+            ) : (
+              <StateHydration>
+                {children}
+              </StateHydration>
+            )}
+            <ToastContainer />
+          </ComposeProviders>
+        </ErrorBoundary>
       </body>
     </html>
   )

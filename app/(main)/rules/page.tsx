@@ -24,12 +24,12 @@ import { MapUpload } from '@/components/map/MapUpload'
 import { RulesList } from '@/components/rules/RulesList'
 import { RulesPanel } from '@/components/rules/RulesPanel'
 import { ResizablePanel } from '@/components/layout/ResizablePanel'
-import { useRules } from '@/lib/DomainContext'
-import { useZones } from '@/lib/DomainContext'
-import { useDevices } from '@/lib/DomainContext'
-import { useSite } from '@/lib/SiteContext'
+import { useRules } from '@/lib/hooks/useRules'
+import { useZones } from '@/lib/hooks/useZones'
+import { useDevices } from '@/lib/hooks/useDevices'
+import { useSite } from '@/lib/hooks/useSite'
 import { Rule } from '@/lib/mockRules'
-import { useMap } from '@/lib/MapContext'
+import { useMap } from '@/lib/hooks/useMap'
 import { useMapUpload } from '@/lib/useMapUpload'
 import { useToast } from '@/lib/ToastContext'
 
@@ -66,7 +66,7 @@ export default function RulesPage() {
   const listContainerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  // Map data is now loaded from MapContext - no need to load it here
+  // Map data is now loaded from map store (useMapSync) - no need to load it here
   const { refreshMapData } = useMap()
   const { uploadMap, uploadVectorData } = useMapUpload()
 

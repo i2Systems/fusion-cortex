@@ -13,6 +13,7 @@ import { FloorPlanImage, type ImageBounds } from '@/components/map/FloorPlanImag
 
 import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 import { getCanvasColors, getRgbaVariable } from '@/lib/canvasColors'
+import { resolveZoneColor } from '@/lib/zoneColors'
 
 interface DevicePoint {
   id: string
@@ -225,8 +226,8 @@ export function BACnetZoneCanvas({
               <Group key={zone.id}>
                 <Line
                   points={points}
-                  fill={`${zone.color}40`}
-                  stroke={isSelected ? statusColor : zone.color}
+fill={`${resolveZoneColor(zone.color)}40`}
+                    stroke={isSelected ? statusColor : resolveZoneColor(zone.color)}
                   strokeWidth={isSelected ? 4 : (isHovered ? 3 : 2)}
                   closed
                   onClick={() => onZoneSelect?.(zone.id)}
@@ -300,7 +301,7 @@ export function BACnetZoneCanvas({
                     text={`${zone.name}${mapping?.bacnetObjectId ? ` (${mapping.bacnetObjectId})` : ''}`}
                     fontSize={14}
                     fontFamily="system-ui, -apple-system, sans-serif"
-                    fill={isSelected ? statusColor : zone.color}
+                    fill={isSelected ? statusColor : resolveZoneColor(zone.color)}
                     padding={4}
                     align="left"
                     listening={false}

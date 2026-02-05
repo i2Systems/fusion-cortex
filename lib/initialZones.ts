@@ -8,13 +8,13 @@
  * and match the Walmart Supercenter floor plan structure.
  */
 
-import { Zone } from './ZoneContext'
-import { ZONE_COLORS } from './zoneColors'
+import { Zone } from './stores/zoneStore'
+import { getZoneColorForIndex } from './zoneColors'
 
 export const initialZones: Omit<Zone, 'id' | 'createdAt' | 'updatedAt'>[] = [
   {
     name: 'Electronics & Technology',
-    color: ZONE_COLORS[2], // success green
+    color: getZoneColorForIndex(2), // success
     description: 'Stockroom, Pharmacy/Health & Beauty, and Home sections',
     polygon: [
       { x: 0.0, y: 0.0 },
@@ -29,7 +29,7 @@ export const initialZones: Omit<Zone, 'id' | 'createdAt' | 'updatedAt'>[] = [
   },
   {
     name: 'Pickup & Delivery',
-    color: ZONE_COLORS[0], // primary blue
+    color: getZoneColorForIndex(0), // primary
     description: 'Pickup & Delivery, Electronics, and Sporting Goods',
     polygon: [
       { x: 0.25, y: 0.0 },
@@ -44,7 +44,7 @@ export const initialZones: Omit<Zone, 'id' | 'createdAt' | 'updatedAt'>[] = [
   },
   {
     name: 'Apparel & Clothing',
-    color: ZONE_COLORS[1], // accent orange
+    color: getZoneColorForIndex(1), // accent
     description: 'All Apparel sections including aisles 1-10, 11-18, 23-31, 32-38, 39-49, 50-52, 53-60',
     polygon: [
       { x: 0.0, y: 0.5 },
@@ -59,7 +59,7 @@ export const initialZones: Omit<Zone, 'id' | 'createdAt' | 'updatedAt'>[] = [
   },
   {
     name: 'Toys & Sporting Goods',
-    color: ZONE_COLORS[4], // purple
+    color: getZoneColorForIndex(4), // info
     description: 'Toys sections with aisles 11-18, 61-67',
     polygon: [
       { x: 0.35, y: 0.4 },
@@ -74,7 +74,7 @@ export const initialZones: Omit<Zone, 'id' | 'createdAt' | 'updatedAt'>[] = [
   },
   {
     name: 'Grocery & Food',
-    color: ZONE_COLORS[3], // warning yellow
+    color: getZoneColorForIndex(3), // warning
     description: 'Meat & Seafood, Produce, Grocery aisles 19-22, Deli, Bakery, Main Lobby, and Stockroom',
     polygon: [
       { x: 0.6, y: 0.0 },

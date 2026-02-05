@@ -41,6 +41,7 @@ export function EditDeviceModal({ isOpen, onClose, onSave, device }: EditDeviceM
         signal: '',
         battery: '',
     })
+    const [fieldErrors, setFieldErrors] = useState<{ deviceId?: string; serialNumber?: string }>({})
 
     // Populate form when device changes
     useEffect(() => {
@@ -56,11 +57,21 @@ export function EditDeviceModal({ isOpen, onClose, onSave, device }: EditDeviceM
                 battery: device.battery !== undefined ? device.battery.toString() : '',
             })
         }
+        setFieldErrors({})
     }, [device])
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         if (!device) return
+
+        const errors: { deviceId?: string; serialNumber?: string } = {}
+        if (!formData.deviceId.trim()) errors.deviceId = 'Device ID is required'
+        if (!formData.serialNumber.trim()) errors.serialNumber = 'Serial number is required'
+        if (Object.keys(errors).length > 0) {
+            setFieldErrors(errors)
+            return
+        }
+        setFieldErrors({})
 
         const updates: Partial<Device> = {
             deviceId: formData.deviceId,
@@ -164,11 +175,15 @@ export function EditDeviceModal({ isOpen, onClose, onSave, device }: EditDeviceM
                                     id="edit-device-id"
                                     type="text"
                                     value={formData.deviceId}
-                                    onChange={(e) => setFormData({ ...formData, deviceId: e.target.value })}
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent font-mono text-sm"
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, deviceId: e.target.value })
+                                        if (fieldErrors.deviceId) setFieldErrors(prev => ({ ...prev, deviceId: undefined }))
+                                    }}
+                                    className={`w-full pl-10 pr-4 py-2.5 rounded-lg bg-[var(--color-surface-subtle)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent font-mono text-sm border ${fieldErrors.deviceId ? 'border-[var(--color-danger)]' : 'border-[var(--color-border-subtle)]'}`}
                                     required
                                 />
                             </div>
+                            {fieldErrors.deviceId && <p className="mt-1 text-xs text-[var(--color-danger)]" role="alert">{fieldErrors.deviceId}</p>}
                         </div>
                         <div>
                             <label htmlFor="edit-device-serial" className="block text-sm font-medium text-[var(--color-text)] mb-1.5">
@@ -180,11 +195,15 @@ export function EditDeviceModal({ isOpen, onClose, onSave, device }: EditDeviceM
                                     id="edit-device-serial"
                                     type="text"
                                     value={formData.serialNumber}
-                                    onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent font-mono text-sm"
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, serialNumber: e.target.value })
+                                        if (fieldErrors.serialNumber) setFieldErrors(prev => ({ ...prev, serialNumber: undefined }))
+                                    }}
+                                    className={`w-full pl-10 pr-4 py-2.5 rounded-lg bg-[var(--color-surface-subtle)] text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent font-mono text-sm border ${fieldErrors.serialNumber ? 'border-[var(--color-danger)]' : 'border-[var(--color-border-subtle)]'}`}
                                     required
                                 />
                             </div>
+                            {fieldErrors.serialNumber && <p className="mt-1 text-xs text-[var(--color-danger)]" role="alert">{fieldErrors.serialNumber}</p>}
                         </div>
                     </div>
 

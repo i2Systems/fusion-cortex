@@ -13,6 +13,7 @@ import { FloorPlanImage, type ImageBounds } from '@/components/map/FloorPlanImag
 
 import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 import { getCanvasColors, getRgbaVariable } from '@/lib/canvasColors'
+import { resolveZoneColor } from '@/lib/zoneColors'
 
 interface DevicePoint {
   id: string
@@ -263,8 +264,8 @@ export function FaultsMapCanvas({
               <Line
                 key={zone.id}
                 points={points}
-                fill={`${zone.color}30`}
-                stroke={zone.color}
+                fill={`${resolveZoneColor(zone.color)}30`}
+                stroke={resolveZoneColor(zone.color)}
                 strokeWidth={1}
                 closed
                 opacity={0.3}

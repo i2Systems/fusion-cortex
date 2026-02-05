@@ -13,6 +13,7 @@ import { FloorPlanImage, type ImageBounds } from '@/components/map/FloorPlanImag
 import { Rule } from '@/lib/mockRules'
 import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 import { getCanvasColors, getRgbaVariable } from '@/lib/canvasColors'
+import { resolveZoneColor } from '@/lib/zoneColors'
 
 interface DevicePoint {
   id: string
@@ -215,8 +216,8 @@ export function RulesZoneCanvas({
               <Group key={zone.id}>
                 <Line
                   points={points}
-                  fill={`${zone.color}${hasRules ? '60' : '40'}`}
-                  stroke={isSelected ? colors.primary : zone.color}
+                  fill={`${resolveZoneColor(zone.color)}${hasRules ? '60' : '40'}`}
+                  stroke={isSelected ? colors.primary : resolveZoneColor(zone.color)}
                   strokeWidth={isSelected ? 4 : (isHovered ? 3 : 2)}
                   closed
                   onClick={() => onZoneSelect?.(zone.name)}
@@ -261,7 +262,7 @@ export function RulesZoneCanvas({
                     text={`${zone.name}${hasRules ? ` (${zoneRules.length} rule${zoneRules.length !== 1 ? 's' : ''})` : ''}`}
                     fontSize={14}
                     fontFamily="system-ui, -apple-system, sans-serif"
-                    fill={isSelected ? colors.primary : zone.color}
+                    fill={isSelected ? colors.primary : resolveZoneColor(zone.color)}
                     padding={4}
                     align="left"
                     listening={false}

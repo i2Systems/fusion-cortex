@@ -9,9 +9,10 @@ import { GroupsPanel } from '@/components/groups/GroupsPanel'
 import { GroupsViewToggle, type GroupsFilterMode } from '@/components/groups/GroupsViewToggle'
 import { useGroups } from '@/lib/hooks/useGroups'
 import { usePeople } from '@/lib/hooks/usePeople'
-import { useSite } from '@/lib/SiteContext'
-import { useDevices } from '@/lib/DomainContext'
+import { useSite } from '@/lib/hooks/useSite'
+import { useDevices } from '@/lib/hooks/useDevices'
 import { useToast } from '@/lib/ToastContext'
+import { getGroupColors } from '@/lib/canvasColors'
 
 export default function GroupsPage() {
     const { groups, isLoading: groupsLoading, addGroup, updateGroup, deleteGroup } = useGroups()
@@ -52,7 +53,7 @@ export default function GroupsPage() {
             const newGroup = await addGroup({
                 name: 'New Group',
                 description: '',
-                color: '#4c7dff',
+                color: getGroupColors()[0],
                 siteId: activeSiteId,
                 deviceIds: [],
                 personIds: [],
@@ -75,7 +76,7 @@ export default function GroupsPage() {
             const newGroup = await addGroup({
                 name: 'New Group',
                 description: '',
-                color: '#4c7dff',
+                color: getGroupColors()[0],
                 siteId: activeSiteId,
                 deviceIds,
                 personIds,

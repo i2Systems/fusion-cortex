@@ -100,6 +100,28 @@ export function getCanvasColors(): CanvasColors {
 }
 
 /**
+ * Get group color palette from CSS custom properties
+ */
+export function getGroupColors(): string[] {
+  if (typeof window === 'undefined') {
+    return ['#4c7dff', '#ff4c4c', '#4cff7d', '#ffd74c', '#ff4cff', '#4cffff', '#ff8c4c', '#8c4cff']
+  }
+  const root = document.documentElement
+  const computedStyle = getComputedStyle(root)
+  const getVar = (prop: string) => computedStyle.getPropertyValue(prop).trim()
+  return [
+    getVar('--color-group-1') || getVar('--color-primary') || '#4c7dff',
+    getVar('--color-group-2') || getVar('--color-danger') || '#ff4c4c',
+    getVar('--color-group-3') || getVar('--color-success') || '#4cff7d',
+    getVar('--color-group-4') || getVar('--color-warning') || '#ffd74c',
+    getVar('--color-group-5') || getVar('--color-accent') || '#ff4cff',
+    getVar('--color-group-6') || getVar('--color-info') || '#4cffff',
+    getVar('--color-group-7') || '#ff8c4c',
+    getVar('--color-group-8') || '#8c4cff',
+  ]
+}
+
+/**
  * Convert hex color to rgba with specified opacity
  */
 export function hexToRgba(hex: string, opacity: number): string {

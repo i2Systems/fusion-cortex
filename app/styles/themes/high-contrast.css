@@ -32,6 +32,15 @@
     /* Orange-Yellow */
     --color-info: #00ffff;
     /* Cyan */
+
+    /* Zone palette - Primary and Info both cyan; use magenta for zone-info */
+    --color-zone-primary: var(--color-primary);
+    --color-zone-accent: var(--color-accent);
+    --color-zone-success: var(--color-success);
+    --color-zone-warning: var(--color-warning);
+    --color-zone-danger: var(--color-danger);
+    --color-zone-info: #ff00ff;
+    /* Magenta - distinct from cyan primary */
     
     /* Overlay & backdrop colors */
     --color-backdrop: rgba(0, 0, 0, 0.7);

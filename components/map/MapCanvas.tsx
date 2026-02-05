@@ -18,14 +18,15 @@
 import { Stage, Layer, Circle, Image as KonvaImage, Group, Text, Rect, Line } from 'react-konva'
 import { useEffect, useState, useRef, useMemo, useCallback, useLayoutEffect } from 'react'
 import { Component, Device as DeviceType, DeviceType as DeviceTypeEnum } from '@/lib/mockData'
-import { useZoomContext } from '@/lib/MapContext'
+import { useZoomContext } from '@/lib/hooks/useMap'
 
 import { FloorPlanImage, type ImageBounds } from './FloorPlanImage'
 import { MapPersonToken } from './MapPersonToken'
 import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 import type { Location } from '@/lib/locationStorage'
 import { isFixtureType } from '@/lib/deviceUtils'
-import { getCanvasColors, getRgbaVariable } from '@/lib/canvasColors'
+import { getCanvasColors, getRgbaVariable, getColorVariable } from '@/lib/canvasColors'
+import { resolveZoneColor } from '@/lib/zoneColors'
 
 /**
  * Get fixture size multiplier based on fixture type
@@ -952,7 +953,7 @@ export function MapCanvas({
           {/* Zones Background - rendered before devices so they appear behind */}
           {showZones && zones.map((zone) => {
             const points = zone.polygon.map(toCanvasCoords).flatMap(p => [p.x, p.y])
-
+            const zoneColor = resolveZoneColor(zone.color)
             const hasSelectedDevices = selectedDeviceIds.length > 0
             const isHovered = hoveredZoneId === zone.id
 
@@ -1002,14 +1003,14 @@ export function MapCanvas({
               >
                 <Line
                   points={points}
-                  fill={hasSelectedDevices && isHovered ? `${zone.color}40` : `${zone.color}20`}
-                  stroke={zone.color}
+                  fill={hasSelectedDevices && isHovered ? `${zoneColor}40` : `${zoneColor}20`}
+                  stroke={zoneColor}
                   strokeWidth={hasSelectedDevices && isHovered ? 2 : 1}
                   closed
                   opacity={hasSelectedDevices && isHovered ? 0.5 : 0.3}
                   listening={true}
                   shadowBlur={hasSelectedDevices && isHovered ? 15 : 0}
-                  shadowColor={zone.color}
+                  shadowColor={zoneColor}
                 />
                 <Text
                   x={points.filter((_, i) => i % 2 === 0).reduce((a, b) => a + b, 0) / (points.length / 2) - 30}
@@ -1017,7 +1018,7 @@ export function MapCanvas({
                   text={hasSelectedDevices && isHovered ? `Click to arrange ${selectedDeviceIds.length} device${selectedDeviceIds.length !== 1 ? 's' : ''}` : zone.name}
                   fontSize={hasSelectedDevices && isHovered ? 11 : 12}
                   fontFamily="system-ui, -apple-system, sans-serif"
-                  fill={zone.color}
+                  fill={zoneColor}
                   opacity={hasSelectedDevices && isHovered ? 0.9 : 0.6}
                   listening={false}
                   fontStyle={hasSelectedDevices && isHovered ? 'bold' : 'normal'}
@@ -1476,7 +1477,7 @@ export function MapCanvas({
                       y={0}
                       radius={3.5}
                       fill={colors.primary}
-                      stroke="rgba(0,0,0,0.3)"
+                      stroke={getColorVariable('--color-canvas-stroke-dark', 'rgba(0,0,0,0.3)')}
                       strokeWidth={0.5}
                       opacity={0.9}
                     />
@@ -1538,7 +1539,7 @@ export function MapCanvas({
                       const warrantyColor = component.warrantyStatus === 'Active'
                         ? colors.success
                         : component.warrantyStatus === 'Expired'
-                          ? colors.danger || '#ef4444'
+                          ? colors.danger
                           : colors.muted
                       const parentDevice = devicesData.find(d => d.id === device.id)
                       const handleComponentClick = (e: any) => {
@@ -1993,7 +1994,7 @@ export function MapCanvas({
                       width={width - 6}
                       height={height - 6}
                       fill="transparent"
-                      stroke="rgba(255, 255, 255, 0.8)"
+                      stroke={getColorVariable('--color-canvas-selection-inner', 'rgba(255, 255, 255, 0.8)')}
                       strokeWidth={2}
                       dash={[6, 4]}
                       listening={false}
@@ -2128,11 +2129,11 @@ export function MapCanvas({
                       y={0}
                       width={Math.max(160, 100 + (totalCount > 9 ? 20 : 0))}
                       height={totalCount > 0 ? 60 : 35}
-                      fill={colors.tooltipBg || 'rgba(17, 24, 39, 0.98)'}
+                      fill={colors.tooltipBg}
                       cornerRadius={8}
                       listening={false}
                       shadowBlur={25}
-                      shadowColor={getRgbaVariable('--color-tooltip-shadow', 0.7) || 'rgba(0, 0, 0, 0.7)'}
+                      shadowColor={getRgbaVariable('--color-tooltip-shadow', 0.7, 'rgba(0, 0, 0, 0.7)')}
                     />
                     <Rect
                       x={0}

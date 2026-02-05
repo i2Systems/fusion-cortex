@@ -14,9 +14,10 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { usePathname, useRouter } from 'next/navigation'
 import { useRole } from '@/lib/auth'
-import { useSite } from '@/lib/SiteContext'
+import { useSite } from '@/lib/hooks/useSite'
 import { useNotifications } from '@/lib/NotificationContext'
-import { ChevronDown, Bell, Loader2 } from 'lucide-react'
+import { useDashboardViewStore } from '@/lib/stores/dashboardViewStore'
+import { ChevronDown, Bell, Loader2, LayoutGrid, Map } from 'lucide-react'
 
 const pageTitles: Record<string, { primary: string; secondary?: string }> = {
   '/dashboard': { primary: 'Fusion', secondary: 'i2 Cloud' },
@@ -36,6 +37,8 @@ export function PageTitle() {
   const { sites, activeSite, setActiveSite, activeSiteId } = useSite()
   const { unreadCount } = useNotifications()
   const title = pageTitles[pathname || '/dashboard'] || { primary: 'Fusion', secondary: 'i2 Cloud' }
+  const isDashboard = pathname === '/dashboard'
+  const { viewMode: dashboardViewMode, setViewMode: setDashboardViewMode } = useDashboardViewStore()
   const [showSiteDropdown, setShowSiteDropdown] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [switchingSiteId, setSwitchingSiteId] = useState<string | null>(null)
@@ -76,6 +79,35 @@ export function PageTitle() {
           <span className="text-xs md:text-sm font-medium text-[var(--color-text-muted)] opacity-60 hidden md:inline truncate">
             {role}
           </span>
+          {/* Dashboard view toggle - icons next to breadcrumbs */}
+          {isDashboard && (
+            <div className="flex items-center gap-1 ml-2 md:ml-3 pointer-events-auto">
+              <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)]">
+                <button
+                  onClick={() => setDashboardViewMode('map')}
+                  className={`p-1.5 rounded-md transition-all ${
+                    dashboardViewMode === 'map'
+                      ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-glow-primary)]'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
+                  }`}
+                  title="Map View"
+                >
+                  <Map size={16} />
+                </button>
+                <button
+                  onClick={() => setDashboardViewMode('cards')}
+                  className={`p-1.5 rounded-md transition-all ${
+                    dashboardViewMode === 'cards'
+                      ? 'bg-[var(--color-primary)] text-[var(--color-text-on-primary)] shadow-[var(--shadow-glow-primary)]'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
+                  }`}
+                  title="Cards View"
+                >
+                  <LayoutGrid size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: Site Selector + Notifications */}

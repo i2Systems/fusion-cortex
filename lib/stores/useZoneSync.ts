@@ -8,16 +8,19 @@
 
 import { useEffect, useRef, useCallback } from 'react'
 import { trpc } from '@/lib/trpc/client'
-import { useSite } from '@/lib/SiteContext'
+import { useSiteStore } from '@/lib/stores/siteStore'
 import { useErrorHandler } from '@/lib/hooks/useErrorHandler'
 import { useZoneStore, type Zone, pointInPolygon } from '@/lib/stores/zoneStore'
 import type { Device } from '@/lib/mockData'
 
 export function useZoneSync() {
-    const { activeSiteId, activeSite } = useSite()
+    const activeSiteId = useSiteStore((s) => s.activeSiteId)
+    const activeSite = useSiteStore((s) =>
+        s.activeSiteId ? s.sites.find((site) => site.id === s.activeSiteId) ?? null : null
+    )
     const { handleError } = useErrorHandler()
     const store = useZoneStore()
-    const utils = trpc.useContext()
+    const utils = trpc.useUtils()
 
     const ensuredSiteIdRef = useRef<string | null>(null)
 

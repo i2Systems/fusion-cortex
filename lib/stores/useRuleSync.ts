@@ -8,13 +8,13 @@
 
 import { useEffect, useCallback } from 'react'
 import { trpc } from '@/lib/trpc/client'
-import { useSite } from '@/lib/SiteContext'
+import { useSiteStore } from '@/lib/stores/siteStore'
 import { useErrorHandler } from '@/lib/hooks/useErrorHandler'
 import { useRuleStore } from '@/lib/stores/ruleStore'
 import type { Rule } from '@/lib/mockRules'
 
 export function useRuleSync() {
-    const { activeSiteId } = useSite()
+    const activeSiteId = useSiteStore((s) => s.activeSiteId)
     const { handleError } = useErrorHandler()
     const store = useRuleStore()
 

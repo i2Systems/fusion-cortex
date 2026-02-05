@@ -9,11 +9,11 @@
 
 import { useEffect } from 'react'
 import { trpc } from '@/lib/trpc/client'
-import { useSite } from '@/lib/SiteContext'
+import { useSiteStore } from '@/lib/stores/siteStore'
 import { usePersonStore, type Person } from '@/lib/stores/personStore'
 
 export function usePersonSync() {
-    const { activeSiteId } = useSite()
+    const activeSiteId = useSiteStore((s) => s.activeSiteId)
 
     const { data: peopleData, isLoading, error } = trpc.person.list.useQuery(
         { siteId: activeSiteId || '' },

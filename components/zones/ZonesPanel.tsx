@@ -19,8 +19,9 @@ import { Layers, Edit2, Trash2, MapPin, X, Save, CheckSquare, Square, Maximize2,
 import { getStatusTokenClass, getSignalTokenClass, getBatteryTokenClass } from '@/lib/styleUtils'
 import { SelectSwitcher } from '@/components/shared/SelectSwitcher'
 import { PanelEmptyState } from '@/components/shared/PanelEmptyState'
-import { ZONE_COLORS, DEFAULT_ZONE_COLOR } from '@/lib/zoneColors'
+import { getZoneColorOptions, resolveZoneColor, DEFAULT_ZONE_COLOR } from '@/lib/zoneColors'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { ZoneFocusedModal } from './ZoneFocusedContent'
 import { Device } from '@/lib/mockData'
 import { Rule } from '@/lib/mockRules'
@@ -284,6 +285,7 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
     color: DEFAULT_ZONE_COLOR,
   })
   const [selectedZoneIds, setSelectedZoneIds] = useState<Set<string>>(new Set())
+  const [nameError, setNameError] = useState<string | null>(null)
 
   // Memoized derived values
   const selectedZone = useMemo(() => zones.find(z => z.id === selectedZoneId), [zones, selectedZoneId])
@@ -291,32 +293,16 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
   const someSelected = useMemo(() => selectedZoneIds.size > 0 && selectedZoneIds.size < zones.length, [selectedZoneIds.size, zones.length])
 
   useEffect(() => {
-    // Get CSS variable values or use direct color
-    const root = document.documentElement
-    const computedStyle = getComputedStyle(root)
+    // Resolve zone colors (semantic keys or hex) to display hex
     const colorMap: Record<string, string> = {}
-
     zones.forEach(zone => {
-      if (zone.color) {
-        colorMap[zone.id] = zone.color
-      } else if (zone.colorVar) {
-        const colorValue = computedStyle.getPropertyValue(zone.colorVar).trim()
-        if (colorValue) {
-          colorMap[zone.id] = colorValue
-        }
-      }
+      const raw = zone.color || (zone.colorVar && typeof window !== 'undefined'
+        ? getComputedStyle(document.documentElement).getPropertyValue(zone.colorVar).trim()
+        : null)
+      colorMap[zone.id] = raw ? resolveZoneColor(raw) : resolveZoneColor(DEFAULT_ZONE_COLOR)
     })
-
     setColors(colorMap)
-
-    // Update edit form color if editing and zone color changed
-    if (isEditing && selectedZone) {
-      const newColor = colorMap[selectedZone.id] || selectedZone.color || DEFAULT_ZONE_COLOR
-      if (editFormData.color !== newColor) {
-        setEditFormData(prev => ({ ...prev, color: newColor }))
-      }
-    }
-  }, [zones, isEditing, selectedZone, editFormData.color])
+  }, [zones])
 
   // Initialize edit form when entering edit mode
   useEffect(() => {
@@ -324,13 +310,14 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
       setEditFormData({
         name: selectedZone.name,
         description: selectedZone.description || '',
-        color: colors[selectedZone.id] || selectedZone.color || DEFAULT_ZONE_COLOR,
+        color: selectedZone.color || DEFAULT_ZONE_COLOR,
       })
+      setNameError(null)
     } else if (!selectedZone) {
-      // Exit edit mode if zone is deselected
       setIsEditing(false)
+      setNameError(null)
     }
-  }, [isEditing, selectedZone, colors])
+  }, [isEditing, selectedZone])
 
   // Keyboard navigation: up/down arrows
   useEffect(() => {
@@ -372,9 +359,10 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
     if (!selectedZone) return
 
     if (!editFormData.name.trim()) {
-      addToast({ type: 'warning', title: 'Required Field', message: 'Zone name is required' })
+      setNameError('Zone name is required')
       return
     }
+    setNameError(null)
 
     if (onEditZone) {
       onEditZone(selectedZone.id, {
@@ -388,15 +376,15 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
 
   const handleCancelEdit = useCallback(() => {
     setIsEditing(false)
-    // Reset form data
+    setNameError(null)
     if (selectedZone) {
       setEditFormData({
         name: selectedZone.name,
         description: selectedZone.description || '',
-        color: colors[selectedZone.id] || selectedZone.color || DEFAULT_ZONE_COLOR,
+        color: selectedZone.color || DEFAULT_ZONE_COLOR,
       })
     }
-  }, [selectedZone, colors])
+  }, [selectedZone])
 
   const handleToggleZoneSelection = useCallback((zoneId: string) => {
     setSelectedZoneIds(prev => {
@@ -546,12 +534,16 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
                 <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
                   Zone Name
                 </label>
-                <input
+                <Input
                   type="text"
                   value={editFormData.name}
-                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  onChange={(e) => {
+                    setEditFormData({ ...editFormData, name: e.target.value })
+                    if (nameError) setNameError(null)
+                  }}
                   className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border-subtle)] text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
                   placeholder="Enter zone name"
+                  errorMessage={nameError ?? undefined}
                 />
               </div>
 
@@ -569,33 +561,59 @@ export function ZonesPanel({ zones, selectedZoneId, onZoneSelect, onCreateZone, 
                 />
               </div>
 
-              {/* Color Picker */}
+              {/* Color Picker - Semantic options + custom hex */}
               <div>
                 <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1.5">
                   Zone Color
                 </label>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 flex gap-2 flex-wrap">
-                    {ZONE_COLORS.map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => setEditFormData({ ...editFormData, color })}
-                        className={`w-8 h-8 rounded-lg border-2 transition-all ${editFormData.color === color
-                          ? 'border-[var(--color-text)] scale-110 shadow-[var(--shadow-soft)]'
-                          : 'border-[var(--color-border-subtle)] hover:border-[var(--color-primary)]/50'
-                          }`}
-                        style={{ backgroundColor: color }}
-                        title={color}
-                      />
-                    ))}
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {getZoneColorOptions().map((opt) => {
+                      const isSelected = editFormData.color === opt.id
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setEditFormData(prev => ({ ...prev, color: opt.id }))}
+                          className={`w-8 h-8 rounded-lg border-2 transition-all flex-shrink-0 ${isSelected
+                            ? 'border-[var(--color-text)] scale-110 shadow-[var(--shadow-soft)]'
+                            : 'border-[var(--color-border-subtle)] hover:border-[var(--color-primary)]/50'
+                            }`}
+                          style={{ backgroundColor: opt.hex }}
+                          title={opt.label}
+                        />
+                      )
+                    })}
+                    <input
+                      type="color"
+                      value={editFormData.color.startsWith('#') ? editFormData.color : resolveZoneColor(editFormData.color)}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, color: e.target.value }))}
+                      className="w-8 h-8 rounded-lg border-2 border-[var(--color-border-subtle)] cursor-pointer flex-shrink-0 p-0"
+                      title="Custom color"
+                    />
                   </div>
-                  <input
-                    type="color"
-                    value={editFormData.color}
-                    onChange={(e) => setEditFormData({ ...editFormData, color: e.target.value })}
-                    className="w-10 h-10 rounded-lg border border-[var(--color-border-subtle)] cursor-pointer"
-                    title="Custom color"
-                  />
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[var(--color-text-muted)]">Custom hex:</span>
+                    <input
+                      type="text"
+                      value={editFormData.color.startsWith('#') ? editFormData.color : ''}
+                      onChange={(e) => {
+                        const v = e.target.value.trim()
+                        if (v === '' || /^#[0-9A-Fa-f]{0,6}$/.test(v) || /^[0-9A-Fa-f]{0,6}$/.test(v)) {
+                          const hex = v.startsWith('#') ? v : (v ? `#${v}` : '')
+                          setEditFormData(prev => ({ ...prev, color: hex || DEFAULT_ZONE_COLOR }))
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim().replace(/^#?/, '')
+                        if (v.length === 6 && /^[0-9A-Fa-f]{6}$/.test(v)) {
+                          setEditFormData(prev => ({ ...prev, color: `#${v}` }))
+                        }
+                      }}
+                      placeholder="#000000"
+                      className="w-24 px-2 py-1 rounded text-xs font-mono bg-[var(--color-surface)] border border-[var(--color-border-subtle)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                    />
+                  </div>
                 </div>
               </div>
 

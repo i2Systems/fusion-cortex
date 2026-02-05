@@ -15,7 +15,7 @@ import type { Device } from '@/lib/mockData'
 
 export function useDeviceActions() {
     const activeSiteId = useSiteStore((s) => s.activeSiteId)
-    const utils = trpc.useContext()
+    const utils = trpc.useUtils()
     const { handleError } = useErrorHandler()
 
     // Debounce timer for position updates

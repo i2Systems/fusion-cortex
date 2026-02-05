@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation'
 import { trpc } from '@/lib/trpc/client'
 import { PersonToken } from '@/components/people/PersonToken'
 import type { Person } from '@/lib/stores/personStore'
-import type { Site } from '@/lib/SiteContext'
+import type { Site } from '@/lib/stores/siteStore'
 
 interface SiteManagerDisplayProps {
   site: Site

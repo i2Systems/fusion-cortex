@@ -15,7 +15,6 @@ import { loadLocations } from '@/lib/locationStorage'
 
 export function useMapDataSync() {
     const activeSiteId = useSiteStore((s) => s.activeSiteId)
-    const store = useMapStore()
 
     // Load locations from database via tRPC
     const { data: dbLocationsData, isLoading: dbLocationsLoading } = trpc.location.list.useQuery(
@@ -26,17 +25,16 @@ export function useMapDataSync() {
     // Stable reference for dbLocations
     const dbLocations = useMemo(() => dbLocationsData ?? [], [dbLocationsData])
 
-    // Load map data logic
+    // Load map data logic - use getState() to avoid subscribing to store (prevents infinite loop)
     const loadMapData = useCallback(async (siteId: string, forceRefresh = false) => {
         if (!siteId || typeof window === 'undefined') return
 
-        // Check cache
-        if (!forceRefresh && store.mapCache[siteId]) {
+        const mapStore = useMapStore.getState()
+        if (!forceRefresh && mapStore.mapCache[siteId]) {
             return
         }
 
-        // Set loading state in cache
-        store.setMapCache(siteId, {
+        mapStore.setMapCache(siteId, {
             mapImageUrl: null,
             vectorData: null,
             mapUploaded: false,
@@ -62,7 +60,7 @@ export function useMapDataSync() {
             }
 
             if (locations.length === 0) {
-                store.setMapCache(siteId, {
+                useMapStore.getState().setMapCache(siteId, {
                     mapImageUrl: null, vectorData: null, mapUploaded: false, isLoading: false
                 })
                 return
@@ -86,7 +84,7 @@ export function useMapDataSync() {
                             mapUploaded: true,
                             isLoading: false
                         }
-                        store.setMapCache(siteId, mapData)
+                        useMapStore.getState().setMapCache(siteId, mapData)
                         return
                     }
                 } catch (e) { console.error(e) }
@@ -101,14 +99,14 @@ export function useMapDataSync() {
                         const dataUrl = await getImageDataUrl(imageId)
                         if (dataUrl) {
                             mapData.mapImageUrl = dataUrl
-                            store.setMapCache(siteId, mapData)
+                            useMapStore.getState().setMapCache(siteId, mapData)
                             return
                         }
                     } catch (e) { console.error(e) }
                 } else {
                     // Regular URL
                     mapData.mapImageUrl = location.imageUrl
-                    store.setMapCache(siteId, mapData)
+                    useMapStore.getState().setMapCache(siteId, mapData)
                     return
                 }
             }
@@ -119,7 +117,7 @@ export function useMapDataSync() {
                     const base64 = location.vectorDataUrl.replace('data:application/json;base64,', '')
                     const json = atob(base64)
                     mapData.vectorData = JSON.parse(json)
-                    store.setMapCache(siteId, mapData)
+                    useMapStore.getState().setMapCache(siteId, mapData)
                     return
                 } catch (e) { console.error(e) }
             }
@@ -127,7 +125,7 @@ export function useMapDataSync() {
             // 4. Old localStorage fallback
             if (location.vectorData) {
                 mapData.vectorData = location.vectorData
-                store.setMapCache(siteId, mapData)
+                useMapStore.getState().setMapCache(siteId, mapData)
                 return
             }
 
@@ -138,24 +136,24 @@ export function useMapDataSync() {
                 const imageUrl = await loadMapImage(imageKey)
                 if (imageUrl) {
                     mapData.mapImageUrl = imageUrl
-                    store.setMapCache(siteId, mapData)
+                    useMapStore.getState().setMapCache(siteId, mapData)
                     return
                 }
             } catch (e) { }
 
             // If nothing found
-            store.setMapCache(siteId, {
+            useMapStore.getState().setMapCache(siteId, {
                 mapImageUrl: null, vectorData: null, mapUploaded: false, isLoading: false
             })
 
         } catch (error) {
             console.error('Failed to load map data', error)
-            store.setMapCache(siteId, {
+            useMapStore.getState().setMapCache(siteId, {
                 mapImageUrl: null, vectorData: null, mapUploaded: false, isLoading: false
             })
         }
 
-    }, [dbLocations, store])
+    }, [dbLocations])
 
     // Effect to load data
     useEffect(() => {

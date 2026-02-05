@@ -27,6 +27,15 @@
     --color-success: #10b981;
     --color-warning: #f59e0b;
     --color-info: #3b82f6;
+
+    /* Zone palette - Primary and Info both blue; info → violet for distinction */
+    --color-zone-primary: var(--color-primary);
+    --color-zone-accent: var(--color-accent);
+    --color-zone-success: var(--color-success);
+    --color-zone-warning: var(--color-warning);
+    --color-zone-danger: var(--color-danger);
+    --color-zone-info: #8b5cf6;
+    /* Violet - distinct from blue primary */
     
     /* Overlay & backdrop colors */
     --color-backdrop: rgba(0, 0, 0, 0.5);

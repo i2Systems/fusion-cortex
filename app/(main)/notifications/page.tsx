@@ -11,9 +11,9 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { useNotifications, NotificationType } from '@/lib/NotificationContext'
-import { useSite } from '@/lib/SiteContext'
-import { useDevices } from '@/lib/DomainContext'
-import { useZones } from '@/lib/DomainContext'
+import { useSite } from '@/lib/hooks/useSite'
+import { useDevices } from '@/lib/hooks/useDevices'
+import { useZones } from '@/lib/hooks/useZones'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { AlertTriangle, Layers, Network, Workflow, Search, Home, X, CheckCheck, Mail, ArrowUpDown, Clock, Filter, Sparkles, List, Grid3x3, LayoutGrid, Columns, Rss, Building2 } from 'lucide-react'

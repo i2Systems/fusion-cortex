@@ -8,7 +8,7 @@
 
 import { Stage, Layer, Circle, Group, Text, Rect } from 'react-konva'
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
-import { useZoomContext } from '@/lib/MapContext'
+import { useZoomContext } from '@/lib/hooks/useMap'
 import { FloorPlanImage, type ImageBounds } from '@/components/map/FloorPlanImage'
 import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 import type { Location } from '@/lib/locationStorage'

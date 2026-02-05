@@ -3,19 +3,15 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react'
 import { Users, Monitor, Edit2, Trash2, Save, X, CheckSquare, Square, Plus, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { PanelEmptyState } from '@/components/shared/PanelEmptyState'
 import { ConfirmationModal } from '@/components/shared/ConfirmationModal'
 import { useToast } from '@/lib/ToastContext'
 import { Group } from '@/lib/stores/groupStore'
 import { Device } from '@/lib/mockData'
 import { Person } from '@/lib/stores/personStore'
+import { getGroupColors } from '@/lib/canvasColors'
 import { GroupsFilterMode } from './GroupsViewToggle'
-
-// Constants
-const DEFAULT_GROUP_COLOR = '#4c7dff'
-const GROUP_COLORS = [
-    '#4c7dff', '#ff4c4c', '#4cff7d', '#ffd74c', '#ff4cff', '#4cffff', '#ff8c4c', '#8c4cff'
-]
 
 interface GroupsPanelProps {
     groups: Group[]
@@ -51,12 +47,13 @@ export function GroupsPanel({
     onItemMove
 }: GroupsPanelProps) {
     const { addToast } = useToast()
+    const groupColors = getGroupColors()
 
     const [isEditing, setIsEditing] = useState(false)
     const [editFormData, setEditFormData] = useState<{ name: string; description: string; color: string; deviceIds: string[]; personIds: string[] }>({
         name: '',
         description: '',
-        color: DEFAULT_GROUP_COLOR,
+        color: groupColors[0],
         deviceIds: [],
         personIds: []
     })
@@ -67,6 +64,7 @@ export function GroupsPanel({
     const [selectedUngroupedIds, setSelectedUngroupedIds] = useState<Set<string>>(new Set())
     const [itemsViewMode, setItemsViewMode] = useState<'ungrouped' | 'all'>('ungrouped')
     const [itemsFilterTab, setItemsFilterTab] = useState<'all' | 'people' | 'devices'>('all')
+    const [nameError, setNameError] = useState<string | null>(null)
 
     const selectedGroup = useMemo(() => groups.find(g => g.id === selectedGroupId), [groups, selectedGroupId])
     const allSelected = useMemo(() => groups.length > 0 && selectedGroupIds.size === groups.length, [groups.length, selectedGroupIds.size])
@@ -118,6 +116,7 @@ export function GroupsPanel({
                 personIds: selectedGroup.personIds ?? []
             })
             setIsEditing(false)
+            setNameError(null)
         }
     }, [selectedGroup])
 
@@ -125,6 +124,7 @@ export function GroupsPanel({
 
     const handleCancelEdit = () => {
         setIsEditing(false)
+        setNameError(null)
         if (selectedGroup) {
             setEditFormData({
                 name: selectedGroup.name,
@@ -139,9 +139,10 @@ export function GroupsPanel({
     const handleSaveEdit = () => {
         if (!selectedGroup) return
         if (!editFormData.name.trim()) {
-            addToast({ type: 'warning', title: 'Required', message: 'Name is required' })
+            setNameError('Name is required')
             return
         }
+        setNameError(null)
 
         onEditGroup(selectedGroup.id, {
             name: editFormData.name,
@@ -263,11 +264,15 @@ export function GroupsPanel({
                                     <button onClick={handleCancelEdit} className="p-1.5 rounded hover:bg-[var(--color-surface-subtle)] text-[var(--color-text-muted)]"><X size={16} /></button>
                                 </div>
                             </div>
-                            <input
+                            <Input
                                 className="w-full p-2 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface)] text-[var(--color-text)] text-sm"
                                 value={editFormData.name}
-                                onChange={e => setEditFormData({ ...editFormData, name: e.target.value })}
+                                onChange={e => {
+                                    setEditFormData({ ...editFormData, name: e.target.value })
+                                    if (nameError) setNameError(null)
+                                }}
                                 placeholder="Group Name"
+                                errorMessage={nameError ?? undefined}
                             />
                             <textarea
                                 className="w-full p-2 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface)] text-[var(--color-text)] text-sm resize-none"
@@ -277,7 +282,7 @@ export function GroupsPanel({
                                 rows={2}
                             />
                             <div className="flex gap-2 flex-wrap">
-                                {GROUP_COLORS.map(c => (
+                                {groupColors.map(c => (
                                     <button
                                         key={c}
                                         className={`w-6 h-6 rounded-full border-2 transition-all ${editFormData.color === c ? 'border-[var(--color-text)] scale-110' : 'border-transparent'}`}

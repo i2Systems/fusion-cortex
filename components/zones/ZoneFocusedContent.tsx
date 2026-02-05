@@ -32,9 +32,9 @@ import {
 import { FocusedObjectModal } from '@/components/shared/FocusedObjectModal'
 import { TabDefinition } from '@/components/shared/FocusedModalTabs'
 import { Device } from '@/lib/mockData'
-import { useSite } from '@/lib/SiteContext'
+import { useSite } from '@/lib/hooks/useSite'
 import { Rule } from '@/lib/mockRules'
-import { ZONE_COLORS, DEFAULT_ZONE_COLOR } from '@/lib/zoneColors'
+import { resolveZoneColor, DEFAULT_ZONE_COLOR } from '@/lib/zoneColors'
 
 interface Zone {
   id: string
@@ -60,15 +60,11 @@ const zoneTabs: TabDefinition[] = [
   { id: 'related', label: 'Related', icon: Users },
 ]
 
-// Get zone color from CSS variable or hex
 function getZoneColor(zone: Zone): string {
-  if (zone.color) return zone.color
-  if (zone.colorVar) {
-    const root = document.documentElement
-    const computed = getComputedStyle(root).getPropertyValue(zone.colorVar).trim()
-    if (computed) return computed
-  }
-  return DEFAULT_ZONE_COLOR
+  const raw = zone.color || (zone.colorVar && typeof window !== 'undefined'
+    ? getComputedStyle(document.documentElement).getPropertyValue(zone.colorVar).trim()
+    : null)
+  return raw ? resolveZoneColor(raw) : resolveZoneColor(DEFAULT_ZONE_COLOR)
 }
 
 // Overview Tab Content

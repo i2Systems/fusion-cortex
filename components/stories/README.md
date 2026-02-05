@@ -77,7 +77,7 @@ export const Default: Story = {
 
 ## Notes
 
-- Some components require context providers (SiteContext, DeviceContext, etc.) and may need decorators
+- Some components require Zustand store hydration (StateHydration) or mock data
 - Canvas-based components (MapCanvas, ZoneCanvas) may need special setup or mock data
 - Components with complex dependencies may need simplified stories or mocks
 

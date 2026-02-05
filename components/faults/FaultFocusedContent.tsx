@@ -49,7 +49,7 @@ import { getStatusTokenClass, getSignalTokenClass, getBatteryTokenClass } from '
 import { FocusedObjectModal } from '@/components/shared/FocusedObjectModal'
 import { TabDefinition } from '@/components/shared/FocusedModalTabs'
 import { Button } from '@/components/ui/Button'
-import { useSite } from '@/lib/SiteContext'
+import { useSite } from '@/lib/hooks/useSite'
 
 interface Fault {
   id?: string

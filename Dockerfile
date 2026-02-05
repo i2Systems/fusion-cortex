@@ -30,8 +30,8 @@ COPY . .
 RUN npx prisma generate
 
 # Build the application
-ENV NEXT_TELEMETRY_DISABLED 1
-ENV DATABASE_URL "postgresql://dummy:dummy@localhost:5432/dummy"
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy
 RUN npm run build
 
 # Compile seed script
@@ -43,8 +43,8 @@ RUN npx esbuild scripts/seedDatabase.ts --bundle --platform=node --outfile=seed.
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Install OpenSSL (required for Prisma)
 RUN apk add --no-cache openssl
@@ -65,7 +65,8 @@ USER nextjs
 
 EXPOSE 3000
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
+# Wait for DB, migrate, seed, then start (DATABASE_URL from docker-compose)
 CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node seed.js && node server.js"]

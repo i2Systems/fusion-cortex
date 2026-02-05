@@ -280,7 +280,7 @@ See `app/globals.css` for full token list. Key tokens:
 - Verify `globals.css` is imported in root layout
 
 **Site data not switching**
-- Ensure using `activeSiteId` from `SiteContext`
+- Ensure using `activeSiteId` from `useSite()` hook
 - Check localStorage keys include site ID
 - Verify context reloads when `activeSiteId` changes
 

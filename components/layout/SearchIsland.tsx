@@ -12,7 +12,7 @@
 import { Search, Layers, Sparkles, ArrowUp, ArrowDown, TrendingUp, TrendingDown, Activity, Clock, X } from 'lucide-react'
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useSearch } from '@/lib/SearchContext'
-import { useDevices } from '@/lib/DomainContext'
+import { useDevices } from '@/lib/hooks/useDevices'
 import { fuzzySearch, type SearchResult } from '@/lib/fuzzySearch'
 import { getRecentSearches, addRecentSearch, getSearchSuggestions, clearRecentSearches } from '@/lib/recentSearches'
 import { usePathname } from 'next/navigation'
@@ -314,10 +314,10 @@ export function SearchIsland({
                   className="absolute top-full left-0 right-0 mt-2 rounded-xl max-h-96 overflow-auto border border-[var(--color-primary)]/30 shadow-[var(--shadow-strong)]"
                   style={{
                     zIndex: 9999,
-                    background: 'rgba(9, 11, 17, 0.95)',
+                    background: 'var(--color-tooltip-bg)',
                     backdropFilter: 'blur(40px) saturate(200%)',
                     WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 229, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+                    boxShadow: 'var(--shadow-strong), 0 0 0 1px var(--color-border-subtle), inset 0 1px 0 var(--acrylic-tint)',
                   }}
                 >
                   {/* Recent Searches */}

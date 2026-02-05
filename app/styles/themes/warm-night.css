@@ -47,6 +47,14 @@
     --color-tooltip-text: var(--color-text);
     --color-tooltip-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
 
+    /* Zone palette - warm autumn palette, all distinct */
+    --color-zone-primary: var(--color-primary);
+    --color-zone-accent: var(--color-accent);
+    --color-zone-success: var(--color-success);
+    --color-zone-warning: var(--color-warning);
+    --color-zone-danger: var(--color-danger);
+    --color-zone-info: var(--color-info);
+
     /* Canvas-specific colors for Konva/Canvas rendering */
     --color-fixture: var(--color-primary-strong);
     --color-canvas-border: rgba(255, 160, 60, 0.3);

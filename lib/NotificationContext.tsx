@@ -47,8 +47,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const { data: serverNotifications } = trpc.notification.list.useQuery(
     {},
     {
-      refetchInterval: 30000, // Poll every 30s
-      refetchOnWindowFocus: true,
+      refetchInterval: 60000, // Poll every 60s (was 30s - reduce reload feel)
+      refetchOnWindowFocus: false, // Prevent "stuck on reload" when switching tabs
     }
   )
 

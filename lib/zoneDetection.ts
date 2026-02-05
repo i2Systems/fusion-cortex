@@ -8,9 +8,9 @@
  */
 
 import { Device } from './mockData'
-import { Zone } from './ZoneContext'
+import { Zone } from './stores/zoneStore'
 
-import { ZONE_COLORS } from './zoneColors'
+import { getZoneColorForIndex } from './zoneColors'
 
 const MAX_ZONES = 12
 
@@ -100,7 +100,7 @@ export function detectZonesFromDevices(devices: Device[]): Omit<Zone, 'id' | 'cr
 
     return {
       name: `Zone ${index + 1} - ${mostCommonLocation}`,
-      color: ZONE_COLORS[index % ZONE_COLORS.length],
+      color: getZoneColorForIndex(index),
       description: `${cluster.devices.length} devices in ${mostCommonLocation}`,
       polygon,
       deviceIds: cluster.devices.map(d => d.id),

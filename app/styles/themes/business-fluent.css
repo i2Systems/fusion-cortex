@@ -33,6 +33,15 @@
     /* Office Yellow */
     --color-info: #0078d4;
     /* Office Blue */
+
+    /* Zone palette - Primary and Info both blue; info → purple for distinction */
+    --color-zone-primary: var(--color-primary);
+    --color-zone-accent: var(--color-accent);
+    --color-zone-success: var(--color-success);
+    --color-zone-warning: var(--color-warning);
+    --color-zone-danger: var(--color-danger);
+    --color-zone-info: #8764b8;
+    /* Soft purple - distinct from blue primary */
     
     /* Overlay & backdrop colors */
     --color-backdrop: rgba(0, 0, 0, 0.6);

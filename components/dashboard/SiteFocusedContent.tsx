@@ -35,9 +35,9 @@ import {
 } from 'lucide-react'
 import { FocusedObjectModal } from '@/components/shared/FocusedObjectModal'
 import { TabDefinition } from '@/components/shared/FocusedModalTabs'
-import { Site } from '@/lib/SiteContext'
+import type { Site } from '@/lib/stores/siteStore'
 import { Device } from '@/lib/mockData'
-import { Zone } from '@/lib/DomainContext'
+import type { Zone } from '@/lib/stores/zoneStore'
 import { Rule } from '@/lib/mockRules'
 import { FaultCategory, faultCategories } from '@/lib/faultDefinitions'
 import { calculateWarrantyStatus } from '@/lib/warranty'
@@ -45,6 +45,7 @@ import { Badge } from '@/components/ui/Badge'
 import { trpc } from '@/lib/trpc/client'
 import { PersonToken } from '@/components/people/PersonToken'
 import { useRouter } from 'next/navigation'
+import { resolveZoneColor } from '@/lib/zoneColors'
 
 interface CriticalFault {
   deviceId: string
@@ -519,7 +520,7 @@ function RelatedTab({
                 <div className="flex items-center gap-3">
                   <div
                     className="w-4 h-4 rounded-full"
-                    style={{ backgroundColor: zone.color || 'var(--color-primary)' }}
+                    style={{ backgroundColor: resolveZoneColor(zone.color || 'zone-primary') }}
                   />
                   <div>
                     <p className="text-sm font-medium text-[var(--color-text)]">{zone.name}</p>

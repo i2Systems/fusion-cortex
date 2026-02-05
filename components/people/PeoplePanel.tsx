@@ -50,6 +50,7 @@ export function PeoplePanel({
     const { groups } = useGroups()
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+    const [nameErrors, setNameErrors] = useState<{ firstName?: string; lastName?: string }>({})
 
     const selectedPerson = useMemo(() => people.find(p => p.id === selectedPersonId), [people, selectedPersonId])
 
@@ -86,6 +87,7 @@ export function PeoplePanel({
             })
             setPreviewImage(null)
             setIsEditing(false)
+            setNameErrors({})
         }
     }, [selectedPerson])
 
@@ -94,6 +96,7 @@ export function PeoplePanel({
     const handleCancelEdit = () => {
         setIsEditing(false)
         setPreviewImage(null)
+        setNameErrors({})
         if (selectedPerson) {
             const role = selectedPerson.role || ''
             const isCustomRole = role && !SITE_ROLE_TYPES.some(r => r.value === role)
@@ -185,10 +188,14 @@ export function PeoplePanel({
 
     const handleSaveEdit = async () => {
         if (!selectedPerson) return
-        if (!editFormData.firstName.trim() || !editFormData.lastName.trim()) {
-            addToast({ type: 'warning', title: 'Required Fields', message: 'First and Last Name are required' })
+        const errors: { firstName?: string; lastName?: string } = {}
+        if (!editFormData.firstName.trim()) errors.firstName = 'First name is required'
+        if (!editFormData.lastName.trim()) errors.lastName = 'Last name is required'
+        if (Object.keys(errors).length > 0) {
+            setNameErrors(errors)
             return
         }
+        setNameErrors({})
 
         const finalRole = editFormData.role === 'Other' ? editFormData.customRole : editFormData.role
 
@@ -297,15 +304,23 @@ export function PeoplePanel({
                             <div className="grid grid-cols-2 gap-2">
                                 <Input
                                     value={editFormData.firstName}
-                                    onChange={e => setEditFormData({ ...editFormData, firstName: e.target.value })}
+                                    onChange={e => {
+                                        setEditFormData({ ...editFormData, firstName: e.target.value })
+                                        if (nameErrors.firstName) setNameErrors((prev) => ({ ...prev, firstName: undefined }))
+                                    }}
                                     placeholder="First Name"
                                     fullWidth
+                                    errorMessage={nameErrors.firstName}
                                 />
                                 <Input
                                     value={editFormData.lastName}
-                                    onChange={e => setEditFormData({ ...editFormData, lastName: e.target.value })}
+                                    onChange={e => {
+                                        setEditFormData({ ...editFormData, lastName: e.target.value })
+                                        if (nameErrors.lastName) setNameErrors((prev) => ({ ...prev, lastName: undefined }))
+                                    }}
                                     placeholder="Last Name"
                                     fullWidth
+                                    errorMessage={nameErrors.lastName}
                                 />
                             </div>
                             <Input

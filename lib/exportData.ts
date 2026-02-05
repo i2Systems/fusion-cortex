@@ -49,7 +49,7 @@ export function exportFusionData() {
 
   const zonesCode =
     tsHeader('Zones Data') +
-    `import { Zone } from './ZoneContext'\n\nexport const seedZones: Zone[] | null = ${JSON.stringify(exportData.zones, null, 2)}\n`
+    `import { Zone } from './stores/zoneStore'\n\nexport const seedZones: Zone[] | null = ${JSON.stringify(exportData.zones, null, 2)}\n`
 
   const devicesCode =
     tsHeader('Devices Data') +

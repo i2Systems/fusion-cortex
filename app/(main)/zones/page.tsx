@@ -21,14 +21,14 @@ import { ZonesListView } from '@/components/zones/ZonesListView'
 import { ZoneToolbar, ZoneToolMode } from '@/components/zones/ZoneToolbar'
 import { MapFiltersPanel, type MapFilters } from '@/components/map/MapFiltersPanel'
 import { MapViewToggle, MapViewMode } from '@/components/shared/MapViewToggle'
-import { useDevices } from '@/lib/DomainContext'
-import { useZones } from '@/lib/DomainContext'
-import { useSite } from '@/lib/SiteContext'
+import { useDevices } from '@/lib/hooks/useDevices'
+import { useZones } from '@/lib/hooks/useZones'
+import { useSite } from '@/lib/hooks/useSite'
 import { useRole } from '@/lib/auth'
 import { trpc } from '@/lib/trpc/client'
 import { isFixtureType } from '@/lib/deviceUtils'
 import { ResizablePanel } from '@/components/layout/ResizablePanel'
-import { useMap } from '@/lib/MapContext'
+import { useMap } from '@/lib/hooks/useMap'
 import { useMapUpload } from '@/lib/useMapUpload'
 import { useToast } from '@/lib/ToastContext'
 import { usePeople } from '@/lib/hooks/usePeople'
@@ -43,7 +43,7 @@ const ZoneCanvas = dynamic(() => import('@/components/map/ZoneCanvas').then(mod 
   ),
 })
 
-import { ZONE_COLORS } from '@/lib/zoneColors'
+import { getZoneColorForIndex } from '@/lib/zoneColors'
 
 export default function ZonesPage() {
   const router = useRouter()
@@ -82,7 +82,7 @@ export default function ZonesPage() {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
 
-  // Map data is now loaded from MapContext - no need to load it here
+  // Map data is now loaded from map store (useMapSync) - no need to load it here
   const { refreshMapData } = useMap()
   const { uploadMap, uploadVectorData } = useMapUpload()
 
@@ -117,7 +117,7 @@ export default function ZonesPage() {
 
   const handleZoneCreated = (polygon: Array<{ x: number; y: number }>) => {
     const zoneNumber = zones.length + 1
-    const color = ZONE_COLORS[(zoneNumber - 1) % ZONE_COLORS.length]
+    const color = getZoneColorForIndex(zoneNumber - 1)
     const devicesInZone = devices.filter(d => {
       if (d.x === undefined || d.y === undefined) return false
       // Simple point-in-polygon check
@@ -547,11 +547,11 @@ export default function ZonesPage() {
                     top: 20px;
                     right: 20px;
                     background: var(--color-primary);
-                    color: white;
+                    color: var(--color-text-on-primary);
                     padding: 16px 24px;
-                    border-radius: 8px;
+                    border-radius: var(--radius-md);
                     z-index: 10000;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    box-shadow: var(--shadow-soft);
                     font-size: 14px;
                     font-weight: 500;
                     max-width: 350px;

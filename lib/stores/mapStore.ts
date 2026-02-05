@@ -38,7 +38,7 @@ interface MapStoreState extends ZoomState {
     setModeHint: (hint: string | null) => void
 }
 
-export const useMapStore = create<MapStoreState>((set) => ({
+export const useMapStore = create<MapStoreState>()((set, get) => ({
     // Default State
     mapCache: {},
     zoomLevel: 100,
@@ -46,10 +46,11 @@ export const useMapStore = create<MapStoreState>((set) => ({
     interactionHint: null,
     modeHint: null,
 
-    // Actions
-    setMapCache: (siteId, data) => set((state) => ({
-        mapCache: { ...state.mapCache, [siteId]: data }
-    })),
+    // Actions - plain Zustand (no immer) to avoid compatibility issues
+    setMapCache: (siteId, data) => {
+        const prev = get().mapCache ?? {}
+        set({ mapCache: { ...prev, [siteId]: data } })
+    },
 
     clearMapCache: () => set({ mapCache: {} }),
 

@@ -9,11 +9,11 @@
 
 import { useEffect } from 'react'
 import { trpc } from '@/lib/trpc/client'
-import { useSite } from '@/lib/SiteContext'
+import { useSiteStore } from '@/lib/stores/siteStore'
 import { useGroupStore, type Group } from '@/lib/stores/groupStore'
 
 export function useGroupSync() {
-    const { activeSiteId } = useSite()
+    const activeSiteId = useSiteStore((s) => s.activeSiteId)
 
     const { data: groupsData, isLoading, error } = trpc.group.list.useQuery(
         { siteId: activeSiteId || '' },

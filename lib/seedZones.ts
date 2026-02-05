@@ -11,7 +11,7 @@
  * 4. Commit to repository
  */
 
-import { Zone } from './ZoneContext'
+import { Zone } from './stores/zoneStore'
 
 // If you have saved zones, replace this array with your exported data
 // Otherwise, this will be null and the app will use initialZones.ts

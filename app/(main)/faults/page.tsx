@@ -23,15 +23,15 @@ import { MapUpload } from '@/components/map/MapUpload'
 import { FaultList } from '@/components/faults/FaultList'
 import { FaultDetailsPanel } from '@/components/faults/FaultDetailsPanel'
 import { ResizablePanel, type ResizablePanelRef } from '@/components/layout/ResizablePanel'
-import { useDevices } from '@/lib/DomainContext'
-import { useZones } from '@/lib/DomainContext'
-import { useSite } from '@/lib/SiteContext'
+import { useDevices } from '@/lib/hooks/useDevices'
+import { useZones } from '@/lib/hooks/useZones'
+import { useSite } from '@/lib/hooks/useSite'
 import { useNotifications } from '@/lib/NotificationContext'
 import { useToast } from '@/lib/ToastContext'
 import { Device } from '@/lib/mockData'
 import { FaultCategory, assignFaultCategory, generateFaultDescription, faultCategories } from '@/lib/faultDefinitions'
 import { trpc } from '@/lib/trpc/client'
-import { useMap } from '@/lib/MapContext'
+import { useMap } from '@/lib/hooks/useMap'
 import { useMapUpload } from '@/lib/useMapUpload'
 import { Droplets, Zap, Thermometer, Plug, Settings, Package, Wrench, Lightbulb, TrendingUp, TrendingDown, AlertTriangle, Clock, ArrowUp, ArrowDown, Minus } from 'lucide-react'
 import { fuzzySearch } from '@/lib/fuzzySearch'
@@ -344,7 +344,7 @@ export default function FaultsPage() {
   const listContainerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<ResizablePanelRef>(null)
 
-  // Map data is now loaded from MapContext - no need to load it here
+  // Map data is now loaded from map store (useMapSync) - no need to load it here
   const { refreshMapData } = useMap()
   const { uploadMap, uploadVectorData } = useMapUpload()
 

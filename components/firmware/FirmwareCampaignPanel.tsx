@@ -15,7 +15,7 @@ import { PanelEmptyState } from '@/components/shared/PanelEmptyState'
 import { FirmwareDeviceTable } from './FirmwareDeviceTable'
 import { FirmwareProgressChart } from './FirmwareProgressChart'
 import { trpc } from '@/lib/trpc/client'
-import { useSite } from '@/lib/SiteContext'
+import { useSite } from '@/lib/hooks/useSite'
 
 interface Campaign {
   id: string

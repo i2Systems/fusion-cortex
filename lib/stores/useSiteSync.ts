@@ -26,7 +26,7 @@ export function useSiteSync() {
         refetchOnWindowFocus: false,
         staleTime: 5 * 60 * 1000, // 5 minutes
         gcTime: 10 * 60 * 1000, // 10 minutes
-        retry: 1,
+        retry: 0, // Fail fast - was 1, retries could cause "stuck" feeling
         retryDelay: 1000,
     })
 
@@ -144,17 +144,17 @@ export function useSiteSync() {
                 useSiteStore.getState().setSites(mappedSites)
             })
 
-            // Sync managers to people when sites are loaded
-            // Create a signature of current sites to detect changes
+            // Sync managers to people when sites are loaded - defer to avoid blocking initial render
+            // Only run when manager data actually changed, and use longer debounce to not compete with other queries
             const sitesSignature = mappedSites.map(s => `${s.id}:${s.manager || ''}`).join('|')
             if (mappedSites.length > 0 && sitesSignature !== lastSyncedSitesRef.current) {
                 lastSyncedSitesRef.current = sitesSignature
-                // Debounce sync slightly to avoid multiple rapid calls
+                // Defer 3s so site/device/zone queries complete first - avoids request storm
                 setTimeout(() => {
                     if (!syncManagersMutation.isPending) {
                         syncManagersMutation.mutate()
                     }
-                }, 1000)
+                }, 3000)
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps

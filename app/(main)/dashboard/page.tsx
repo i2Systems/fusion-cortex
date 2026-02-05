@@ -19,14 +19,15 @@ import { ResizablePanel } from '@/components/layout/ResizablePanel'
 import { SiteDetailsPanel } from '@/components/dashboard/StoreDetailsPanel'
 import { AddSiteModal } from '@/components/dashboard/AddSiteModal'
 import { SiteManagerDisplay } from '@/components/dashboard/SiteManagerDisplay'
-import { useSite, Site } from '@/lib/SiteContext'
-import { useDevices } from '@/lib/DomainContext'
-import { useZones } from '@/lib/DomainContext'
-import { useRules } from '@/lib/DomainContext'
+import { useSite } from '@/lib/hooks/useSite'
+import { useDevices } from '@/lib/hooks/useDevices'
+import { useZones } from '@/lib/hooks/useZones'
+import { useRules } from '@/lib/hooks/useRules'
 import { trpc } from '@/lib/trpc/client'
 import { useToast } from '@/lib/ToastContext'
 import { Device } from '@/lib/mockData'
-import { Zone } from '@/lib/DomainContext'
+import type { Zone } from '@/lib/stores/zoneStore'
+import type { Site } from '@/lib/stores/siteStore'
 import { Rule } from '@/lib/mockRules'
 import { FaultCategory, assignFaultCategory, generateFaultDescription } from '@/lib/faultDefinitions'
 import { calculateWarrantyStatus } from '@/lib/warranty'
@@ -55,6 +56,8 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { PanelEmptyState } from '@/components/shared/PanelEmptyState'
+import { useDashboardViewStore } from '@/lib/stores/dashboardViewStore'
+import { DashboardMapView } from '@/components/dashboard/DashboardMapView'
 
 interface SiteSummary {
   siteId: string
@@ -62,6 +65,7 @@ interface SiteSummary {
   totalDevices: number
   onlineDevices: number
   offlineDevices: number
+  missingDevices: number
   healthPercentage: number
   totalZones: number
   criticalFaults: Array<{
@@ -103,15 +107,11 @@ function SiteImageCard({ siteId, sizeClass = "w-24 h-24" }: { siteId: string, si
   const { data: dbImage, isLoading: isDbLoading, isError: isDbError, refetch: refetchSiteImage } = trpc.image.getSiteImage.useQuery(
     queryInput,
     {
-      // Double protection: enabled flag prevents query execution
       enabled: isValidSiteId && !!siteId && siteId.trim().length > 0,
-      // Skip if siteId is invalid to avoid validation errors
       retry: false,
-      // Refetch on mount to ensure fresh data
-      refetchOnMount: true,
+      refetchOnMount: false,
       refetchOnWindowFocus: false,
-      // Don't use stale data
-      staleTime: 0,
+      staleTime: 60 * 1000,
     }
   )
 
@@ -206,6 +206,7 @@ export default function DashboardPage() {
   const [showAddSiteModal, setShowAddSiteModal] = useState(false)
   const [editingSite, setEditingSite] = useState<Site | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const viewMode = useDashboardViewStore((s) => s.viewMode)
 
   // Initialize selectedSiteId - ensure it's never null when sites exist
   const getInitialSelectedSiteId = (): string => {
@@ -252,6 +253,13 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sites, selectedSiteId, activeSiteId]) // Remove setActiveSite from deps to prevent loops
 
+  // When switching to map view, ensure activeSiteId matches selectedSiteId for map data
+  useEffect(() => {
+    if (viewMode === 'map' && selectedSiteId && activeSiteId !== selectedSiteId) {
+      setActiveSite(selectedSiteId)
+    }
+  }, [viewMode, selectedSiteId, activeSiteId, setActiveSite])
+
   // Fetch devices, zones, faults, and locations for all sites - create queries dynamically
   // Note: We'll fetch data in the useEffect to avoid hook rule violations
   const [siteDevicesMap, setSiteDevicesMap] = useState<Record<string, Device[]>>({})
@@ -265,12 +273,11 @@ export default function DashboardPage() {
     location: string
   }>>>({})
 
-  // Refetch devices, zones, and faults when sites change or when we need to refresh
+  // Refetch devices, zones, and faults when sites change - STAGGERED to avoid request storm
   useEffect(() => {
     if (sites.length === 0) return
 
-    // Fetch all data for all sites using tRPC utils
-    const fetchAllSiteData = async () => {
+    const fetchAllSiteData = async (initialDelayMs: number) => {
       const devicesMap: Record<string, Device[]> = {}
       const zonesMap: Record<string, Zone[]> = {}
       const locationsMap: Record<string, boolean> = {}
@@ -282,71 +289,60 @@ export default function DashboardPage() {
         location: string
       }>> = {}
 
-      await Promise.all(
-        sites.map(async (site) => {
-          try {
-            // Fetch devices
-            const devices = await trpcUtils.device.list.fetch({
-              siteId: site.id,
-              includeComponents: true,
-            })
-            devicesMap[site.id] = devices || []
+      const fetchOneSite = async (site: Site, delayMs: number) => {
+        await new Promise((r) => setTimeout(r, delayMs))
+        try {
+          const [devices, zones, faults, locations] = await Promise.all([
+            trpcUtils.device.list.fetch({ siteId: site.id, includeComponents: true }),
+            trpcUtils.zone.list.fetch({ siteId: site.id }),
+            trpcUtils.fault.list.fetch({ siteId: site.id, includeResolved: false }),
+            trpcUtils.location.list.fetch({ siteId: site.id }),
+          ])
+          devicesMap[site.id] = devices || []
+          zonesMap[site.id] = (zones || []).map(zone => ({
+            ...zone,
+            description: zone.description ?? undefined,
+            polygon: zone.polygon ?? [],
+          }))
+          locationsMap[site.id] = locations ? locations.some(loc => loc.imageUrl || loc.vectorDataUrl) : false
+          const criticalFaults = (faults || []).slice(0, 3).map(fault => {
+            const device = devices?.find(d => d.id === fault.deviceId)
+            return {
+              deviceId: device?.deviceId || fault.deviceId,
+              deviceName: device?.deviceId || fault.deviceId,
+              faultType: fault.faultType as FaultCategory,
+              description: fault.description,
+              location: device?.location || 'Unknown',
+            }
+          })
+          faultsMap[site.id] = criticalFaults
+        } catch (error) {
+          console.error(`Failed to fetch data for site ${site.id}:`, error)
+          devicesMap[site.id] = []
+          zonesMap[site.id] = []
+          locationsMap[site.id] = false
+          faultsMap[site.id] = []
+        }
+        setSiteDevicesMap((prev) => ({ ...prev, [site.id]: devicesMap[site.id] }))
+        setSiteZonesMap((prev) => ({ ...prev, [site.id]: zonesMap[site.id] }))
+        setSiteLocationsMap((prev) => ({ ...prev, [site.id]: locationsMap[site.id] }))
+        setSiteFaultsMap((prev) => ({ ...prev, [site.id]: faultsMap[site.id] }))
+      }
 
-            // Fetch zones
-            const zones = await trpcUtils.zone.list.fetch({
-              siteId: site.id,
-            })
-            zonesMap[site.id] = (zones || []).map(zone => ({
-              ...zone,
-              description: zone.description ?? undefined,
-              polygon: zone.polygon ?? [],
-            }))
-
-            // Fetch faults
-            const faults = await trpcUtils.fault.list.fetch({
-              siteId: site.id,
-              includeResolved: false,
-            })
-
-            // Fetch locations (to check if map is uploaded)
-            const locations = await trpcUtils.location.list.fetch({
-              siteId: site.id,
-            })
-            locationsMap[site.id] = locations ? locations.some(loc => loc.imageUrl || loc.vectorDataUrl) : false
-
-            // Convert database faults to critical faults format
-            const criticalFaults = (faults || []).slice(0, 3).map(fault => {
-              const device = devices?.find(d => d.id === fault.deviceId)
-              return {
-                deviceId: device?.deviceId || fault.deviceId,
-                deviceName: device?.deviceId || fault.deviceId,
-                faultType: fault.faultType as FaultCategory,
-                description: fault.description,
-                location: device?.location || 'Unknown',
-              }
-            })
-            faultsMap[site.id] = criticalFaults
-          } catch (error) {
-            console.error(`Failed to fetch data for site ${site.id}:`, error)
-            devicesMap[site.id] = []
-            zonesMap[site.id] = []
-            locationsMap[site.id] = false
-            faultsMap[site.id] = []
-          }
-        })
-      )
-
-      setSiteDevicesMap(devicesMap)
-      setSiteZonesMap(zonesMap)
-      setSiteLocationsMap(locationsMap)
-      setSiteFaultsMap(faultsMap)
+      const CONCURRENCY = 2
+      const STAGGER_MS = 150
+      for (let i = 0; i < sites.length; i += CONCURRENCY) {
+        const batch = sites.slice(i, i + CONCURRENCY)
+        await Promise.all(
+          batch.map((site, j) => fetchOneSite(site, initialDelayMs + (i + j) * STAGGER_MS))
+        )
+      }
     }
 
-    fetchAllSiteData()
+    // Defer initial fetch 300ms so sync hooks settle first
+    fetchAllSiteData(300)
 
-    // Set up interval to refetch every 30 seconds
-    const interval = setInterval(fetchAllSiteData, 30000)
-
+    const interval = setInterval(() => fetchAllSiteData(0), 60000)
     return () => clearInterval(interval)
   }, [sites, trpcUtils])
 
@@ -363,9 +359,10 @@ export default function DashboardPage() {
       // Get map status from the locations map (fetched with other data)
       const mapUploaded = siteLocationsMap[site.id] ?? false
 
-      // Calculate stats
+      // Calculate stats (offline and missing are separate for correct display)
       const onlineDevices = devices.filter(d => d.status === 'online').length
-      const offlineDevices = devices.filter(d => d.status === 'offline' || d.status === 'missing')
+      const offlineDevices = devices.filter(d => d.status === 'offline').length
+      const missingDevices = devices.filter(d => d.status === 'missing').length
       const healthPercentage = devices.length > 0
         ? Math.round((onlineDevices / devices.length) * 100)
         : 100
@@ -412,7 +409,8 @@ export default function DashboardPage() {
         siteName: site.name,
         totalDevices: devices.length,
         onlineDevices,
-        offlineDevices: offlineDevices.length,
+        offlineDevices,
+        missingDevices,
         healthPercentage,
         totalZones: zones.length,
         criticalFaults,
@@ -684,17 +682,22 @@ export default function DashboardPage() {
     fetchRules()
   }, [selectedSiteId, siteDevicesMap, siteZonesMap, trpcUtils])
 
-  const getHealthColor = (percentage: number) => {
+  const getHealthColor = (percentage: number, totalDevices?: number) => {
+    if (totalDevices === 0) return 'var(--color-text-muted)'
     if (percentage >= 95) return 'var(--color-success)'
     if (percentage >= 85) return 'var(--color-warning)'
     return 'var(--color-danger)'
   }
 
-  const getHealthIcon = (percentage: number, iconSize: number = 16) => {
+  const getHealthIcon = (percentage: number, iconSize: number = 16, totalDevices?: number) => {
+    if (totalDevices === 0) return <Activity size={iconSize} className="text-[var(--color-text-muted)]" />
     if (percentage >= 95) return <CheckCircle2 size={iconSize} className="text-[var(--color-success)]" />
     if (percentage >= 85) return <AlertCircle size={iconSize} className="text-[var(--color-warning)]" />
     return <XCircle size={iconSize} className="text-[var(--color-danger)]" />
   }
+
+  const getHealthDisplay = (summary: SiteSummary) =>
+    summary.totalDevices === 0 ? '—' : `${summary.healthPercentage}%`
 
   // Calculate dashboard insights with trends
   const dashboardInsight = useMemo(() => {
@@ -815,13 +818,36 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Main Content: Site Cards + Details Panel */}
+      {/* Site Selector for map view (toggle is in header next to breadcrumbs) */}
+      {sites.length > 0 && viewMode === 'map' && (
+        <div className="flex-shrink-0 page-padding-x pb-2 flex justify-end">
+          <select
+            value={selectedSiteId}
+            onChange={(e) => {
+              const id = e.target.value
+              setSelectedSiteId(id)
+              setActiveSite(id)
+            }}
+            className="text-sm px-3 py-1.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text)]"
+          >
+            {sites.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Main Content: Site Cards or Map + Details Panel */}
       <div
         className="main-content-area flex-1 flex min-h-0 gap-2 md:gap-4 page-padding-x pb-12 md:pb-14"
-        onClick={handleMainContentClick}
+        onClick={viewMode === 'cards' ? handleMainContentClick : undefined}
       >
-        {/* Site Cards - Left Side */}
+        {/* Left Side: Cards or Map */}
         <div ref={cardsContainerRef} className="flex-1 min-w-0 flex flex-col overflow-y-auto -m-4 p-4">
+          {viewMode === 'map' ? (
+            <DashboardMapView />
+          ) : (
+          <>
           {/* Site Cards Grid - Responsive */}
           {/* Empty State: No Sites */}
           {sites.length === 0 ? (
@@ -902,8 +928,8 @@ export default function DashboardPage() {
                       <div className="hidden sm:flex items-center gap-4 px-4 border-l border-r border-[var(--color-border-subtle)] mx-2">
                         <div className="flex flex-col items-center">
                           <span className="text-[10px] uppercase text-[var(--color-text-muted)]">Health</span>
-                          <span className="font-bold text-sm" style={{ color: getHealthColor(summary.healthPercentage) }}>
-                            {summary.healthPercentage}%
+                          <span className="font-bold text-sm" style={{ color: getHealthColor(summary.healthPercentage, summary.totalDevices) }}>
+                            {getHealthDisplay(summary)}
                           </span>
                         </div>
                         <div className="flex flex-col items-center">
@@ -925,7 +951,7 @@ export default function DashboardPage() {
                           </Badge>
                         ) : (
                           <div className="h-6 w-6 flex items-center justify-center">
-                            {getHealthIcon(summary.healthPercentage, 18)}
+                            {getHealthIcon(summary.healthPercentage, 18, summary.totalDevices)}
                           </div>
                         )}
 
@@ -1011,7 +1037,7 @@ export default function DashboardPage() {
 
                         {/* Header Actions */}
                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {getHealthIcon(summary.healthPercentage, 18)}
+                          {getHealthIcon(summary.healthPercentage, 18, summary.totalDevices)}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -1031,8 +1057,8 @@ export default function DashboardPage() {
                       <div className="grid grid-cols-4 gap-2 py-2 w-full">
                         <div className="text-center">
                           <div className="text-xs text-[var(--color-text-muted)] mb-0.5">Health</div>
-                          <div className="text-sm font-semibold" style={{ color: getHealthColor(summary.healthPercentage) }}>
-                            {summary.healthPercentage}%
+                          <div className="text-sm font-semibold" style={{ color: getHealthColor(summary.healthPercentage, summary.totalDevices) }}>
+                            {getHealthDisplay(summary)}
                           </div>
                         </div>
                         <div className="text-center">
@@ -1100,7 +1126,8 @@ export default function DashboardPage() {
               })}
             </div>
           )}
-
+          </>
+          )}
         </div>
 
         {/* Site Details Panel - Right Side */}
@@ -1125,7 +1152,7 @@ export default function DashboardPage() {
                 healthPercentage={selectedSiteSummary?.healthPercentage || 100}
                 onlineDevices={selectedSiteSummary?.onlineDevices || 0}
                 offlineDevices={selectedSiteSummary?.offlineDevices || 0}
-                missingDevices={(selectedSiteSummary?.totalDevices || 0) - (selectedSiteSummary?.onlineDevices || 0) - (selectedSiteSummary?.offlineDevices || 0)}
+                missingDevices={selectedSiteSummary?.missingDevices ?? 0}
                 onAddSite={handleAddSite}
                 onEditSite={handleEditSite}
                 onRemoveSite={handleRemoveSite}

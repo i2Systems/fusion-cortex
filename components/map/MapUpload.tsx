@@ -12,7 +12,7 @@
 
 import { Upload, Map as MapIcon, Loader2, AlertCircle } from 'lucide-react'
 import { useState, useRef } from 'react'
-import { useSite } from '@/lib/SiteContext'
+import { useSite } from '@/lib/hooks/useSite'
 import { pdfToImage, isPdfFile } from '@/lib/pdfUtils'
 import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 import { storeVectorData, storeImage } from '@/lib/indexedDB'

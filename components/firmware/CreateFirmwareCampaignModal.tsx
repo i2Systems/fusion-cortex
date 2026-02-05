@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useToast } from '@/lib/ToastContext'
 import { trpc } from '@/lib/trpc/client'
-import { useSite } from '@/lib/SiteContext'
+import { useSite } from '@/lib/hooks/useSite'
 import { ALL_DISPLAY_DEVICE_TYPES, getDisplayTypeLabel } from '@/lib/types'
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap'
 
@@ -39,6 +39,7 @@ export function CreateFirmwareCampaignModal({
     deviceTypes: [] as string[],
     scheduledAt: '',
   })
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; version?: string; deviceTypes?: string }>({})
 
   const createCampaignMutation = trpc.firmware.createCampaign.useMutation({
     onSuccess: () => {
@@ -52,6 +53,7 @@ export function CreateFirmwareCampaignModal({
         deviceTypes: [],
         scheduledAt: '',
       })
+      setFieldErrors({})
     },
   })
 
@@ -68,14 +70,15 @@ export function CreateFirmwareCampaignModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.name || !formData.version || formData.deviceTypes.length === 0) {
-      addToast({
-        type: 'warning',
-        title: 'Missing Fields',
-        message: 'Please fill in all required fields'
-      })
+    const errors: { name?: string; version?: string; deviceTypes?: string } = {}
+    if (!formData.name.trim()) errors.name = 'Campaign name is required'
+    if (!formData.version.trim()) errors.version = 'Firmware version is required'
+    if (formData.deviceTypes.length === 0) errors.deviceTypes = 'Select at least one device type'
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
       return
     }
+    setFieldErrors({})
 
     try {
       await createCampaignMutation.mutateAsync({
@@ -103,6 +106,7 @@ export function CreateFirmwareCampaignModal({
         ? prev.deviceTypes.filter(t => t !== deviceType)
         : [...prev.deviceTypes, deviceType],
     }))
+    if (fieldErrors.deviceTypes) setFieldErrors(prev => ({ ...prev, deviceTypes: undefined }))
   }
 
   return (
@@ -148,9 +152,13 @@ export function CreateFirmwareCampaignModal({
             <Input
               id="firmware-campaign-name"
               value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) => {
+                setFormData(prev => ({ ...prev, name: e.target.value }))
+                if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: undefined }))
+              }}
               placeholder="e.g., Q1 2024 Security Patch"
               required
+              errorMessage={fieldErrors.name}
             />
           </div>
 
@@ -177,9 +185,13 @@ export function CreateFirmwareCampaignModal({
             <Input
               id="firmware-campaign-version"
               value={formData.version}
-              onChange={(e) => setFormData(prev => ({ ...prev, version: e.target.value }))}
+              onChange={(e) => {
+                setFormData(prev => ({ ...prev, version: e.target.value }))
+                if (fieldErrors.version) setFieldErrors(prev => ({ ...prev, version: undefined }))
+              }}
               placeholder="e.g., v2.1.3"
               required
+              errorMessage={fieldErrors.version}
             />
           </div>
 
@@ -222,9 +234,9 @@ export function CreateFirmwareCampaignModal({
                 </label>
               ))}
             </div>
-            {formData.deviceTypes.length === 0 && (
-              <p className="text-xs text-red-400 mt-1">
-                Please select at least one device type
+            {fieldErrors.deviceTypes && (
+              <p className="text-xs text-danger mt-1" role="alert">
+                {fieldErrors.deviceTypes}
               </p>
             )}
           </div>

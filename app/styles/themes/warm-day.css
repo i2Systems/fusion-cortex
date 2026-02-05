@@ -46,6 +46,15 @@
     --color-tooltip-text: var(--color-text);
     --color-tooltip-shadow: 0 4px 12px rgba(44, 37, 32, 0.15);
 
+    /* Zone palette - Accent and Danger both brick; accent → terracotta for distinction */
+    --color-zone-primary: var(--color-primary);
+    --color-zone-accent: #e67e22;
+    /* Terracotta - distinct from brick danger */
+    --color-zone-success: var(--color-success);
+    --color-zone-warning: var(--color-warning);
+    --color-zone-danger: var(--color-danger);
+    --color-zone-info: var(--color-info);
+
     /* Canvas-specific colors for Konva/Canvas rendering */
     --color-fixture: var(--color-primary-strong);
     --color-canvas-border: rgba(44, 37, 32, 0.3);

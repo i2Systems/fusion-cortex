@@ -17,6 +17,7 @@ import { MapPersonToken } from './MapPersonToken'
 import type { ExtractedVectorData } from '@/lib/pdfVectorExtractor'
 import { DeviceType } from '@/lib/mockData'
 import { getCanvasColors, getRgbaVariable } from '@/lib/canvasColors'
+import { resolveZoneColor } from '@/lib/zoneColors'
 
 interface DevicePoint {
   id: string
@@ -492,13 +493,13 @@ export function ZoneCanvas({
             .filter(zone => selectedZoneId !== zone.id)
             .map((zone) => {
               const points = zone.polygon.map(toCanvasCoords).flatMap(p => [p.x, p.y])
-
+              const zoneColor = resolveZoneColor(zone.color)
               return (
                 <Group key={zone.id}>
                   <Line
                     points={points}
-                    fill={`${zone.color}40`} // 40 = 25% opacity
-                    stroke={zone.color}
+                    fill={`${zoneColor}40`}
+                    stroke={zoneColor}
                     strokeWidth={2}
                     closed
                     onClick={() => {
@@ -533,11 +534,11 @@ export function ZoneCanvas({
           {showZones && zones
             .filter(zone => selectedZoneId === zone.id)
             .map((zone) => {
-              // Use editing polygon if in edit mode, otherwise use zone polygon
               const polygonToUse = (mode === 'edit' && editingZonePolygon)
                 ? editingZonePolygon
                 : zone.polygon
               const points = polygonToUse.map(toCanvasCoords).flatMap(p => [p.x, p.y])
+              const zoneColor = resolveZoneColor(zone.color)
               const isSelected = true
               const isEditing = mode === 'edit'
 
@@ -545,8 +546,8 @@ export function ZoneCanvas({
                 <Group key={zone.id}>
                   <Line
                     points={points}
-                    fill={`${zone.color}40`} // 40 = 25% opacity
-                    stroke={zone.color}
+                    fill={`${zoneColor}40`}
+                    stroke={zoneColor}
                     strokeWidth={isSelected ? 4 : 3}
                     closed
                     onClick={() => {
@@ -587,7 +588,7 @@ export function ZoneCanvas({
                       text={zone.name}
                       fontSize={14}
                       fontFamily="system-ui, -apple-system, sans-serif"
-                      fill={zone.color}
+                      fill={zoneColor}
                       padding={4}
                       align="left"
                     />
@@ -608,7 +609,7 @@ export function ZoneCanvas({
                           y={canvasPoint.y}
                           radius={isDragging ? 10 : (isSelected ? 9 : 8)}
                           fill={isSelected ? getRgbaVariable('--color-text', 0.5) : getRgbaVariable('--color-text', 0.3)}
-                          stroke={isSelected ? colors.text : zone.color}
+                          stroke={isSelected ? colors.text : zoneColor}
                           strokeWidth={isSelected ? 3 : 2}
                           listening={false}
                         />
@@ -617,8 +618,8 @@ export function ZoneCanvas({
                           x={canvasPoint.x}
                           y={canvasPoint.y}
                           radius={isDragging ? 7 : (isSelected ? 6.5 : 6)}
-                          fill={isSelected ? colors.text : zone.color}
-                          stroke={isSelected ? zone.color : colors.text}
+                          fill={isSelected ? colors.text : zoneColor}
+                          stroke={isSelected ? zoneColor : colors.text}
                           strokeWidth={isSelected ? 2.5 : 2}
                           draggable
                           dragBoundFunc={(pos) => {
@@ -668,7 +669,7 @@ export function ZoneCanvas({
                             if (container) container.style.cursor = 'default'
                           }}
                           shadowBlur={isDragging ? 10 : (isSelected ? 8 : 5)}
-                          shadowColor="rgba(0, 0, 0, 0.5)"
+                          shadowColor={getRgbaVariable('--color-tooltip-shadow', 0.5, 'rgba(0, 0, 0, 0.5)')}
                         />
                         {/* Delete indicator for selected handle */}
                         {isSelected && canDelete && (
@@ -683,7 +684,7 @@ export function ZoneCanvas({
                             align="center"
                             listening={false}
                             shadowBlur={5}
-                            shadowColor={getRgbaVariable('--color-tooltip-shadow', 0.8) || 'rgba(0, 0, 0, 0.8)'}
+                            shadowColor={getRgbaVariable('--color-tooltip-shadow', 0.8, 'rgba(0, 0, 0, 0.8)')}
                           />
                         )}
                       </Group>

@@ -43,10 +43,10 @@ const MapCanvas = dynamic(() => import('@/components/map/MapCanvas').then(mod =>
   ),
 })
 
-import { useDevices } from '@/lib/DomainContext'
-import { useZones } from '@/lib/DomainContext'
-import { useSite } from '@/lib/SiteContext'
-import { useMap } from '@/lib/MapContext'
+import { useDevices } from '@/lib/hooks/useDevices'
+import { useZones } from '@/lib/hooks/useZones'
+import { useSite } from '@/lib/hooks/useSite'
+import { useMap } from '@/lib/hooks/useMap'
 import { useRole } from '@/lib/auth'
 import { detectAllLights, createDevicesFromLights } from '@/lib/lightDetection'
 import { trpc } from '@/lib/trpc/client'

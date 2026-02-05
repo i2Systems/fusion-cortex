@@ -108,9 +108,7 @@ Fusion/Cortex is **not**:
     │   ├── useSite.ts     # Site data hook (uses store)
     │   ├── useErrorHandler.ts  # Centralized error handling
     │   └── useUndoable.ts      # Undo/redo functionality
-    ├── [Feature]Context.tsx  # ⚠️ DEPRECATED - Compatibility layer only
     ├── ToastContext.tsx  # Toast notification system
-    ├── ZoomContext.tsx   # Zoom state and interaction hints
     ├── mockData.ts        # Mock data generators
     └── siteData.ts       # Site-specific data generation
 ```
@@ -314,9 +312,17 @@ npm run cortex:sleep
 
 Run the database in Docker, but the Next.js app locally for hot-reloading and faster coding.
 
+**Quick start (recommended):**
+```bash
+npm run local:wakeup
+```
+This starts the database, waits for it to be ready, and launches the dev server.
+
+**Manual steps:**
 1. **Start Database:**
    ```bash
    npm run db:up
+   npm run db:wait   # Waits for PostgreSQL to be ready (prevents startup freeze)
    ```
 
 2. **Seed Data (First time only):**
@@ -360,6 +366,8 @@ The `docker-compose.yml` defines:
 - Credentials: `postgres` / `postgres`
 
 See [LOCAL_DB_SETUP.md](./LOCAL_DB_SETUP.md) for detailed setup and troubleshooting.
+
+**App freezes on startup?** Ensure Docker is running and the database is ready before starting the app. Use `npm run local:wakeup` (waits for DB automatically) or run `npm run db:wait` after `npm run db:up`.
 
 ## 🛠️ Operations & Maintenance
 

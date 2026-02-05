@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react'
-import { useSite } from './SiteContext'
+import { useSite } from './hooks/useSite'
 import { useToast } from './ToastContext'
 import { trpc } from './trpc/client'
 import { supabaseAdmin, STORAGE_BUCKETS } from './supabase'

@@ -10,7 +10,7 @@ import { PeopleViewToggle, type PeopleViewMode } from '@/components/people/Peopl
 import { PeoplePalette } from '@/components/people/PeoplePalette'
 import { PeopleToolbar, type PeopleToolMode } from '@/components/people/PeopleToolbar'
 import { usePeople } from '@/lib/hooks/usePeople'
-import { useSite } from '@/lib/SiteContext'
+import { useSite } from '@/lib/hooks/useSite'
 import { useToast } from '@/lib/ToastContext'
 import { trpc } from '@/lib/trpc/client'
 import dynamic from 'next/dynamic'

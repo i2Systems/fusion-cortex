@@ -19,9 +19,9 @@ import { DeviceProfilePanel } from '@/components/lookup/DeviceProfilePanel'
 import { ViewToggle, type ViewMode } from '@/components/lookup/ViewToggle'
 import { ResizablePanel, type ResizablePanelRef } from '@/components/layout/ResizablePanel'
 import { MapUpload } from '@/components/map/MapUpload'
-import { useDevices } from '@/lib/DomainContext'
-import { useZones } from '@/lib/DomainContext'
-import { useSite } from '@/lib/SiteContext'
+import { useDevices } from '@/lib/hooks/useDevices'
+import { useZones } from '@/lib/hooks/useZones'
+import { useSite } from '@/lib/hooks/useSite'
 import { useToast } from '@/lib/ToastContext'
 import { useConfirm } from '@/lib/hooks/useConfirm'
 import { ComponentModal } from '@/components/shared/ComponentModal'
@@ -29,7 +29,7 @@ import { ManualDeviceEntry } from '@/components/discovery/ManualDeviceEntry'
 import { EditDeviceModal } from '@/components/lookup/EditDeviceModal'
 import { Component, Device, DeviceType } from '@/lib/mockData'
 import { fuzzySearch } from '@/lib/fuzzySearch'
-import { useMap } from '@/lib/MapContext'
+import { useMap } from '@/lib/hooks/useMap'
 import { useMapUpload } from '@/lib/useMapUpload'
 import { generateComponentsForFixture, generateWarrantyExpiry, isFixtureType } from '@/lib/deviceUtils'
 
@@ -300,7 +300,7 @@ export default function LookupPage() {
     setShowManualEntry(false)
   }
 
-  // Map data is now loaded from MapContext - no need to load it here
+  // Map data is now loaded from map store (useMapSync) - no need to load it here
   const { refreshMapData } = useMap()
   const { uploadMap, uploadVectorData, isUploading } = useMapUpload()
 

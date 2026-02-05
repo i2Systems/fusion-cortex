@@ -23,7 +23,7 @@ This document outlines 10 additional UX improvements identified through a deeper
 
 **Files to Update:**
 - `components/layout/PageTitle.tsx`
-- `lib/SiteContext.tsx`
+- `lib/stores/siteStore.ts` (site state)
 
 ---
 

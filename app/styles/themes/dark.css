@@ -49,9 +49,29 @@
         --color-tooltip-text: var(--color-text);
         --color-tooltip-shadow: 0 0 15px rgba(0, 217, 255, 0.3);
 
+        /* Zone palette - 6 distinct categorical colors for zone visualization */
+        --color-zone-primary: var(--color-primary);
+        --color-zone-accent: var(--color-accent);
+        --color-zone-success: var(--color-success);
+        --color-zone-warning: var(--color-warning);
+        --color-zone-danger: var(--color-danger);
+        --color-zone-info: var(--color-info);
+
+        /* Group palette - for Groups UI (user-selectable, theme-aware) */
+        --color-group-1: var(--color-primary);
+        --color-group-2: var(--color-danger);
+        --color-group-3: var(--color-success);
+        --color-group-4: var(--color-warning);
+        --color-group-5: var(--color-accent);
+        --color-group-6: var(--color-info);
+        --color-group-7: #ff8c4c;
+        --color-group-8: #a855f7;
+
         /* Canvas-specific colors for Konva/Canvas rendering */
         --color-fixture: var(--color-primary-strong);
         --color-canvas-border: rgba(0, 0, 0, 0.4);
+        --color-canvas-stroke-dark: rgba(0, 0, 0, 0.3);
+        --color-canvas-selection-inner: rgba(255, 255, 255, 0.8);
         --color-canvas-selection-fill: rgba(0, 229, 255, 0.25);
         --color-canvas-selection-stroke: rgba(0, 229, 255, 1);
         --color-canvas-selection-shadow: rgba(0, 229, 255, 0.9);

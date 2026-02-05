@@ -2,7 +2,7 @@
 
 import { useCallback, useRef } from 'react'
 import { trpc } from '@/lib/trpc/client'
-import { useSite } from '@/lib/SiteContext'
+import { useSite } from '@/lib/hooks/useSite'
 import { useErrorHandler } from '@/lib/hooks/useErrorHandler'
 import type { Device } from '@/lib/mockData'
 

@@ -9,7 +9,7 @@
  */
 
 import { Device, DeviceType, DeviceStatus } from './mockData'
-import { Zone } from './ZoneContext'
+import { Zone } from './stores/zoneStore'
 import { initialZones } from './initialZones'
 
 export interface SiteData {

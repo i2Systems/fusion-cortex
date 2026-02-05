@@ -25,7 +25,7 @@ function generateSeedFiles(jsonPath: string) {
 
   const zonesContent =
     tsHeader('Zones Data') +
-    `import { Zone } from './ZoneContext'\n\nexport const seedZones: Zone[] | null = ${JSON.stringify(jsonData.zones, null, 2)}\n`
+    `import { Zone } from './stores/zoneStore'\n\nexport const seedZones: Zone[] | null = ${JSON.stringify(jsonData.zones, null, 2)}\n`
 
   const devicesContent =
     tsHeader('Devices Data') +

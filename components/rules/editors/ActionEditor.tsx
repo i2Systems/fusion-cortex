@@ -10,8 +10,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { X, Check, ChevronDown, Target } from 'lucide-react'
 import { Rule, RuleType } from '@/lib/mockRules'
-import { useZones } from '@/lib/DomainContext'
-import { useDevices } from '@/lib/DomainContext'
+import { useZones } from '@/lib/hooks/useZones'
+import { useDevices } from '@/lib/hooks/useDevices'
 import { createPortal } from 'react-dom'
 
 interface ActionEditorProps {

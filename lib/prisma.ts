@@ -25,8 +25,9 @@ if (databaseUrl?.includes('pooler.supabase.com')) {
   // Supabase pooler configuration
   poolerUrl = `${databaseUrl}${databaseUrl.includes('?') ? '&' : '?'}pgbouncer=true&sslmode=require&connection_limit=1&connect_timeout=10&pool_timeout=10`
 } else if (databaseUrl && !databaseUrl.includes('connect_timeout')) {
-  // Add connection timeout for local/docker databases to prevent hanging
-  poolerUrl = `${databaseUrl}${databaseUrl.includes('?') ? '&' : '?'}connect_timeout=10`
+  // Add connection timeout for local/docker databases to prevent startup freeze
+  // 5s = fail fast when DB is down; wait-for-db.sh ensures DB is ready before app starts
+  poolerUrl = `${databaseUrl}${databaseUrl.includes('?') ? '&' : '?'}connect_timeout=5`
 }
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({

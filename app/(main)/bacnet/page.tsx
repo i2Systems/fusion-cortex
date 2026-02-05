@@ -16,9 +16,9 @@ import dynamic from 'next/dynamic'
 import { SearchIsland } from '@/components/layout/SearchIsland'
 import { MapViewToggle, type MapViewMode } from '@/components/shared/MapViewToggle'
 import { MapUpload } from '@/components/map/MapUpload'
-import { useZones } from '@/lib/DomainContext'
-import { useDevices } from '@/lib/DomainContext'
-import { useSite } from '@/lib/SiteContext'
+import { useZones } from '@/lib/hooks/useZones'
+import { useDevices } from '@/lib/hooks/useDevices'
+import { useSite } from '@/lib/hooks/useSite'
 import { BACnetDetailsPanel } from '@/components/bacnet/BACnetDetailsPanel'
 import { initialBACnetMappings, type ControlCapability } from '@/lib/initialBACnetMappings'
 import { ResizablePanel } from '@/components/layout/ResizablePanel'
@@ -47,7 +47,7 @@ import {
   Clock,
   Radio
 } from 'lucide-react'
-import { useMap } from '@/lib/MapContext'
+import { useMap } from '@/lib/hooks/useMap'
 import { useMapUpload } from '@/lib/useMapUpload'
 
 // Dynamically import BACnetZoneCanvas to avoid SSR issues with Konva
@@ -415,7 +415,7 @@ export default function BACnetPage() {
     return `${Math.floor(hours / 24)}d ago`
   }
 
-  // Map data is now loaded from MapContext - no need to load it here
+  // Map data is now loaded from map store (useMapSync) - no need to load it here
   const { refreshMapData } = useMap()
   const { uploadMap, uploadVectorData } = useMapUpload()
 

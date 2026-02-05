@@ -12,7 +12,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { skipToken } from '@tanstack/react-query'
 import { X, Building2, MapPin, Phone, User, Calendar, Hash, Image as ImageIcon, Upload, Trash2 } from 'lucide-react'
-import { Site } from '@/lib/SiteContext'
+import type { Site } from '@/lib/stores/siteStore'
 import { trpc } from '@/lib/trpc/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -52,6 +52,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
   const [currentImage, setCurrentImage] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; siteNumber?: string }>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
   const titleId = `add-site-modal-title-${Math.random().toString(36).substr(2, 9)}`
@@ -87,8 +88,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
       // Refetch when modal opens to get fresh data
       refetchOnMount: true,
       refetchOnWindowFocus: false,
-      // Don't use stale data
-      staleTime: 0,
+      staleTime: 60 * 1000, // 1 min - prevent refetch storms
     }
   )
   const saveSiteImageMutation = trpc.image.saveSiteImage.useMutation({
@@ -262,6 +262,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
       }
       
       setPreviewImage(null) // Reset preview when editing
+      setFieldErrors({})
     } else {
       // Reset form for new site
       setFormData({
@@ -281,6 +282,7 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
       setPersonName('')
       setPreviewImage(null)
       setCurrentImage(null)
+      setFieldErrors({})
     }
   }, [editingSite, isOpen, sitePeople])
 
@@ -525,15 +527,14 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
       }
     }
 
-    if (!formData.name.trim()) {
-      addToast({ type: 'warning', title: 'Required Field', message: 'Site name is required' })
+    const errors: { name?: string; siteNumber?: string } = {}
+    if (!formData.name.trim()) errors.name = 'Site name is required'
+    if (!formData.siteNumber.trim()) errors.siteNumber = 'Site number is required'
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
       return
     }
-
-    if (!formData.siteNumber.trim()) {
-      addToast({ type: 'warning', title: 'Required Field', message: 'Site number is required' })
-      return
-    }
+    setFieldErrors({})
 
     // Determine the role to use
     // If person name is provided but no role selected, default to Manager
@@ -668,11 +669,15 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
             <Input
               id="site-name"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, name: e.target.value })
+                if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }))
+              }}
               placeholder="e.g., Site #1234 - Main St"
               fullWidth
               icon={<Building2 size={16} className="text-[var(--color-text-muted)]" />}
               required
+              errorMessage={fieldErrors.name}
             />
           </div>
 
@@ -684,11 +689,15 @@ export function AddSiteModal({ isOpen, onClose, onAdd, onEdit, editingSite }: Ad
             <Input
               id="site-number"
               value={formData.siteNumber}
-              onChange={(e) => setFormData({ ...formData, siteNumber: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, siteNumber: e.target.value })
+                if (fieldErrors.siteNumber) setFieldErrors((prev) => ({ ...prev, siteNumber: undefined }))
+              }}
               placeholder="e.g., 1234"
               fullWidth
               icon={<Hash size={16} className="text-[var(--color-text-muted)]" />}
               required
+              errorMessage={fieldErrors.siteNumber}
             />
           </div>
 

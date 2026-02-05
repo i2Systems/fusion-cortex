@@ -17,12 +17,12 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { useNotifications } from '@/lib/NotificationContext'
 import { useRouter } from 'next/navigation'
-import { useDevices } from '@/lib/DomainContext'
-import { useZones } from '@/lib/DomainContext'
-import { useRules } from '@/lib/DomainContext'
+import { useDevices } from '@/lib/hooks/useDevices'
+import { useZones } from '@/lib/hooks/useZones'
+import { useRules } from '@/lib/hooks/useRules'
 import Link from 'next/link'
 import { FaultCategory, assignFaultCategory } from '@/lib/faultDefinitions'
-import { useZoomContext } from '@/lib/MapContext'
+import { useZoomContext } from '@/lib/hooks/useMap'
 
 interface BottomDrawerProps {
   children?: React.ReactNode
@@ -259,6 +259,7 @@ export function BottomDrawer({ children }: BottomDrawerProps) {
                     {/* View All link as last card */}
                     <Link
                       href="/notifications"
+                      prefetch={false}
                       className="w-64 flex-shrink-0 p-3 rounded-lg border border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] hover:bg-[var(--color-surface)] hover:border-[var(--color-primary)]/30 transition-all flex items-center justify-center group"
                       onClick={(e) => {
                         e.stopPropagation()

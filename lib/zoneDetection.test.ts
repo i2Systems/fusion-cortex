@@ -125,7 +125,8 @@ describe('zoneDetection', () => {
 
             zones.forEach(zone => {
                 expect(zone.color).toBeDefined()
-                expect(zone.color).toMatch(/^#[0-9a-fA-F]{6}$/) // Valid hex color
+                // Semantic keys (zone-primary, etc.) or hex
+                expect(zone.color).toMatch(/^(zone-[a-z]+|#[0-9a-fA-F]{6})$/)
             })
         })
 

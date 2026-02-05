@@ -18,6 +18,7 @@ import { Device } from '@/lib/mockData'
 import { Wifi, Battery, WifiOff, Info, Signal, Target, Plus, CheckSquare, Square, Trash2 } from 'lucide-react'
 import { getDeviceLibraryUrl } from '@/lib/libraryUtils'
 import { getStatusTokenClass, getSignalTokenClass, getBatteryTokenClass } from '@/lib/styleUtils'
+import { resolveZoneColor } from '@/lib/zoneColors'
 
 interface Zone {
   id: string
@@ -239,8 +240,8 @@ export function ZonesListView({
                 <div
                   className="p-3 rounded-t-lg border-b border-[var(--color-border-subtle)] cursor-pointer"
                   style={{
-                    backgroundColor: `${zone.color}20`,
-                    borderColor: isSelected ? zone.color : undefined
+                    backgroundColor: `${resolveZoneColor(zone.color)}20`,
+                    borderColor: isSelected ? resolveZoneColor(zone.color) : undefined
                   }}
                 >
                   <div className="flex items-center justify-between mb-1">
@@ -249,7 +250,7 @@ export function ZonesListView({
                     </h4>
                     <div
                       className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: zone.color }}
+                      style={{ backgroundColor: resolveZoneColor(zone.color) }}
                     />
                   </div>
                   <p className="text-xs text-[var(--color-text-muted)]">
