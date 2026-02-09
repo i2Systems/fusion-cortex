@@ -3,6 +3,7 @@ import { router, publicProcedure } from '../trpc'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
+import { withRetry, withRetryList } from '../utils/withRetry'
 
 // Input schemas
 const createGroupSchema = z.object({
@@ -27,7 +28,7 @@ export const groupRouter = router({
     get: publicProcedure
         .input(z.object({ id: z.string() }))
         .query(async ({ input }) => {
-            const group = await prisma.group.findUnique({
+            const group = await withRetry(() => prisma.group.findUnique({
                 where: { id: input.id },
                 include: {
                     GroupDevice: {
@@ -41,7 +42,7 @@ export const groupRouter = router({
                         }
                     }
                 }
-            })
+            }), { context: 'group.get' })
             if (!group) return null
 
             return {
@@ -54,14 +55,14 @@ export const groupRouter = router({
     list: publicProcedure
         .input(z.object({ siteId: z.string() }))
         .query(async ({ input }) => {
-            const groups = await prisma.group.findMany({
+            const groups = await withRetryList(() => prisma.group.findMany({
                 where: { siteId: input.siteId },
                 orderBy: { createdAt: 'desc' },
                 include: {
                     GroupDevice: true,
                     GroupPerson: true
                 }
-            })
+            }), 'group.list')
 
             return groups.map(group => ({
                 ...group,
@@ -77,9 +78,9 @@ export const groupRouter = router({
 
             // Validate devices exist and belong to site
             if (deviceIds && deviceIds.length > 0) {
-                const devices = await prisma.device.findMany({
+                const devices = await withRetryList(() => prisma.device.findMany({
                     where: { id: { in: deviceIds }, siteId }
-                })
+                }), 'group.create.validateDevices')
                 if (devices.length !== deviceIds.length) {
                     const foundIds = new Set(devices.map(d => d.id))
                     const missing = deviceIds.filter(id => !foundIds.has(id))
@@ -89,9 +90,9 @@ export const groupRouter = router({
 
             // Validate people exist and belong to site
             if (personIds && personIds.length > 0) {
-                const people = await prisma.person.findMany({
+                const people = await withRetryList(() => prisma.person.findMany({
                     where: { id: { in: personIds }, siteId }
-                })
+                }), 'group.create.validatePeople')
                 if (people.length !== personIds.length) {
                     const foundIds = new Set(people.map(p => p.id))
                     const missing = personIds.filter(id => !foundIds.has(id))
@@ -99,7 +100,7 @@ export const groupRouter = router({
                 }
             }
 
-            const group = await prisma.group.create({
+            const group = await withRetry(() => prisma.group.create({
                 data: {
                     id: randomUUID(),
                     ...data,
@@ -122,7 +123,7 @@ export const groupRouter = router({
                     GroupDevice: true,
                     GroupPerson: true
                 }
-            })
+            }), { context: 'group.create' })
 
             return {
                 ...group,
@@ -139,60 +140,60 @@ export const groupRouter = router({
             // If deviceIds are provided, we need to handle relation updates
             if (deviceIds !== undefined) {
                 // Delete existing relations not in new list
-                await prisma.groupDevice.deleteMany({
+                await withRetry(() => prisma.groupDevice.deleteMany({
                     where: {
                         groupId: id,
                         deviceId: { notIn: deviceIds }
                     }
-                })
+                }), { context: 'group.update.deleteDevices' })
 
                 // Create new relations
-                const existing = await prisma.groupDevice.findMany({
+                const existing = await withRetryList(() => prisma.groupDevice.findMany({
                     where: { groupId: id }
-                })
+                }), 'group.update.listDevices')
                 const existingIds = existing.map(e => e.deviceId)
                 const toAdd = deviceIds.filter(did => !existingIds.includes(did))
 
                 if (toAdd.length > 0) {
-                    await prisma.groupDevice.createMany({
+                    await withRetry(() => prisma.groupDevice.createMany({
                         data: toAdd.map(deviceId => ({
                             id: randomUUID(),
                             groupId: id,
                             deviceId
                         }))
-                    })
+                    }), { context: 'group.update.addDevices' })
                 }
             }
 
             // If personIds are provided, we need to handle relation updates
             if (personIds !== undefined) {
                 // Delete existing relations not in new list
-                await prisma.groupPerson.deleteMany({
+                await withRetry(() => prisma.groupPerson.deleteMany({
                     where: {
                         groupId: id,
                         personId: { notIn: personIds }
                     }
-                })
+                }), { context: 'group.update.deletePeople' })
 
                 // Create new relations
-                const existing = await prisma.groupPerson.findMany({
+                const existing = await withRetryList(() => prisma.groupPerson.findMany({
                     where: { groupId: id }
-                })
+                }), 'group.update.listPeople')
                 const existingIds = existing.map(e => e.personId)
                 const toAdd = personIds.filter(pid => !existingIds.includes(pid))
 
                 if (toAdd.length > 0) {
-                    await prisma.groupPerson.createMany({
+                    await withRetry(() => prisma.groupPerson.createMany({
                         data: toAdd.map(personId => ({
                             id: randomUUID(),
                             groupId: id,
                             personId
                         }))
-                    })
+                    }), { context: 'group.update.addPeople' })
                 }
             }
 
-            const group = await prisma.group.update({
+            const group = await withRetry(() => prisma.group.update({
                 where: { id },
                 data: {
                     ...data,
@@ -202,7 +203,7 @@ export const groupRouter = router({
                     GroupDevice: true,
                     GroupPerson: true
                 }
-            })
+            }), { context: 'group.update' })
 
             return {
                 ...group,
@@ -214,23 +215,26 @@ export const groupRouter = router({
     addDevice: publicProcedure
         .input(z.object({ groupId: z.string(), deviceId: z.string() }))
         .mutation(async ({ input }) => {
-            const group = await prisma.group.findUnique({
+            const group = await withRetry(() => prisma.group.findUnique({
                 where: { id: input.groupId },
                 select: { id: true, siteId: true }
-            })
+            }), { context: 'group.addDevice.checkGroup' })
             if (!group) throw new Error('Group not found')
-            const device = await prisma.device.findFirst({
+
+            const device = await withRetry(() => prisma.device.findFirst({
                 where: { id: input.deviceId, siteId: group.siteId }
-            })
+            }), { context: 'group.addDevice.checkDevice' })
             if (!device) throw new Error('Device not found or does not belong to this site')
-            const existing = await prisma.groupDevice.findFirst({
+
+            const existing = await withRetry(() => prisma.groupDevice.findFirst({
                 where: { groupId: input.groupId, deviceId: input.deviceId }
-            })
+            }), { context: 'group.addDevice.checkExisting' })
+
             if (existing) {
-                const full = await prisma.group.findUnique({
+                const full = await withRetry(() => prisma.group.findUnique({
                     where: { id: input.groupId },
                     include: { GroupDevice: true, GroupPerson: true }
-                })
+                }), { context: 'group.addDevice.getFull' })
                 if (!full) return null
                 return {
                     ...full,
@@ -238,17 +242,19 @@ export const groupRouter = router({
                     personIds: full.GroupPerson.map(gp => gp.personId)
                 }
             }
-            await prisma.groupDevice.create({
+
+            await withRetry(() => prisma.groupDevice.create({
                 data: {
                     id: randomUUID(),
                     groupId: input.groupId,
                     deviceId: input.deviceId
                 }
-            })
-            const updated = await prisma.group.findUnique({
+            }), { context: 'group.addDevice.create' })
+
+            const updated = await withRetry(() => prisma.group.findUnique({
                 where: { id: input.groupId },
                 include: { GroupDevice: true, GroupPerson: true }
-            })
+            }), { context: 'group.addDevice.getUpdated' })
             if (!updated) return null
             return {
                 ...updated,
@@ -260,16 +266,17 @@ export const groupRouter = router({
     removeDevice: publicProcedure
         .input(z.object({ groupId: z.string(), deviceId: z.string() }))
         .mutation(async ({ input }) => {
-            await prisma.groupDevice.deleteMany({
+            await withRetry(() => prisma.groupDevice.deleteMany({
                 where: {
                     groupId: input.groupId,
                     deviceId: input.deviceId
                 }
-            })
-            const group = await prisma.group.findUnique({
+            }), { context: 'group.removeDevice' })
+
+            const group = await withRetry(() => prisma.group.findUnique({
                 where: { id: input.groupId },
                 include: { GroupDevice: true, GroupPerson: true }
-            })
+            }), { context: 'group.removeDevice.getUpdated' })
             if (!group) return null
             return {
                 ...group,
@@ -281,23 +288,26 @@ export const groupRouter = router({
     addPerson: publicProcedure
         .input(z.object({ groupId: z.string(), personId: z.string() }))
         .mutation(async ({ input }) => {
-            const group = await prisma.group.findUnique({
+            const group = await withRetry(() => prisma.group.findUnique({
                 where: { id: input.groupId },
                 select: { id: true, siteId: true }
-            })
+            }), { context: 'group.addPerson.checkGroup' })
             if (!group) throw new Error('Group not found')
-            const person = await prisma.person.findFirst({
+
+            const person = await withRetry(() => prisma.person.findFirst({
                 where: { id: input.personId, siteId: group.siteId }
-            })
+            }), { context: 'group.addPerson.checkPerson' })
             if (!person) throw new Error('Person not found or does not belong to this site')
-            const existing = await prisma.groupPerson.findFirst({
+
+            const existing = await withRetry(() => prisma.groupPerson.findFirst({
                 where: { groupId: input.groupId, personId: input.personId }
-            })
+            }), { context: 'group.addPerson.checkExisting' })
+
             if (existing) {
-                const full = await prisma.group.findUnique({
+                const full = await withRetry(() => prisma.group.findUnique({
                     where: { id: input.groupId },
                     include: { GroupDevice: true, GroupPerson: true }
-                })
+                }), { context: 'group.addPerson.getFull' })
                 if (!full) return null
                 return {
                     ...full,
@@ -305,17 +315,19 @@ export const groupRouter = router({
                     personIds: full.GroupPerson.map(gp => gp.personId)
                 }
             }
-            await prisma.groupPerson.create({
+
+            await withRetry(() => prisma.groupPerson.create({
                 data: {
                     id: randomUUID(),
                     groupId: input.groupId,
                     personId: input.personId
                 }
-            })
-            const updated = await prisma.group.findUnique({
+            }), { context: 'group.addPerson.create' })
+
+            const updated = await withRetry(() => prisma.group.findUnique({
                 where: { id: input.groupId },
                 include: { GroupDevice: true, GroupPerson: true }
-            })
+            }), { context: 'group.addPerson.getUpdated' })
             if (!updated) return null
             return {
                 ...updated,
@@ -327,16 +339,17 @@ export const groupRouter = router({
     removePerson: publicProcedure
         .input(z.object({ groupId: z.string(), personId: z.string() }))
         .mutation(async ({ input }) => {
-            await prisma.groupPerson.deleteMany({
+            await withRetry(() => prisma.groupPerson.deleteMany({
                 where: {
                     groupId: input.groupId,
                     personId: input.personId
                 }
-            })
-            const group = await prisma.group.findUnique({
+            }), { context: 'group.removePerson' })
+
+            const group = await withRetry(() => prisma.group.findUnique({
                 where: { id: input.groupId },
                 include: { GroupDevice: true, GroupPerson: true }
-            })
+            }), { context: 'group.removePerson.getUpdated' })
             if (!group) return null
             return {
                 ...group,
@@ -348,9 +361,9 @@ export const groupRouter = router({
     delete: publicProcedure
         .input(z.string())
         .mutation(async ({ input }) => {
-            const deleted = await prisma.group.delete({
+            const deleted = await withRetry(() => prisma.group.delete({
                 where: { id: input }
-            })
+            }), { context: 'group.delete' })
             // Return flattened shape consistent with create/update (deviceIds/personIds removed by cascade)
             return {
                 id: deleted.id,

@@ -11,6 +11,7 @@ import { router, publicProcedure } from '../trpc'
 import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
 import { FaultCategory } from '@/lib/faultDefinitions'
+import { withRetry, withRetryList } from '../utils/withRetry'
 
 export const faultRouter = router({
   // List all faults for a site
@@ -21,7 +22,7 @@ export const faultRouter = router({
     }))
     .query(async ({ input }) => {
       // Use select instead of include to avoid fetching firmware fields that may not exist
-      const faults = await prisma.fault.findMany({
+      return withRetryList(() => prisma.fault.findMany({
         where: {
           Device: {
             siteId: input.siteId,
@@ -78,9 +79,7 @@ export const faultRouter = router({
         orderBy: {
           detectedAt: 'desc',
         },
-      })
-      
-      return faults
+      }), 'fault.list')
     }),
 
   // Get fault by ID
@@ -89,7 +88,7 @@ export const faultRouter = router({
       id: z.string(),
     }))
     .query(async ({ input }) => {
-      const fault = await prisma.fault.findUnique({
+      return withRetry(() => prisma.fault.findUnique({
         where: { id: input.id },
         select: {
           id: true,
@@ -138,9 +137,7 @@ export const faultRouter = router({
             },
           },
         },
-      })
-      
-      return fault
+      }), { context: 'fault.getById' })
     }),
 
   // Create a new fault
@@ -153,14 +150,14 @@ export const faultRouter = router({
     }))
     .mutation(async ({ input }) => {
       // Verify device exists
-      const device = await prisma.device.findUnique({
+      const device = await withRetry(() => prisma.device.findUnique({
         where: { id: input.deviceId },
-      })
-      
+      }), { context: 'fault.create.checkDevice' })
+
       if (!device) {
         throw new Error('Device not found')
       }
-      
+
       // Verify fault type is valid
       const validTypes: string[] = [
         'environmental-ingress',
@@ -172,12 +169,12 @@ export const faultRouter = router({
         'mechanical-structural',
         'optical-output',
       ]
-      
+
       if (!validTypes.includes(input.faultType)) {
         throw new Error('Invalid fault type')
       }
-      
-      const fault = await prisma.fault.create({
+
+      return withRetry(() => prisma.fault.create({
         data: {
           id: randomUUID(),
           deviceId: input.deviceId,
@@ -234,9 +231,7 @@ export const faultRouter = router({
             },
           },
         },
-      })
-      
-      return fault
+      }), { context: 'fault.create' })
     }),
 
   // Update fault (e.g., mark as resolved)
@@ -249,17 +244,17 @@ export const faultRouter = router({
     }))
     .mutation(async ({ input }) => {
       const { id, ...updates } = input
-      
-      const fault = await prisma.fault.update({
+
+      return withRetry(() => prisma.fault.update({
         where: { id },
         data: {
           ...updates,
           // Auto-set resolvedAt when marking as resolved
-          resolvedAt: input.resolved === true 
+          resolvedAt: input.resolved === true
             ? (input.resolvedAt || new Date())
             : input.resolved === false
-            ? null
-            : input.resolvedAt,
+              ? null
+              : input.resolvedAt,
         },
         select: {
           id: true,
@@ -308,9 +303,7 @@ export const faultRouter = router({
             },
           },
         },
-      })
-      
-      return fault
+      }), { context: 'fault.update' })
     }),
 
   // Delete fault
@@ -319,10 +312,10 @@ export const faultRouter = router({
       id: z.string(),
     }))
     .mutation(async ({ input }) => {
-      await prisma.fault.delete({
+      await withRetry(() => prisma.fault.delete({
         where: { id: input.id },
-      })
-      
+      }), { context: 'fault.delete' })
+
       return { success: true }
     }),
 })

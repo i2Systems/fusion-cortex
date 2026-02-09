@@ -3,6 +3,7 @@ import { router, publicProcedure } from '../trpc'
 import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
 import { TRPCError } from '@trpc/server'
+import { withRetry, withRetryList } from '../utils/withRetry'
 
 export const locationRouter = router({
     // List locations for a site (bases and their children)
@@ -12,10 +13,10 @@ export const locationRouter = router({
         }))
         .query(async ({ input }) => {
             try {
-                const locations = await prisma.location.findMany({
+                const locations = await withRetryList(() => prisma.location.findMany({
                     where: { siteId: input.siteId },
                     orderBy: { createdAt: 'desc' },
-                })
+                }), 'location.list')
 
                 // Sort: bases first, then by date
                 // We can do client-side hierarchical sorting if needed, 
@@ -43,9 +44,9 @@ export const locationRouter = router({
         }))
         .mutation(async ({ input }) => {
             // Validate site exists
-            const site = await prisma.site.findUnique({
+            const site = await withRetry(() => prisma.site.findUnique({
                 where: { id: input.siteId },
-            })
+            }), { context: 'location.create.checkSite' })
             if (!site) {
                 throw new TRPCError({
                     code: 'NOT_FOUND',
@@ -54,19 +55,19 @@ export const locationRouter = router({
             }
 
             // Create location
-        const location = await prisma.location.create({
-          data: {
-            id: randomUUID(),
-            siteId: input.siteId,
-            name: input.name,
-            type: input.type,
-            parentId: input.parentId,
-            imageUrl: input.imageUrl,
-            vectorDataUrl: input.vectorDataUrl,
-            zoomBounds: input.zoomBounds,
-            updatedAt: new Date(),
-          },
-            })
+            const location = await withRetry(() => prisma.location.create({
+                data: {
+                    id: randomUUID(),
+                    siteId: input.siteId,
+                    name: input.name,
+                    type: input.type,
+                    parentId: input.parentId,
+                    imageUrl: input.imageUrl,
+                    vectorDataUrl: input.vectorDataUrl,
+                    zoomBounds: input.zoomBounds,
+                    updatedAt: new Date(),
+                },
+            }), { context: 'location.create' })
 
             return location
         }),
@@ -83,10 +84,10 @@ export const locationRouter = router({
         .mutation(async ({ input }) => {
             const { id, ...updates } = input
 
-            const location = await prisma.location.update({
+            const location = await withRetry(() => prisma.location.update({
                 where: { id },
                 data: updates,
-            })
+            }), { context: 'location.update' })
 
             return location
         }),
@@ -98,9 +99,9 @@ export const locationRouter = router({
         }))
         .mutation(async ({ input }) => {
             // Cascading delete is handled by database schema
-            await prisma.location.delete({
+            await withRetry(() => prisma.location.delete({
                 where: { id: input.id },
-            })
+            }), { context: 'location.delete' })
             return { success: true }
         }),
 })

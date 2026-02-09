@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { router, publicProcedure } from '../trpc';
 import { prisma } from '@/lib/prisma';
 import { DeviceStatus } from '@prisma/client';
+import { withRetryList } from '../utils/withRetry';
 
 export const notificationRouter = router({
     list: publicProcedure
@@ -13,7 +14,7 @@ export const notificationRouter = router({
             const notifications = [];
 
             // 1. Get unresolved faults
-            const faults = await prisma.fault.findMany({
+            const faults = await withRetryList(() => prisma.fault.findMany({
                 where: {
                     resolved: false,
                     Device: siteId ? { siteId } : undefined,
@@ -34,7 +35,7 @@ export const notificationRouter = router({
                 },
                 orderBy: { detectedAt: 'desc' },
                 take: 20, // Limit to recent faults
-            });
+            }), 'notification.list.faults');
 
             for (const fault of faults) {
                 notifications.push({
@@ -53,7 +54,7 @@ export const notificationRouter = router({
             const thirtyDaysFromNow = new Date();
             thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-            const warrantyDevices = await prisma.device.findMany({
+            const warrantyDevices = await withRetryList(() => prisma.device.findMany({
                 where: {
                     siteId: siteId || undefined,
                     AND: [
@@ -71,7 +72,7 @@ export const notificationRouter = router({
                     warrantyExpiry: 'asc', // Show most urgent first
                 },
                 take: 50, // Increase limit to ensure coverage across sites
-            });
+            }), 'notification.list.warranty');
 
             for (const device of warrantyDevices) {
                 if (!device.warrantyExpiry) continue;
@@ -89,7 +90,7 @@ export const notificationRouter = router({
             }
 
             // 3. Device Health (Low Signal or Offline)
-            const healthDevices = await prisma.device.findMany({
+            const healthDevices = await withRetryList(() => prisma.device.findMany({
                 where: {
                     siteId: siteId || undefined,
                     OR: [
@@ -109,7 +110,7 @@ export const notificationRouter = router({
                     updatedAt: 'desc', // Show most recently updated
                 },
                 take: 50, // Increase limit
-            });
+            }), 'notification.list.health');
 
             for (const device of healthDevices) {
                 let title = 'Device Issue';
@@ -136,7 +137,7 @@ export const notificationRouter = router({
             }
 
             // 4. Get Firmware Update Notifications
-            const firmwareCampaigns = await prisma.firmwareUpdate.findMany({
+            const firmwareCampaigns = await withRetryList(() => prisma.firmwareUpdate.findMany({
                 where: {
                     status: {
                         in: ['IN_PROGRESS', 'COMPLETED', 'FAILED'],
@@ -161,7 +162,7 @@ export const notificationRouter = router({
                 },
                 orderBy: { updatedAt: 'desc' },
                 take: 10,
-            });
+            }), 'notification.list.firmware');
 
             for (const campaign of firmwareCampaigns) {
                 // Campaign status notifications

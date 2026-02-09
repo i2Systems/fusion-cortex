@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
 import { logger } from '@/lib/logger'
 import { SITE_ROLE_TYPES } from '@/lib/constants/roleTypes'
+import { withRetry, withRetryList } from '../utils/withRetry'
 
 type PrismaTx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
 
@@ -80,7 +81,7 @@ async function syncPersonToRoleGroupWithTx(
  */
 async function syncPersonToRoleGroup(personId: string, siteId: string, newRole: string | null | undefined, oldRole?: string | null) {
     try {
-        await prisma.$transaction((tx) => syncPersonToRoleGroupWithTx(tx, personId, siteId, newRole, oldRole))
+        await withRetry(() => prisma.$transaction((tx) => syncPersonToRoleGroupWithTx(tx, personId, siteId, newRole, oldRole)), { context: 'person.syncRoleGroup' })
     } catch (error) {
         logger.error(`Error syncing person ${personId} to role group:`, error)
     }
@@ -119,19 +120,19 @@ export const personRouter = router({
     get: publicProcedure
         .input(z.object({ id: z.string() }))
         .query(async ({ input }) => {
-            return await prisma.person.findUnique({
+            return await withRetry(() => prisma.person.findUnique({
                 where: { id: input.id }
-            })
+            }), { context: 'person.get' })
         }),
 
     list: publicProcedure
         .input(z.object({ siteId: z.string() }))
         .query(async ({ input }) => {
-            const people = await prisma.person.findMany({
+            const people = await withRetryList(() => prisma.person.findMany({
                 where: { siteId: input.siteId },
                 orderBy: { createdAt: 'desc' },
                 include: { GroupPerson: true }
-            })
+            }), 'person.list')
             return people.map(({ GroupPerson, ...p }) => ({
                 ...p,
                 groupIds: GroupPerson.map((gp) => gp.groupId)
@@ -141,7 +142,7 @@ export const personRouter = router({
     create: publicProcedure
         .input(createPersonSchema)
         .mutation(async ({ input }) => {
-            return await prisma.$transaction(async (tx) => {
+            return await withRetry(() => prisma.$transaction(async (tx) => {
                 const person = await tx.person.create({
                     data: {
                         id: randomUUID(),
@@ -153,14 +154,14 @@ export const personRouter = router({
                     await syncPersonToRoleGroupWithTx(tx, person.id, input.siteId, input.role)
                 }
                 return person
-            })
+            }), { context: 'person.create' })
         }),
 
     update: publicProcedure
         .input(updatePersonSchema)
         .mutation(async ({ input }) => {
             const { id, ...data } = input
-            return await prisma.$transaction(async (tx) => {
+            return await withRetry(() => prisma.$transaction(async (tx) => {
                 const existingPerson = await tx.person.findUnique({
                     where: { id },
                     select: { role: true, siteId: true }
@@ -182,15 +183,15 @@ export const personRouter = router({
                     )
                 }
                 return person
-            })
+            }), { context: 'person.update' })
         }),
 
     delete: publicProcedure
         .input(z.string())
         .mutation(async ({ input }) => {
-            return await prisma.person.delete({
+            return await withRetry(() => prisma.person.delete({
                 where: { id: input }
-            })
+            }), { context: 'person.delete' })
         }),
 
     // Save person image to database (stored in imageUrl field)
@@ -207,10 +208,10 @@ export const personRouter = router({
             for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
                 try {
                     // Verify person exists
-                    const personExists = await prisma.person.findUnique({
+                    const personExists = await withRetry(() => prisma.person.findUnique({
                         where: { id: input.personId },
                         select: { id: true },
-                    })
+                    }), { context: 'person.saveImage.check' })
 
                     if (!personExists) {
                         throw new Error(`Person with ID ${input.personId} not found`)
@@ -221,10 +222,10 @@ export const personRouter = router({
                     let imageUrl = input.imageData // Default to base64
 
                     // Update person with imageUrl
-                    const person = await prisma.person.update({
+                    const person = await withRetry(() => prisma.person.update({
                         where: { id: input.personId },
                         data: { imageUrl },
-                    })
+                    }), { context: 'person.saveImage.update' })
 
                     logger.info(`Person image saved for ${input.personId}`)
                     return person
@@ -273,10 +274,10 @@ export const personRouter = router({
     syncAllToRoleGroups: publicProcedure
         .input(z.object({ siteId: z.string() }))
         .mutation(async ({ input }) => {
-            const people = await prisma.person.findMany({
+            const people = await withRetryList(() => prisma.person.findMany({
                 where: { siteId: input.siteId },
                 select: { id: true, role: true }
-            })
+            }), 'person.syncAll.list')
 
             const results = []
             for (const person of people) {

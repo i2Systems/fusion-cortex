@@ -21,6 +21,7 @@ import {
   type TargetType,
   type TriggerType,
 } from '@/lib/types'
+import { withRetry, withRetryList } from '../utils/withRetry'
 
 // Type for Rule with Zone and Device relations included
 type RuleWithRelations = Rule & {
@@ -83,7 +84,7 @@ export const ruleRouter = router({
       }
 
       try {
-        const rules = await prisma.rule.findMany({
+        const rules = await withRetryList(() => prisma.rule.findMany({
           where,
           include: {
             Zone: {
@@ -102,7 +103,7 @@ export const ruleRouter = router({
           orderBy: {
             createdAt: 'desc',
           },
-        })
+        }), 'rule.list')
 
         return rules.map(transformRule)
       } catch (error: any) {
@@ -116,7 +117,7 @@ export const ruleRouter = router({
       id: z.string(),
     }))
     .query(async ({ input }) => {
-      const rule = await prisma.rule.findUnique({
+      const rule = await withRetry(() => prisma.rule.findUnique({
         where: { id: input.id },
         include: {
           Zone: {
@@ -132,7 +133,7 @@ export const ruleRouter = router({
             },
           },
         },
-      })
+      }), { context: 'rule.getById' })
 
       if (!rule) {
         return null
@@ -162,7 +163,7 @@ export const ruleRouter = router({
     }))
     .mutation(async ({ input }) => {
       try {
-        const rule = await prisma.rule.create({
+        const rule = await withRetry(() => prisma.rule.create({
           data: {
             id: randomUUID(),
             name: input.name,
@@ -197,7 +198,7 @@ export const ruleRouter = router({
               },
             },
           },
-        })
+        }), { context: 'rule.create' })
 
         return transformRule(rule)
       } catch (error: any) {
@@ -250,7 +251,7 @@ export const ruleRouter = router({
       if (updates.lastTriggered !== undefined) updateData.lastTriggered = updates.lastTriggered
 
       try {
-        const rule = await prisma.rule.update({
+        const rule = await withRetry(() => prisma.rule.update({
           where: { id },
           data: updateData,
           include: {
@@ -267,7 +268,7 @@ export const ruleRouter = router({
               },
             },
           },
-        })
+        }), { context: 'rule.update' })
 
         return transformRule(rule)
       } catch (error: any) {
@@ -284,17 +285,17 @@ export const ruleRouter = router({
     .mutation(async ({ input }) => {
       try {
         // Get current state
-        const current = await prisma.rule.findUnique({
+        const current = await withRetry(() => prisma.rule.findUnique({
           where: { id: input.id },
           select: { enabled: true },
-        })
+        }), { context: 'rule.toggle.get' })
 
         if (!current) {
           throw new Error('Rule not found')
         }
 
         // Toggle
-        const rule = await prisma.rule.update({
+        const rule = await withRetry(() => prisma.rule.update({
           where: { id: input.id },
           data: { enabled: !current.enabled },
           include: {
@@ -305,7 +306,7 @@ export const ruleRouter = router({
               },
             },
           },
-        })
+        }), { context: 'rule.toggle.update' })
 
         return transformRule(rule)
       } catch (error: any) {
@@ -320,9 +321,9 @@ export const ruleRouter = router({
     }))
     .mutation(async ({ input }) => {
       try {
-        await prisma.rule.delete({
+        await withRetry(() => prisma.rule.delete({
           where: { id: input.id },
-        })
+        }), { context: 'rule.delete' })
         return { success: true }
       } catch (error: any) {
         console.error('Error in rule.delete:', error.message)

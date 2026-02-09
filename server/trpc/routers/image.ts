@@ -12,6 +12,7 @@ import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
 import { supabaseAdmin, STORAGE_BUCKETS } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
+import { withRetry } from '../utils/withRetry'
 
 export const imageRouter = router({
   // Save site image to database (with retry logic)
@@ -43,10 +44,10 @@ export const imageRouter = router({
           }
 
           // First ensure site exists
-          const siteExists = await prisma.site.findUnique({
+          const siteExists = await withRetry(() => prisma.site.findUnique({
             where: { id: input.siteId },
             select: { id: true },
-          })
+          }), { context: 'image.saveSiteImage.checkSite' })
 
           if (!siteExists) {
             logger.error(`Site ${input.siteId} does not exist in database. Cannot save image.`)
@@ -91,10 +92,10 @@ export const imageRouter = router({
           }
 
           // Update site with imageUrl (either Supabase URL or base64 fallback)
-          const site = await prisma.site.update({
+          const site = await withRetry(() => prisma.site.update({
             where: { id: input.siteId },
             data: { imageUrl },
-          })
+          }), { context: 'image.saveSiteImage.update' })
 
           logger.info(`Site image saved for ${input.siteId}`)
           const isSupabaseUrl = imageUrl.startsWith('http')
@@ -109,10 +110,11 @@ export const imageRouter = router({
           }
 
           // Verify it was actually saved by reading it back
-          const verify = await prisma.site.findUnique({
+          const verify = await withRetry(() => prisma.site.findUnique({
             where: { id: input.siteId },
             select: { imageUrl: true },
-          })
+          }), { context: 'image.saveSiteImage.verify' })
+
           if (verify?.imageUrl) {
             const verifyIsSupabase = verify.imageUrl.startsWith('http')
             logger.debug(`Verified: Image URL saved to database for ${input.siteId}`)
@@ -136,10 +138,10 @@ export const imageRouter = router({
               await prisma.$executeRaw`ALTER TABLE "Site" ADD COLUMN IF NOT EXISTS "imageUrl" TEXT`
               // Retry the update (will use base64 fallback if Supabase not configured)
               const fallbackUrl = input.imageData
-              const site = await prisma.site.update({
+              const site = await withRetry(() => prisma.site.update({
                 where: { id: input.siteId },
                 data: { imageUrl: fallbackUrl },
-              })
+              }), { context: 'image.saveSiteImage.fallbackUpdate' })
               return { success: true, siteId: input.siteId }
             } catch (addColumnError) {
               logger.error('Failed to add imageUrl column:', addColumnError)
@@ -183,17 +185,18 @@ export const imageRouter = router({
           }
 
           // First check if site exists
-          const siteExists = await prisma.site.findUnique({
+          const siteExists = await withRetry(() => prisma.site.findUnique({
             where: { id: input.siteId },
             select: { id: true, imageUrl: true },
-          })
+          }), { context: 'image.getSiteImage.checkSite' })
 
           if (!siteExists) {
             // Log available sites for debugging (only first 10 to avoid spam)
-            const availableSites = await prisma.site.findMany({
+            const availableSites = await withRetry(() => prisma.site.findMany({
               select: { id: true },
               take: 10
-            }).catch(() => [])
+            }).catch(() => []), { context: 'image.getSiteImage.debug' })
+
             logger.warn(`Site ${input.siteId} does not exist in database. Available sites:`,
               availableSites.map(s => s.id)
             )
@@ -299,7 +302,7 @@ export const imageRouter = router({
           }
 
           // Upsert library image (create or update) - now using imageUrl instead of imageData
-          const libraryImage = await prisma.libraryImage.upsert({
+          const libraryImage = await withRetry(() => prisma.libraryImage.upsert({
             where: { libraryId: input.libraryId },
             update: {
               imageUrl,
@@ -313,7 +316,7 @@ export const imageRouter = router({
               mimeType: input.mimeType,
               updatedAt: new Date(),
             },
-          })
+          }), { context: 'image.saveLibraryImage.upsert' })
 
           logger.info(`Library image saved for ${input.libraryId}`)
           return { success: true, libraryId: input.libraryId, imageUrl }
@@ -414,10 +417,10 @@ export const imageRouter = router({
             await new Promise(resolve => setTimeout(resolve, 200 * attempt))
           }
 
-          const libraryImage = await prisma.libraryImage.findUnique({
+          const libraryImage = await withRetry(() => prisma.libraryImage.findUnique({
             where: { libraryId: input.libraryId },
             select: { imageUrl: true, mimeType: true },
-          })
+          }), { context: 'image.getLibraryImage' })
 
           return libraryImage?.imageUrl || null
         } catch (error: any) {
@@ -448,9 +451,9 @@ export const imageRouter = router({
     }))
     .mutation(async ({ input }) => {
       try {
-        await prisma.libraryImage.delete({
+        await withRetry(() => prisma.libraryImage.delete({
           where: { libraryId: input.libraryId },
-        })
+        }), { context: 'image.removeLibraryImage' })
 
         return { success: true }
       } catch (error: any) {
@@ -463,4 +466,3 @@ export const imageRouter = router({
       }
     }),
 })
-

@@ -9,6 +9,7 @@ import { router, publicProcedure } from '../trpc'
 import { prisma } from '@/lib/prisma'
 import { BACnetStatus } from '@prisma/client'
 import { randomUUID } from 'crypto'
+import { withRetry, withRetryList } from '../utils/withRetry'
 
 export const bacnetRouter = router({
   list: publicProcedure
@@ -21,12 +22,12 @@ export const bacnetRouter = router({
       }
 
       // Get all zones for this site, then get their BACnet mappings
-      const zones = await prisma.zone.findMany({
+      const zones = await withRetryList(() => prisma.zone.findMany({
         where: { siteId: input.siteId },
         include: {
           BACnetMapping: true,
         },
-      })
+      }), 'bacnet.list')
 
       return zones
         .filter(zone => zone.BACnetMapping)
@@ -44,12 +45,12 @@ export const bacnetRouter = router({
       zoneId: z.string(),
     }))
     .query(async ({ input }) => {
-      const mapping = await prisma.bACnetMapping.findUnique({
+      const mapping = await withRetry(() => prisma.bACnetMapping.findUnique({
         where: { zoneId: input.zoneId },
         include: {
           Zone: true,
         },
-      })
+      }), { context: 'bacnet.getByZone' })
 
       if (!mapping) {
         return null
@@ -72,7 +73,7 @@ export const bacnetRouter = router({
       status: z.enum(['CONNECTED', 'ERROR', 'NOT_ASSIGNED']).optional().default('NOT_ASSIGNED'),
     }))
     .mutation(async ({ input }) => {
-      const mapping = await prisma.bACnetMapping.create({
+      const mapping = await withRetry(() => prisma.bACnetMapping.create({
         data: {
           id: randomUUID(),
           zoneId: input.zoneId,
@@ -83,7 +84,7 @@ export const bacnetRouter = router({
         include: {
           Zone: true,
         },
-      })
+      }), { context: 'bacnet.create' })
 
       return {
         id: mapping.id,
@@ -111,7 +112,7 @@ export const bacnetRouter = router({
       if (updates.lastConnected !== undefined) updateData.lastConnected = updates.lastConnected
 
       updateData.updatedAt = new Date()
-      const mapping = await prisma.bACnetMapping.upsert({
+      const mapping = await withRetry(() => prisma.bACnetMapping.upsert({
         where: { zoneId },
         update: updateData,
         create: {
@@ -125,7 +126,7 @@ export const bacnetRouter = router({
         include: {
           Zone: true,
         },
-      })
+      }), { context: 'bacnet.update' })
 
       return {
         id: mapping.id,
@@ -142,9 +143,9 @@ export const bacnetRouter = router({
       zoneId: z.string(),
     }))
     .mutation(async ({ input }) => {
-      await prisma.bACnetMapping.delete({
+      await withRetry(() => prisma.bACnetMapping.delete({
         where: { zoneId: input.zoneId },
-      })
+      }), { context: 'bacnet.delete' })
       return { success: true }
     }),
 })

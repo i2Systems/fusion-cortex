@@ -41,8 +41,7 @@ This index helps you quickly find the right documentation for your needs.
 
 | Document | Purpose | When to Use |
 |----------|---------|-------------|
-| [UX_IMPROVEMENTS.md](./UX_IMPROVEMENTS.md) | First UX review - 10 improvements | Planning UX work |
-| [UX_IMPROVEMENTS_V2.md](./UX_IMPROVEMENTS_V2.md) | Second UX review - 10 more improvements | Planning UX work |
+| [UX_IMPROVEMENTS.md](./UX_IMPROVEMENTS.md) | UX review & improvements | Planning UX work |
 
 ### Component Documentation
 
@@ -69,7 +68,7 @@ This index helps you quickly find the right documentation for your needs.
 - **Set up Supabase** → [SUPABASE_SETUP.md](./SUPABASE_SETUP.md)
 - **Seed demo data** → [SEEDING.md](./SEEDING.md)
 - **Understand state management** → [ARCHITECTURE.md](./ARCHITECTURE.md) → "State Management"
-- **Find UX improvements** → [UX_IMPROVEMENTS.md](./UX_IMPROVEMENTS.md) + [UX_IMPROVEMENTS_V2.md](./UX_IMPROVEMENTS_V2.md)
+- **Find UX improvements** → [UX_IMPROVEMENTS.md](./UX_IMPROVEMENTS.md)
 
 ## 🤖 For AI Assistants
 

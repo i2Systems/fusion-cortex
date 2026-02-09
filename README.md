@@ -469,8 +469,7 @@ See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for complete deployment guide to Vercel
 - **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Complete deployment guide (Vercel, GitHub, checklists)
 
 ### UX & Design
-- **[UX_IMPROVEMENTS.md](./UX_IMPROVEMENTS.md)** - First UX review (10 improvements)
-- **[UX_IMPROVEMENTS_V2.md](./UX_IMPROVEMENTS_V2.md)** - Second UX review (10 more improvements)
+- **[UX_IMPROVEMENTS.md](./UX_IMPROVEMENTS.md)** - UX review & improvements
 
 ## 🎨 UI Components & Patterns
 
