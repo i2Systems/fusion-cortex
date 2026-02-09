@@ -339,8 +339,8 @@ export default function DashboardPage() {
       }
     }
 
-    // Defer initial fetch 300ms so sync hooks settle first
-    fetchAllSiteData(300)
+    // Defer initial fetch 800ms so sync hooks settle first and previous page cleans up
+    fetchAllSiteData(800)
 
     const interval = setInterval(() => fetchAllSiteData(0), 60000)
     return () => clearInterval(interval)
