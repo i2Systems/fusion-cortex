@@ -55,25 +55,36 @@ export function useSiteActions() {
         },
     })
 
-    const setActiveSite = useCallback((siteId: string) => {
+    const setActiveSite = useCallback((siteId: string, options?: { skipAnimation?: boolean }) => {
         // Get current state at call time (not at callback creation time)
         const currentState = useSiteStore.getState()
         const previousId = currentState.activeSiteId
-        if (previousId && previousId !== siteId) {
-            const newSite = currentState.sites.find(s => s.id === siteId)
-            if (newSite) {
-                setTimeout(() => {
-                    addToast({
-                        type: 'success',
-                        title: 'Site Switched',
-                        message: `Now viewing ${newSite.name}`,
-                        duration: 3000,
-                    })
-                }, 100)
-            }
+
+        // Skip if switching to same site
+        if (previousId === siteId) return
+
+        const newSite = currentState.sites.find(s => s.id === siteId)
+        if (!newSite) return
+
+        // If skipAnimation is true, just switch immediately without overlay
+        if (options?.skipAnimation) {
+            currentState.setActiveSiteId(siteId)
+            return
         }
-        currentState.setActiveSiteId(siteId)
-    }, [addToast]) // Remove store from deps - use getState() for stable reference
+
+        // Show the overlay with site name
+        currentState.setSwitching(true, newSite.name)
+
+        // Quick snap to blur, then switch site
+        setTimeout(() => {
+            useSiteStore.getState().setActiveSiteId(siteId)
+
+            // Hold the blur for a moment, then fade out
+            setTimeout(() => {
+                useSiteStore.getState().setSwitching(false)
+            }, 800)
+        }, 200)
+    }, []) // No deps needed - using getState() for stable reference
 
     const addSite = useCallback((siteData: Omit<Site, 'id'>) => {
         const tempId = `site-${Date.now()}`

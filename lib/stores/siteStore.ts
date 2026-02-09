@@ -28,11 +28,14 @@ interface SiteState {
     sites: Site[]
     activeSiteId: string | null
     isLoading: boolean
+    isSwitching: boolean
+    switchingSiteName: string | null
 
     // Actions
     setSites: (sites: Site[]) => void
     setActiveSiteId: (id: string | null) => void
     setLoading: (isLoading: boolean) => void
+    setSwitching: (isSwitching: boolean, siteName?: string | null) => void
     addSite: (site: Site) => void
     updateSite: (id: string, updates: Partial<Site>) => void
     removeSite: (id: string) => void
@@ -44,12 +47,19 @@ export const useSiteStore = create<SiteState>()(
             sites: [],
             activeSiteId: null,
             isLoading: false,
+            isSwitching: false,
+            switchingSiteName: null,
 
             setSites: (sites) => set({ sites }),
 
             setActiveSiteId: (activeSiteId) => set({ activeSiteId }),
 
             setLoading: (isLoading) => set({ isLoading }),
+
+            setSwitching: (isSwitching, siteName = null) => set({
+                isSwitching,
+                switchingSiteName: siteName
+            }),
 
             addSite: (site) => set((state) => ({
                 sites: [...state.sites, site]

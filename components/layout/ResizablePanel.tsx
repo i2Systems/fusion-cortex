@@ -16,6 +16,7 @@
 
 import { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react'
 import { GripVertical, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useSiteStore } from '@/lib/stores/siteStore'
 
 interface ResizablePanelProps {
   children: React.ReactNode
@@ -63,6 +64,8 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
   const [isMobile, setIsMobile] = useState(false) // Track if we're on mobile/tablet
   // Skip animations on initial hydration to prevent slide-in on page load
   const [hasHydrated, setHasHydrated] = useState(false)
+  // Site switching state - skip animations during site transition
+  const isSwitching = useSiteStore((state) => state.isSwitching)
   // Staggered content visibility for smoother animations
   // Content fades out before panel closes, fades in after panel opens
   const [contentVisible, setContentVisible] = useState(false)
@@ -94,6 +97,7 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
     if (typeof window === 'undefined') return
 
     const isTabletOrMobile = window.innerWidth < 1024 // lg breakpoint
+    let shouldBeOpen = false
 
     if (storageKey) {
       const saved = localStorage.getItem(`panel_${storageKey}`)
@@ -108,10 +112,10 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
           // On tablet/mobile, default to collapsed unless explicitly saved as open
           // On desktop, default to open (ignore saved collapsed state on first load)
           if (isTabletOrMobile) {
-            setIsCollapsed(savedCollapsed !== false) // Default to collapsed on tablet/mobile
+            shouldBeOpen = savedCollapsed === false
           } else {
             // Desktop: default to open, but respect saved width
-            setIsCollapsed(false)
+            shouldBeOpen = true
             if (savedWidth) {
               setWidth(savedWidth)
               setLastOpenWidth(savedWidth)
@@ -120,30 +124,26 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
         } catch (e) {
           console.warn('Failed to load panel state:', e)
           // Default based on screen size
-          setIsCollapsed(isTabletOrMobile)
+          shouldBeOpen = !isTabletOrMobile
         }
       } else {
         // No saved state - default to collapsed on tablet/mobile, open on desktop
-        setIsCollapsed(isTabletOrMobile)
+        shouldBeOpen = !isTabletOrMobile
       }
     } else {
       // No storage key - default based on screen size
-      setIsCollapsed(isTabletOrMobile)
+      shouldBeOpen = !isTabletOrMobile
     }
 
-    // Enable animations after initial state is set (next frame)
-    // Also set initial content/panel visibility based on collapsed state
+    // Set ALL states at once BEFORE enabling animations
+    // This ensures the panel starts in its final position without animating
+    setIsCollapsed(!shouldBeOpen)
+    setPanelCollapsed(!shouldBeOpen)
+    setContentVisible(shouldBeOpen)
+
+    // Enable animations AFTER setting the initial state (next frame)
     requestAnimationFrame(() => {
       setHasHydrated(true)
-      // If panel is open on load, show everything immediately (no animation needed)
-      if (!isTabletOrMobile || (storageKey && localStorage.getItem(`panel_${storageKey}`))) {
-        const saved = storageKey ? localStorage.getItem(`panel_${storageKey}`) : null
-        const savedCollapsed = saved ? JSON.parse(saved).isCollapsed : true
-        if (!isTabletOrMobile || savedCollapsed === false) {
-          setPanelCollapsed(false)
-          setContentVisible(true)
-        }
-      }
     })
   }, [storageKey])
 
@@ -563,8 +563,8 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
           }}
           className={`
           relative overflow-hidden flex-shrink-0
-          ${hasHydrated ? 'transition-all duration-300 ease-out' : ''}
-          ${isDragging ? 'transition-none' : ''}
+          ${hasHydrated && !isSwitching ? 'transition-all duration-300 ease-out' : ''}
+          ${isDragging || isSwitching ? 'transition-none' : ''}
           ${panelCollapsed ? 'pointer-events-none' : ''}
           ${className}
         `}
@@ -574,7 +574,7 @@ export const ResizablePanel = forwardRef<ResizablePanelRef, ResizablePanelProps>
             w-full h-full bg-[var(--color-surface)] backdrop-blur-xl rounded-2xl
             border border-[var(--color-border-subtle)]
             shadow-[var(--shadow-strong)] overflow-hidden
-            ${hasHydrated ? 'transition-transform duration-300' : ''}
+            ${hasHydrated && !isSwitching ? 'transition-transform duration-300' : ''}
             ${panelCollapsed ? 'translate-x-full' : 'translate-x-0'}
             flex flex-col
             lg:relative

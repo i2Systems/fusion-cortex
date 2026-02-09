@@ -93,7 +93,6 @@ export function MainNav() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  prefetch={false}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`
                     w-14 h-14 flex items-center justify-center rounded-lg
@@ -122,7 +121,6 @@ export function MainNav() {
         {/* Library Icon */}
         <Link
           href="/library"
-          prefetch={false}
           onClick={() => setMobileMenuOpen(false)}
           className={`
             w-14 h-14 flex items-center justify-center rounded-lg

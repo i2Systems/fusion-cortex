@@ -21,6 +21,7 @@ import { ToastContainer } from '@/components/ui/Toast'
 import { ComposeProviders } from '@/components/shared/ComposeProviders'
 import { StateHydration } from '@/components/StateHydration'
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
+import { InitialLoadOverlay } from '@/components/layout/InitialLoadOverlay'
 // Import exportData to make exportFusionData() available in browser console
 import '@/lib/exportData'
 
@@ -68,6 +69,7 @@ export default function RootLayout({
               </StateHydration>
             )}
             <ToastContainer />
+            <InitialLoadOverlay />
           </ComposeProviders>
         </ErrorBoundary>
       </body>

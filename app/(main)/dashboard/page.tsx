@@ -232,7 +232,7 @@ export default function DashboardPage() {
     const firstSiteId = sites[0].id
     // Use queueMicrotask to prevent infinite loops
     queueMicrotask(() => {
-      setActiveSite(firstSiteId)
+      setActiveSite(firstSiteId, { skipAnimation: true })
       setSelectedSiteId(firstSiteId)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -246,7 +246,7 @@ export default function DashboardPage() {
       if (!activeSiteId) {
         // Use queueMicrotask to prevent infinite loops
         queueMicrotask(() => {
-          setActiveSite(siteToSelect)
+          setActiveSite(siteToSelect, { skipAnimation: true })
         })
       }
     }
@@ -256,7 +256,7 @@ export default function DashboardPage() {
   // When switching to map view, ensure activeSiteId matches selectedSiteId for map data
   useEffect(() => {
     if (viewMode === 'map' && selectedSiteId && activeSiteId !== selectedSiteId) {
-      setActiveSite(selectedSiteId)
+      setActiveSite(selectedSiteId, { skipAnimation: true })
     }
   }, [viewMode, selectedSiteId, activeSiteId, setActiveSite])
 
@@ -427,7 +427,7 @@ export default function DashboardPage() {
   const handleSiteClick = (siteId: string, targetPage?: string) => {
     // If navigating to a page, always select
     if (targetPage) {
-      setActiveSite(siteId)
+      setActiveSite(siteId, { skipAnimation: true })
       setSelectedSiteId(siteId)
       router.push(targetPage)
       return
@@ -439,7 +439,7 @@ export default function DashboardPage() {
       return
     }
 
-    setActiveSite(siteId)
+    setActiveSite(siteId, { skipAnimation: true })
     setSelectedSiteId(siteId)
   }
 
@@ -501,7 +501,7 @@ export default function DashboardPage() {
       }
     }
 
-    setActiveSite(newSite.id)
+    setActiveSite(newSite.id, { skipAnimation: true })
     setSelectedSiteId(newSite.id)
     setShowAddSiteModal(false)
   }, [addSite, setActiveSite, sites])
@@ -699,7 +699,7 @@ export default function DashboardPage() {
   const getHealthDisplay = (summary: SiteSummary) =>
     summary.totalDevices === 0 ? '—' : `${summary.healthPercentage}%`
 
-  // Calculate dashboard insights with trends
+  // Calculate dashboard insights with trends (cards mode only)
   const dashboardInsight = useMemo(() => {
     if (siteSummaries.length === 0) return null
 
@@ -749,6 +749,49 @@ export default function DashboardPage() {
     }
   }, [siteSummaries])
 
+  // Metrics: all sites in cards mode, selected site only in map mode
+  const metrics = useMemo(() => {
+    if (siteSummaries.length === 0) return []
+    if (viewMode === 'map' && selectedSiteSummary) {
+      const s = selectedSiteSummary
+      return [
+        { label: 'Devices', value: s.totalDevices, color: 'var(--color-text)' },
+        { label: 'Online', value: s.onlineDevices, color: 'var(--color-success)' },
+        { label: 'Offline', value: s.offlineDevices, color: 'var(--color-warning)' },
+        { label: 'Health', value: `${s.healthPercentage}%`, color: 'var(--color-success)' },
+        { label: 'Zones', value: s.totalZones, color: 'var(--color-text)' },
+        {
+          label: 'Faults',
+          value: s.criticalFaults.length,
+          color: 'var(--color-danger)',
+          icon: <AlertTriangle size={14} className="text-[var(--color-danger)]" />,
+          onClick: () => router.push('/faults'),
+        },
+      ]
+    }
+    return [
+      { label: 'Total Sites', value: siteSummaries.length, color: 'var(--color-text)' },
+      { label: 'Total Devices', value: siteSummaries.reduce((sum, s) => sum + s.totalDevices, 0).toLocaleString(), color: 'var(--color-text)' },
+      { label: 'Sites Needing Attention', value: siteSummaries.filter(s => s.needsAttention).length, color: 'var(--color-warning)' },
+      { label: 'Avg. Health', value: `${Math.round(siteSummaries.reduce((sum, s) => sum + s.healthPercentage, 0) / siteSummaries.length)}%`, color: 'var(--color-success)' },
+      {
+        label: 'Total Faults',
+        value: siteSummaries.reduce((sum, s) => sum + s.criticalFaults.length, 0),
+        color: 'var(--color-danger)',
+        icon: <AlertTriangle size={14} className="text-[var(--color-danger)]" />,
+        onClick: () => router.push('/notifications?filter=faults&siteFilter=all'),
+      },
+      ...(dashboardInsight ? [{
+        label: dashboardInsight.healthTrend.label,
+        value: `${dashboardInsight.healthTrend.value}%`,
+        color: dashboardInsight.healthTrend.trend === 'improving' ? 'var(--color-success)' : dashboardInsight.healthTrend.trend === 'declining' ? 'var(--color-danger)' : 'var(--color-text)',
+        trend: dashboardInsight.healthTrend.trend === 'improving' ? 'up' as const : dashboardInsight.healthTrend.trend === 'declining' ? 'down' as const : 'stable' as const,
+        delta: dashboardInsight.healthTrend.delta,
+        icon: dashboardInsight.healthTrend.trend === 'improving' ? <TrendingUp size={14} className="text-[var(--color-success)]" /> : dashboardInsight.healthTrend.trend === 'declining' ? <TrendingDown size={14} className="text-[var(--color-danger)]" /> : <Activity size={14} className="text-[var(--color-text-muted)]" />,
+      }] : []),
+    ]
+  }, [siteSummaries, viewMode, selectedSiteSummary, dashboardInsight, router])
+
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
       {/* Top Search Island */}
@@ -761,60 +804,7 @@ export default function DashboardPage() {
           placeholder="Search sites, devices, or type 'view devices' or 'view zones'..."
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}
-          metrics={siteSummaries.length > 0 ? [
-            {
-              label: 'Total Sites',
-              value: siteSummaries.length,
-              color: 'var(--color-text)',
-            },
-            {
-              label: 'Total Devices',
-              value: siteSummaries.reduce((sum, s) => sum + s.totalDevices, 0).toLocaleString(),
-              color: 'var(--color-text)',
-            },
-            {
-              label: 'Sites Needing Attention',
-              value: siteSummaries.filter(s => s.needsAttention).length,
-              color: 'var(--color-warning)',
-            },
-            {
-              label: 'Avg. Health',
-              value: `${Math.round(
-                siteSummaries.reduce((sum, s) => sum + s.healthPercentage, 0) / siteSummaries.length
-              )}%`,
-              color: 'var(--color-success)',
-            },
-            {
-              label: 'Total Faults',
-              value: siteSummaries.reduce((sum, s) => sum + s.criticalFaults.length, 0),
-              color: 'var(--color-danger)',
-              icon: <AlertTriangle size={14} className="text-[var(--color-danger)]" />,
-              onClick: () => {
-                // Navigate to notifications with filters set to show all faults for all sites
-                router.push('/notifications?filter=faults&siteFilter=all')
-              },
-            },
-            ...(dashboardInsight ? [{
-              label: dashboardInsight.healthTrend.label,
-              value: `${dashboardInsight.healthTrend.value}%`,
-              color: dashboardInsight.healthTrend.trend === 'improving'
-                ? 'var(--color-success)'
-                : dashboardInsight.healthTrend.trend === 'declining'
-                  ? 'var(--color-danger)'
-                  : 'var(--color-text)',
-              trend: dashboardInsight.healthTrend.trend === 'improving' ? 'up' as const
-                : dashboardInsight.healthTrend.trend === 'declining' ? 'down' as const
-                  : 'stable' as const,
-              delta: dashboardInsight.healthTrend.delta,
-              icon: dashboardInsight.healthTrend.trend === 'improving' ? (
-                <TrendingUp size={14} className="text-[var(--color-success)]" />
-              ) : dashboardInsight.healthTrend.trend === 'declining' ? (
-                <TrendingDown size={14} className="text-[var(--color-danger)]" />
-              ) : (
-                <Activity size={14} className="text-[var(--color-text-muted)]" />
-              ),
-            }] : []),
-          ] : []}
+          metrics={metrics}
         />
       </div>
 
@@ -826,7 +816,7 @@ export default function DashboardPage() {
             onChange={(e) => {
               const id = e.target.value
               setSelectedSiteId(id)
-              setActiveSite(id)
+              setActiveSite(id, { skipAnimation: true })
             }}
             className="text-sm px-3 py-1.5 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border-subtle)] text-[var(--color-text)]"
           >
@@ -847,286 +837,286 @@ export default function DashboardPage() {
           {viewMode === 'map' ? (
             <DashboardMapView />
           ) : (
-          <>
-          {/* Site Cards Grid - Responsive */}
-          {/* Empty State: No Sites */}
-          {sites.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center min-h-[400px]">
-              <PanelEmptyState
-                icon={Building2}
-                title="No Sites Added"
-                description="Get started by adding your first site to monitor and manage."
-                action={
-                  <Button onClick={handleAddSite}>
-                    Add Site
-                  </Button>
-                }
-              />
-            </div>
-          ) : filteredSiteSummaries.length === 0 ? (
-            /* Empty State: No Search Results */
-            <div className="flex-1 flex items-center justify-center min-h-[400px]">
-              <PanelEmptyState
-                icon={Search}
-                title="No sites found"
-                description="No sites match your search terms."
-                action={
-                  <Button variant="secondary" onClick={() => setSearchQuery('')}>
-                    Clear Search
-                  </Button>
-                }
-              />
-            </div>
-          ) : (
-            /* Site Cards - Responsive Layout */
-            <div className="flex flex-col gap-3 xl:grid xl:grid-cols-2 2xl:grid-cols-3 xl:gap-4 xl:auto-rows-fr">
-              {filteredSiteSummaries.map((summary) => {
-                const site = sites.find(s => s.id === summary.siteId)
+            <>
+              {/* Site Cards Grid - Responsive */}
+              {/* Empty State: No Sites */}
+              {sites.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center min-h-[400px]">
+                  <PanelEmptyState
+                    icon={Building2}
+                    title="No Sites Added"
+                    description="Get started by adding your first site to monitor and manage."
+                    action={
+                      <Button onClick={handleAddSite}>
+                        Add Site
+                      </Button>
+                    }
+                  />
+                </div>
+              ) : filteredSiteSummaries.length === 0 ? (
+                /* Empty State: No Search Results */
+                <div className="flex-1 flex items-center justify-center min-h-[400px]">
+                  <PanelEmptyState
+                    icon={Search}
+                    title="No sites found"
+                    description="No sites match your search terms."
+                    action={
+                      <Button variant="secondary" onClick={() => setSearchQuery('')}>
+                        Clear Search
+                      </Button>
+                    }
+                  />
+                </div>
+              ) : (
+                /* Site Cards - Responsive Layout */
+                <div className="flex flex-col gap-3 xl:grid xl:grid-cols-2 2xl:grid-cols-3 xl:gap-4 xl:auto-rows-fr">
+                  {filteredSiteSummaries.map((summary) => {
+                    const site = sites.find(s => s.id === summary.siteId)
 
-                return (
-                  <Card
-                    key={summary.siteId}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleSiteClick(summary.siteId)
-                    }}
-                    className={`cursor-pointer transition-all hover:border-[var(--color-primary)]/50 hover:shadow-[var(--shadow-strong)] 
+                    return (
+                      <Card
+                        key={summary.siteId}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleSiteClick(summary.siteId)
+                        }}
+                        className={`cursor-pointer transition-all hover:border-[var(--color-primary)]/50 hover:shadow-[var(--shadow-strong)] 
                       ${summary.siteId === selectedSiteId
-                        ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] shadow-[var(--shadow-glow-primary)] ring-1 ring-[var(--color-primary)]/20'
-                        : 'border-[var(--color-border-subtle)]'
-                      } ${summary.needsAttention && summary.siteId !== selectedSiteId ? 'ring-1 ring-[var(--color-warning)]/20' : ''}
+                            ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] shadow-[var(--shadow-glow-primary)] ring-1 ring-[var(--color-primary)]/20'
+                            : 'border-[var(--color-border-subtle)]'
+                          } ${summary.needsAttention && summary.siteId !== selectedSiteId ? 'ring-1 ring-[var(--color-warning)]/20' : ''}
                       
                       /* Responsive Layout Classes */
                       relative overflow-visible /* For hanging tokens */
                       flex flex-row p-4 pb-5 items-center gap-4 /* Base: List View (Row) - extra bottom padding for tokens */
                       xl:flex-col xl:p-6 xl:pb-6 xl:gap-4 xl:fusion-card-tile xl:overflow-hidden /* Desktop: Card View (Tile) */
                     `}
-                  >
-                    {/* === LIST VIEW (Mobile/Tablet < XL) === */}
-                    <div className="contents xl:hidden">
-                      {/* Identity Section: Image + Info */}
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="flex-shrink-0">
-                          <SiteImageCard siteId={summary.siteId} sizeClass="w-16 h-16" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="text-lg font-bold text-[var(--color-text)] truncate mb-0.5" title={summary.siteName}>
-                            {summary.siteName}
-                          </h3>
-                          {site && (
-                            <div className="space-y-0.5 text-xs text-[var(--color-text-muted)]">
-                              <div className="flex items-center gap-1">
-                                <MapPin size={11} />
-                                <span className="truncate">{site.city}, {site.state}</span>
+                      >
+                        {/* === LIST VIEW (Mobile/Tablet < XL) === */}
+                        <div className="contents xl:hidden">
+                          {/* Identity Section: Image + Info */}
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="flex-shrink-0">
+                              <SiteImageCard siteId={summary.siteId} sizeClass="w-16 h-16" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-lg font-bold text-[var(--color-text)] truncate mb-0.5" title={summary.siteName}>
+                                {summary.siteName}
+                              </h3>
+                              {site && (
+                                <div className="space-y-0.5 text-xs text-[var(--color-text-muted)]">
+                                  <div className="flex items-center gap-1">
+                                    <MapPin size={11} />
+                                    <span className="truncate">{site.city}, {site.state}</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Mini Metrics (Hidden on very small screens, shown on tablet) */}
+                          <div className="hidden sm:flex items-center gap-4 px-4 border-l border-r border-[var(--color-border-subtle)] mx-2">
+                            <div className="flex flex-col items-center">
+                              <span className="text-[10px] uppercase text-[var(--color-text-muted)]">Health</span>
+                              <span className="font-bold text-sm" style={{ color: getHealthColor(summary.healthPercentage, summary.totalDevices) }}>
+                                {getHealthDisplay(summary)}
+                              </span>
+                            </div>
+                            <div className="flex flex-col items-center">
+                              <span className="text-[10px] uppercase text-[var(--color-text-muted)]">Devs</span>
+                              <span className="font-bold text-sm">{summary.totalDevices}</span>
+                            </div>
+                          </div>
+
+                          {/* Actions & Status Badge - Compact */}
+                          <div className="flex flex-col items-end gap-2 ml-auto min-w-[30px]">
+                            {/* Priority Badge Only */}
+                            {summary.criticalFaults.length > 0 ? (
+                              <Badge variant="destructive" appearance="soft" className="h-6 w-6 p-0 justify-center rounded-full" title={`${summary.criticalFaults.length} Critical Faults`}>
+                                <AlertTriangle size={12} />
+                              </Badge>
+                            ) : !summary.mapUploaded ? (
+                              <Badge variant="warning" appearance="soft" className="h-6 w-6 p-0 justify-center rounded-full" title="No Map">
+                                <Map size={12} />
+                              </Badge>
+                            ) : (
+                              <div className="h-6 w-6 flex items-center justify-center">
+                                {getHealthIcon(summary.healthPercentage, 18, summary.totalDevices)}
                               </div>
+                            )}
+
+                            <ChevronRight size={16} className="text-[var(--color-text-muted)]" />
+                          </div>
+
+                          {/* Token Strip - Right-aligned glass container on list view */}
+                          {(summary.criticalFaults.length > 0 || (summary.warrantiesExpiring > 0 || summary.warrantiesExpired > 0) || !summary.mapUploaded) && (
+                            <div className="absolute -bottom-2.5 right-3 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[var(--color-surface-glass-elevated)] backdrop-blur-md border border-[var(--color-border-subtle)]/50">
+                              {summary.criticalFaults.length > 0 && (
+                                <Badge
+                                  variant="destructive"
+                                  appearance="soft"
+                                  className="token-link token-sm shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleSiteClick(summary.siteId, '/faults')
+                                  }}
+                                >
+                                  <AlertTriangle size={10} />
+                                  <span>{summary.criticalFaults.length} Critical</span>
+                                </Badge>
+                              )}
+
+                              {(summary.warrantiesExpiring > 0 || summary.warrantiesExpired > 0) && (
+                                <Badge variant="warning" appearance="soft" className="token-sm shrink-0">
+                                  <Shield size={10} />
+                                  <span>
+                                    {summary.warrantiesExpiring > 0 && `${summary.warrantiesExpiring} exp`}
+                                    {summary.warrantiesExpiring > 0 && summary.warrantiesExpired > 0 && '•'}
+                                    {summary.warrantiesExpired > 0 && `${summary.warrantiesExpired} out`}
+                                  </span>
+                                </Badge>
+                              )}
+
+                              {!summary.mapUploaded && (
+                                <Badge
+                                  variant="warning"
+                                  appearance="soft"
+                                  className="token-link token-sm shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleSiteClick(summary.siteId, '/map')
+                                  }}
+                                >
+                                  <Map size={10} />
+                                  <span>No map</span>
+                                </Badge>
+                              )}
                             </div>
                           )}
                         </div>
-                      </div>
-
-                      {/* Mini Metrics (Hidden on very small screens, shown on tablet) */}
-                      <div className="hidden sm:flex items-center gap-4 px-4 border-l border-r border-[var(--color-border-subtle)] mx-2">
-                        <div className="flex flex-col items-center">
-                          <span className="text-[10px] uppercase text-[var(--color-text-muted)]">Health</span>
-                          <span className="font-bold text-sm" style={{ color: getHealthColor(summary.healthPercentage, summary.totalDevices) }}>
-                            {getHealthDisplay(summary)}
-                          </span>
-                        </div>
-                        <div className="flex flex-col items-center">
-                          <span className="text-[10px] uppercase text-[var(--color-text-muted)]">Devs</span>
-                          <span className="font-bold text-sm">{summary.totalDevices}</span>
-                        </div>
-                      </div>
-
-                      {/* Actions & Status Badge - Compact */}
-                      <div className="flex flex-col items-end gap-2 ml-auto min-w-[30px]">
-                        {/* Priority Badge Only */}
-                        {summary.criticalFaults.length > 0 ? (
-                          <Badge variant="destructive" appearance="soft" className="h-6 w-6 p-0 justify-center rounded-full" title={`${summary.criticalFaults.length} Critical Faults`}>
-                            <AlertTriangle size={12} />
-                          </Badge>
-                        ) : !summary.mapUploaded ? (
-                          <Badge variant="warning" appearance="soft" className="h-6 w-6 p-0 justify-center rounded-full" title="No Map">
-                            <Map size={12} />
-                          </Badge>
-                        ) : (
-                          <div className="h-6 w-6 flex items-center justify-center">
-                            {getHealthIcon(summary.healthPercentage, 18, summary.totalDevices)}
-                          </div>
-                        )}
-
-                        <ChevronRight size={16} className="text-[var(--color-text-muted)]" />
-                      </div>
-
-                      {/* Token Strip - Right-aligned glass container on list view */}
-                      {(summary.criticalFaults.length > 0 || (summary.warrantiesExpiring > 0 || summary.warrantiesExpired > 0) || !summary.mapUploaded) && (
-                        <div className="absolute -bottom-2.5 right-3 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[var(--color-surface-glass-elevated)] backdrop-blur-md border border-[var(--color-border-subtle)]/50">
-                          {summary.criticalFaults.length > 0 && (
-                            <Badge
-                              variant="destructive"
-                              appearance="soft"
-                              className="token-link token-sm shrink-0"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleSiteClick(summary.siteId, '/faults')
-                              }}
-                            >
-                              <AlertTriangle size={10} />
-                              <span>{summary.criticalFaults.length} Critical</span>
-                            </Badge>
-                          )}
-
-                          {(summary.warrantiesExpiring > 0 || summary.warrantiesExpired > 0) && (
-                            <Badge variant="warning" appearance="soft" className="token-sm shrink-0">
-                              <Shield size={10} />
-                              <span>
-                                {summary.warrantiesExpiring > 0 && `${summary.warrantiesExpiring} exp`}
-                                {summary.warrantiesExpiring > 0 && summary.warrantiesExpired > 0 && '•'}
-                                {summary.warrantiesExpired > 0 && `${summary.warrantiesExpired} out`}
-                              </span>
-                            </Badge>
-                          )}
-
-                          {!summary.mapUploaded && (
-                            <Badge
-                              variant="warning"
-                              appearance="soft"
-                              className="token-link token-sm shrink-0"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleSiteClick(summary.siteId, '/map')
-                              }}
-                            >
-                              <Map size={10} />
-                              <span>No map</span>
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                    </div>
 
 
-                    {/* === GRID VIEW (Desktop >= XL) === */}
-                    <div className="hidden xl:contents">
-                      {/* Card Header */}
-                      <div className="fusion-card-tile-header w-full">
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          {/* Site Image */}
-                          <div className="flex-shrink-0">
-                            <SiteImageCard siteId={summary.siteId} />
-                          </div>
+                        {/* === GRID VIEW (Desktop >= XL) === */}
+                        <div className="hidden xl:contents">
+                          {/* Card Header */}
+                          <div className="fusion-card-tile-header w-full">
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              {/* Site Image */}
+                              <div className="flex-shrink-0">
+                                <SiteImageCard siteId={summary.siteId} />
+                              </div>
 
-                          {/* Title & Subtitle */}
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-lg font-bold text-[var(--color-text)] truncate leading-tight mb-1" title={summary.siteName}>
-                              {summary.siteName}
-                            </h3>
-                            {site && (
-                              <div className="space-y-0.5">
-                                <div className="flex items-center gap-1 text-sm text-[var(--color-text-muted)]">
-                                  <MapPin size={12} />
-                                  <span className="truncate">{site.city}, {site.state}</span>
-                                </div>
-                                {site.manager && (
-                                  <SiteManagerDisplay site={site} />
+                              {/* Title & Subtitle */}
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-lg font-bold text-[var(--color-text)] truncate leading-tight mb-1" title={summary.siteName}>
+                                  {summary.siteName}
+                                </h3>
+                                {site && (
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center gap-1 text-sm text-[var(--color-text-muted)]">
+                                      <MapPin size={12} />
+                                      <span className="truncate">{site.city}, {site.state}</span>
+                                    </div>
+                                    {site.manager && (
+                                      <SiteManagerDisplay site={site} />
+                                    )}
+                                  </div>
                                 )}
                               </div>
+                            </div>
+
+                            {/* Header Actions */}
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              {getHealthIcon(summary.healthPercentage, 18, summary.totalDevices)}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleSiteClick(summary.siteId, '/map')
+                                }}
+                                className="h-8 w-8"
+                                title="Explore Site"
+                              >
+                                <Search size={14} />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* KPIs */}
+                          <div className="grid grid-cols-4 gap-2 py-2 w-full">
+                            <div className="text-center">
+                              <div className="text-xs text-[var(--color-text-muted)] mb-0.5">Health</div>
+                              <div className="text-sm font-semibold" style={{ color: getHealthColor(summary.healthPercentage, summary.totalDevices) }}>
+                                {getHealthDisplay(summary)}
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs text-[var(--color-text-muted)] mb-0.5">Devices</div>
+                              <div className="text-sm font-semibold text-[var(--color-text)]">{summary.totalDevices}</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs text-[var(--color-text-muted)] mb-0.5">Online</div>
+                              <div className="text-sm font-semibold" style={{ color: 'var(--color-success)' }}>
+                                {summary.onlineDevices}
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs text-[var(--color-text-muted)] mb-0.5">Zones</div>
+                              <div className="text-sm font-semibold text-[var(--color-text)]">{summary.totalZones}</div>
+                            </div>
+                          </div>
+
+                          {/* Status Indicators */}
+                          <div className="flex flex-wrap items-center gap-1.5 w-full">
+                            {summary.criticalFaults.length > 0 && (
+                              <Badge
+                                variant="destructive"
+                                appearance="soft"
+                                className="token-link text-xs gap-1"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleSiteClick(summary.siteId, '/faults')
+                                }}
+                              >
+                                <AlertTriangle size={11} />
+                                <span>{summary.criticalFaults.length} Critical</span>
+                              </Badge>
+                            )}
+
+                            {(summary.warrantiesExpiring > 0 || summary.warrantiesExpired > 0) && (
+                              <Badge variant="warning" appearance="soft" className="text-xs gap-1">
+                                <Shield size={11} />
+                                <span>
+                                  {summary.warrantiesExpiring > 0 && `${summary.warrantiesExpiring} expiring`}
+                                  {summary.warrantiesExpiring > 0 && summary.warrantiesExpired > 0 && ' • '}
+                                  {summary.warrantiesExpired > 0 && `${summary.warrantiesExpired} expired`}
+                                </span>
+                              </Badge>
+                            )}
+
+                            {!summary.mapUploaded && (
+                              <Badge
+                                variant="warning"
+                                appearance="soft"
+                                className="token-link text-xs gap-1"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleSiteClick(summary.siteId, '/map')
+                                }}
+                              >
+                                <Map size={11} />
+                                <span>No map</span>
+                              </Badge>
                             )}
                           </div>
                         </div>
-
-                        {/* Header Actions */}
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {getHealthIcon(summary.healthPercentage, 18, summary.totalDevices)}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleSiteClick(summary.siteId, '/map')
-                            }}
-                            className="h-8 w-8"
-                            title="Explore Site"
-                          >
-                            <Search size={14} />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* KPIs */}
-                      <div className="grid grid-cols-4 gap-2 py-2 w-full">
-                        <div className="text-center">
-                          <div className="text-xs text-[var(--color-text-muted)] mb-0.5">Health</div>
-                          <div className="text-sm font-semibold" style={{ color: getHealthColor(summary.healthPercentage, summary.totalDevices) }}>
-                            {getHealthDisplay(summary)}
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-xs text-[var(--color-text-muted)] mb-0.5">Devices</div>
-                          <div className="text-sm font-semibold text-[var(--color-text)]">{summary.totalDevices}</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-xs text-[var(--color-text-muted)] mb-0.5">Online</div>
-                          <div className="text-sm font-semibold" style={{ color: 'var(--color-success)' }}>
-                            {summary.onlineDevices}
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-xs text-[var(--color-text-muted)] mb-0.5">Zones</div>
-                          <div className="text-sm font-semibold text-[var(--color-text)]">{summary.totalZones}</div>
-                        </div>
-                      </div>
-
-                      {/* Status Indicators */}
-                      <div className="flex flex-wrap items-center gap-1.5 w-full">
-                        {summary.criticalFaults.length > 0 && (
-                          <Badge
-                            variant="destructive"
-                            appearance="soft"
-                            className="token-link text-xs gap-1"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleSiteClick(summary.siteId, '/faults')
-                            }}
-                          >
-                            <AlertTriangle size={11} />
-                            <span>{summary.criticalFaults.length} Critical</span>
-                          </Badge>
-                        )}
-
-                        {(summary.warrantiesExpiring > 0 || summary.warrantiesExpired > 0) && (
-                          <Badge variant="warning" appearance="soft" className="text-xs gap-1">
-                            <Shield size={11} />
-                            <span>
-                              {summary.warrantiesExpiring > 0 && `${summary.warrantiesExpiring} expiring`}
-                              {summary.warrantiesExpiring > 0 && summary.warrantiesExpired > 0 && ' • '}
-                              {summary.warrantiesExpired > 0 && `${summary.warrantiesExpired} expired`}
-                            </span>
-                          </Badge>
-                        )}
-
-                        {!summary.mapUploaded && (
-                          <Badge
-                            variant="warning"
-                            appearance="soft"
-                            className="token-link text-xs gap-1"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleSiteClick(summary.siteId, '/map')
-                            }}
-                          >
-                            <Map size={11} />
-                            <span>No map</span>
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
-                )
-              })}
-            </div>
-          )}
-          </>
+                      </Card>
+                    )
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
 

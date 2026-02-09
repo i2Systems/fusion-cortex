@@ -18,6 +18,7 @@ import { TopBar } from '@/components/layout/TopBar'
 import { ContextPanel } from '@/components/layout/ContextPanel'
 import { BottomDrawer } from '@/components/layout/BottomDrawer'
 import { PageTitle } from '@/components/layout/PageTitle'
+import { SiteTransitionOverlay } from '@/components/layout/SiteTransitionOverlay'
 import { SearchProvider } from '@/lib/SearchContext'
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
 
@@ -56,6 +57,9 @@ export default function MainLayout({
           </ErrorBoundary>
         </div>
       </div>
+
+      {/* Site Transition Overlay - Shows when switching sites */}
+      <SiteTransitionOverlay />
     </SearchProvider>
   )
 }
