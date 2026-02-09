@@ -7,7 +7,7 @@
 
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import dynamic from 'next/dynamic'
 import { Map } from 'lucide-react'
 import { MapUpload } from '@/components/map/MapUpload'
@@ -28,7 +28,7 @@ interface DashboardMapViewProps {
   onVectorDataUpload?: (data: unknown) => void
 }
 
-export function DashboardMapView({ onMapUpload, onVectorDataUpload }: DashboardMapViewProps) {
+function DashboardMapViewComponent({ onMapUpload, onVectorDataUpload }: DashboardMapViewProps) {
   const { mapData } = useMap()
   const { devices } = useDevices()
   const { zones } = useZones()
@@ -130,3 +130,5 @@ export function DashboardMapView({ onMapUpload, onVectorDataUpload }: DashboardM
     </div>
   )
 }
+
+export const DashboardMapView = memo(DashboardMapViewComponent)

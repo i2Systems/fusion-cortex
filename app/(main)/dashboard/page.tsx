@@ -331,20 +331,29 @@ export default function DashboardPage() {
 
       const CONCURRENCY = 2
       const STAGGER_MS = 150
-      for (let i = 0; i < sites.length; i += CONCURRENCY) {
-        const batch = sites.slice(i, i + CONCURRENCY)
+
+      // Optimization: In map mode, only fetch for the selected site to avoid UI freeze
+      // This prevents 40+ re-renders when a heavy map is active
+      const sitesToFetch = viewMode === 'map' && selectedSiteId
+        ? sites.filter(s => s.id === selectedSiteId)
+        : sites
+
+      for (let i = 0; i < sitesToFetch.length; i += CONCURRENCY) {
+        const batch = sitesToFetch.slice(i, i + CONCURRENCY)
         await Promise.all(
           batch.map((site, j) => fetchOneSite(site, initialDelayMs + (i + j) * STAGGER_MS))
         )
       }
     }
 
-    // Defer initial fetch 800ms so sync hooks settle first and previous page cleans up
-    fetchAllSiteData(800)
+    // Defer initial fetch so sync hooks settle first and previous page cleans up
+    // Use longer delay for map mode to ensure smooth transition
+    const initialDelay = viewMode === 'map' ? 800 : 300
+    fetchAllSiteData(initialDelay)
 
     const interval = setInterval(() => fetchAllSiteData(0), 60000)
     return () => clearInterval(interval)
-  }, [sites, trpcUtils])
+  }, [sites, trpcUtils, viewMode, selectedSiteId])
 
   // Load data for all sites
   useEffect(() => {
